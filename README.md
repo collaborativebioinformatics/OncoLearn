@@ -1,2 +1,3 @@
-# Cancer_biomarker_discovery
-Cancer Biomarker Discovery
+# Cancer Biomarker Discovery
+
+![Flowchart](./docs/assets/flowchart.png)
