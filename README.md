@@ -14,7 +14,6 @@ River Zhu, Zoey, Arun, Charlie Yang, Diya, Ana Ferreira (bossanblues@gmail.com),
 ## Table of Contents
 
 - [Getting Started](#getting-started)
-- [Recommended Extensions](#recommended-vscode-extensions)
 - [Usage](#usage)
 - [AI Disclosure](#ai-disclosure)
 - [License](#license)
@@ -114,6 +113,8 @@ docker compose ps
    renv::restore()
    ```
 
+---
+
 ### Recommended VSCode Extensions
 
 For the best development experience, we recommend installing the following VSCode extensions:
@@ -138,7 +139,7 @@ Open notebooks in VSCode or Jupyter Lab and execute cells sequentially.
 
 ### Data Organization
 
-TCGA data is organized by cancer type:
+TCGA data is organized by cohort:
 - `data/GDCdata/TCGA-LUAD/` - Lung Adenocarcinoma
 - `data/GDCdata/TCGA-LUSC/` - Lung Squamous Cell Carcinoma
 - `data/GDCdata/TCGA-MESO/` - Mesothelioma
