@@ -26,25 +26,33 @@ This project requires the following dependencies:
    cd Cancer_biomarker_discovery
    ```
 
-3. **Install Python dependencies**:
+3. **Install LLVM** (required for some Python packages):
+
+   - **Linux** (Ubuntu/Debian):
+     ```bash
+     sudo apt-get update
+     sudo apt-get install llvm
+     ```
+
+   - **macOS**:
+     ```bash
+     brew install llvm
+     ```
+
+4. **Install Python dependencies**:
    ```bash
    # Install base dependencies
    uv sync
-   
+
    # Or install with PyTorch extras (for GPU/ML features)
    uv sync --extra pytorch
    ```
-
-4. **Install R** (if not already installed):
-   - macOS: `brew install r`
-   - Linux: Follow [CRAN instructions](https://cran.r-project.org/)
-   - Windows: Download from [CRAN](https://cran.r-project.org/)
 
 5. **Install R dependencies with renv**:
    ```r
    # Install renv if not already installed
    install.packages("renv")
-   
+
    # Restore R package dependencies
    renv::restore()
    ```
@@ -58,11 +66,6 @@ For the best development experience, we recommend installing the following VSCod
 - **[autopep8](https://marketplace.visualstudio.com/items?itemName=ms-python.autopep8)** (`ms-python.autopep8`) - Python code formatter following PEP 8 style guide
 - **[R](https://marketplace.visualstudio.com/items?itemName=REditorSupport.r)** (`REditorSupport.r`) - R language support with syntax highlighting and code execution
 - **[Jupyter](https://marketplace.visualstudio.com/items?itemName=ms-toolsai.jupyter)** (`ms-toolsai.jupyter`) - Interactive Jupyter notebook support
-
-To install all recommended extensions quickly, open the command palette (`Cmd+Shift+P` on macOS or `Ctrl+Shift+P` on Windows/Linux) and run:
-```
-Extensions: Show Recommended Extensions
-```
 
 ## Flowchart
 
