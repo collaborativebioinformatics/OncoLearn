@@ -18,22 +18,6 @@ River Zhu, Zoey (zhaoyiyou.zoey@gmail.com), Arunannamalai Sujatha Bharath Raj (a
 - [AI Disclosure](#ai-disclosure)
 - [License](#license)
 
-## Methods
-
-### Traditional ML Team
-
-![ML_Flowchart](./docs/assets/Breast-XGBoost.png)
-
-### DL Transformer Team
-![T_Flowchart](./docs/assets/transformer_flowchart.png)
-
-### Multi-Modal Team
-
-![Multi-Modal_Flowchart](./docs/assets/dl_breast_cancer_flowchart.png)
-![Multi-Modal_Flowchart](./docs/assets/multimodal_fed.png)
-
-
-
 ## Getting Started
 
 ### Prerequisites
