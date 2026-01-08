@@ -1,0 +1,3 @@
+[submodule "NVFlare"]
+	path = NVFlare
+	url = https://github.com/NVIDIA/NVFlare.git
