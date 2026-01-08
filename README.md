@@ -20,10 +20,16 @@ River Zhu, Zoey (zhaoyiyou.zoey@gmail.com), Arunannamalai Sujatha Bharath Raj (a
 
 ## Methods
 
-<p float="left">
-  <img src="./docs/assets/transformer_flowchart.png" width="49%" />
-  <img src="./docs/assets/Breast-XGBoost.png" width="49%" />
-</p>
+### Traditional ML Team
+
+![ML_Flowchart](./docs/assets/Breast-XGBoost.png)
+
+### DL Transformer Team
+![T_Flowchart](./docs/assets/transformer_flowchart.png)
+
+### Multi-Modal Team
+
+![Multi-Modal_Flowchart]
 
 ## Getting Started
 
