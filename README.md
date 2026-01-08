@@ -5,7 +5,7 @@
 ![uv](https://img.shields.io/badge/uv-package%20manager-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-A comprehensive bioinformatics pipeline for discovering cancer biomarkers using RNA-seq data from The Cancer Genome Atlas (TCGA). This project leverages machine learning and statistical methods to identify potential diagnostic and prognostic markers in lung cancer subtypes.
+A comprehensive bioinformatics pipeline for cancer subtyping and discovering cancer biomarkers using RNA-seq data from The Cancer Genome Atlas (TCGA). This project leverages machine learning and statistical methods to identify potential diagnostic and prognostic markers.
 
 ## Contributors
 
@@ -148,28 +148,12 @@ For the best development experience, we recommend installing the following VSCod
 
 ---
 
-## Architecture
-
-### Multi-Container Setup
-
-The project uses Docker Compose to orchestrate multiple services:
-
-- **dev**: Main development environment with Python, R, and Jupyter Lab
-- **db** (optional): PostgreSQL database for storing processed data
-- **mlflow** (optional): MLflow tracking server for experiment management
-
-Uncomment services in [docker-compose.yml](docker-compose.yml) as needed.
-
-## Pipeline Overview
-
-![Analysis Pipeline](./docs/assets/flowchart.png)
-
 ## Usage
 
 ### Running Analysis Notebooks
 
-- **Python notebooks**: Located in [`notebooks/`](notebooks/)
-- **R scripts**: Located in [`scripts/data/`](scripts/data/)
+- **Notebooks**: Located in [`notebooks/`](notebooks/)
+- **Scripts**: Located in [`scripts/data/`](scripts/data/)
 
 Open notebooks in VSCode or Jupyter Lab and execute cells sequentially.
 
@@ -180,14 +164,10 @@ TCGA data is organized by cancer type:
 - `data/GDCdata/TCGA-LUSC/` - Lung Squamous Cell Carcinoma
 - `data/GDCdata/TCGA-MESO/` - Mesothelioma
 
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
 ## AI Disclosure
 
 Artificial intelligence tools, including large language models (LLMs), were used during the development of this project to support writing, clarify technical concepts, and assist in generating code snippets. These tools served as an aid for idea refinement, debugging, and improving the readability of explanations and documentation. All AI-generated text and code were thoroughly reviewed, verified for correctness, and understood in full before being incorporated into this work. The responsibility for all final decisions, interpretations, and implementations remains solely with the contributors.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
