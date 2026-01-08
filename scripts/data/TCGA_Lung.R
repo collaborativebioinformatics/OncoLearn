@@ -1,7 +1,13 @@
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("TCGAbiolinks")
+
 library(TCGAbiolinks)
 
 #set path to download files
 #setwd()
+
 
 # query tcga database
 query <- GDCquery(project = c("TCGA-LUSC","TCGA-MESO", "TCGA-LUAD"), 
