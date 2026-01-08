@@ -1,0 +1,49 @@
+services:
+  # Main development environment with Python + R
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cancer-biomarker-dev
+    volumes:
+      # Mount project files for live development
+      - .:/workspace
+      # Persist Python packages
+      - uv-cache:/root/.cache/uv
+      # Persist R packages
+      - renv-cache:/workspace/renv
+    environment:
+      - LLVM_CONFIG=/usr/bin/llvm-config-20
+      - CMAKE_PREFIX_PATH=/usr/lib/llvm-20
+    # Keep container running - VSCode Dev Containers handles everything
+    stdin_open: true
+    tty: true
+
+  # Example: Database service (PostgreSQL) - uncomment if needed
+  # db:
+  #   image: postgres:15-alpine
+  #   container_name: cancer-biomarker-db
+  #   environment:
+  #     POSTGRES_USER: biomarker
+  #     POSTGRES_PASSWORD: biomarker
+  #     POSTGRES_DB: cancer_data
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+
+  # Example: MLflow tracking server - uncomment if needed
+  # mlflow:
+  #   image: ghcr.io/mlflow/mlflow:latest
+  #   container_name: cancer-biomarker-mlflow
+  #   ports:
+  #     - "5000:5000"
+  #   volumes:
+  #     - mlflow-data:/mlflow
+  #   command: mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:///mlflow/mlflow.db --default-artifact-root /mlflow/artifacts
+
+volumes:
+  uv-cache:
+  renv-cache:
+  # postgres-data:
+  # mlflow-data:
