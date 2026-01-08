@@ -1,3 +1,7 @@
-# Cancer Biomarker Discovery 
+# Cancer Biomarker Discovery
 
-![Flowchart](./docs/assets/Screenshot_2026-01-07_at_1.11.45_PM.png)
+**Authors:** River Zhu, Zoey, Arun, Charlie Yang, Diya, Ana, Xinru Zhang, Isha Parikh, Aryan Sharan Guda, Seohyun, Yosen, Andrew Scouten
+
+## Flowchart
+
+![Flowchart](./docs/assets/flowchart.png)
