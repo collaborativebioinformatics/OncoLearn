@@ -9,7 +9,7 @@ A comprehensive bioinformatics pipeline for cancer subtyping and discovering can
 
 ## Contributors
 
-River Zhu, Zoey, Arunannamalai Sujatha Bharath Raj (asujatha@andrew.cmu.edu), Qiyu (Charlie) Yang (qiyuy@andrew.cmu.edu), Diya Patidar (dpatidar@andrew.cmu.edu), Ana Ferreira (bossanblues@gmail.com), Xinru Zhang, Isha Parikh, Aryan Sharan Guda, Seohyun Lee (seohyun4@andrew.cmu.edu), Yosen Lin (yosenl@andrew.cmu.edu), Seungjin Han (seungjih@andrew.cmu.edu), Andrew Scouten (yzb2@txstate.edu)
+River Zhu, Zoey (zhaoyiyou.zoey@gmail.com), Arunannamalai Sujatha Bharath Raj (asujatha@andrew.cmu.edu), Qiyu (Charlie) Yang (qiyuy@andrew.cmu.edu), Diya Patidar (dpatidar@andrew.cmu.edu), Ana Ferreira (bossanblues@gmail.com), Xinru Zhang, Isha Parikh, Aryan Sharan Guda, Seohyun Lee (seohyun4@andrew.cmu.edu), Yosen Lin (yosenl@andrew.cmu.edu), Seungjin Han (seungjih@andrew.cmu.edu), Andrew Scouten (yzb2@txstate.edu)
 
 ## Table of Contents
 
