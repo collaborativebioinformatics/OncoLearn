@@ -14,8 +14,6 @@ River Zhu, Zoey, Arun, Charlie Yang, Diya, Ana Ferreira (bossanblues@gmail.com),
 ## Table of Contents
 
 - [Getting Started](#getting-started)
-- [Architecture](#architecture)
-- [Pipeline Overview](#pipeline-overview)
 - [Recommended Extensions](#recommended-vscode-extensions)
 - [Usage](#usage)
 - [AI Disclosure](#ai-disclosure)
@@ -36,7 +34,6 @@ This project supports two installation methods:
 - Python 3.10+
 - R 4.0+
 - [uv](https://github.com/astral-sh/uv) - Fast Python package installer and resolver
-- LLVM 20 (required for umap-learn)
 
 ---
 
@@ -96,37 +93,19 @@ docker compose ps
    cd Cancer_biomarker_discovery
    ```
 
-3. **Install LLVM** (required for some Python packages like umap-learn):
-
-   - **Linux** (Ubuntu/Debian):
-     ```bash
-     sudo apt-get update
-     sudo apt-get install llvm-20
-     ```
-
-   - **macOS**:
-     ```bash
-     brew install llvm@20
-     ```
-
-     After installation on macOS, set the required environment variables:
-     ```bash
-     export CMAKE_PREFIX_PATH=/usr/local/opt/llvm@20
-     export LLVM_CONFIG=/usr/local/opt/llvm@20/bin/llvm-config
-     ```
-
-   **Note:** LLVM version 20 is required for compatibility with `llvmlite` (a dependency of `numba` and `umap-learn`).
-
-4. **Install Python dependencies**:
+3. **Install Python dependencies**:
    ```bash
    # Install base dependencies
    uv sync
 
-   # Or install with PyTorch extras (for GPU/ML features)
-   uv sync --extra pytorch
+   # Or install with PyTorch extras (choose one based on your hardware):
+   uv sync --extra cpu          # CPU-only version
+   uv sync --extra cu128        # CUDA 12.8
+   uv sync --extra cu130        # CUDA 13.0
+   uv sync --extra rocm         # AMD ROCm
    ```
 
-5. **Install R dependencies with renv**:
+4. **Install R dependencies with renv**:
    ```r
    # Install renv if not already installed
    install.packages("renv")
@@ -152,8 +131,8 @@ For the best development experience, we recommend installing the following VSCod
 
 ### Running Analysis Notebooks
 
-- **Notebooks**: Located in [`notebooks/`](notebooks/)
-- **Scripts**: Located in [`scripts/data/`](scripts/data/)
+- **Notebooks**: Located in [`notebooks/`](notebooks/data/)
+- **Scripts**: Located in [`scripts/`](scripts/data/)
 
 Open notebooks in VSCode or Jupyter Lab and execute cells sequentially.
 
