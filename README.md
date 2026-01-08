@@ -18,6 +18,13 @@ River Zhu, Zoey (zhaoyiyou.zoey@gmail.com), Arunannamalai Sujatha Bharath Raj (a
 - [AI Disclosure](#ai-disclosure)
 - [License](#license)
 
+## Methods
+
+<p float="left">
+  <img src="./docs/assets/transformer_flowchart.png" width="49%" />
+  <img src="./docs/assets/Breast-XGBoost.png" width="49%" />
+</p>
+
 ## Getting Started
 
 ### Prerequisites
