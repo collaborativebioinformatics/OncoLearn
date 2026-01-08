@@ -30,6 +30,8 @@ River Zhu, Zoey (zhaoyiyou.zoey@gmail.com), Arunannamalai Sujatha Bharath Raj (a
 ### Multi-Modal Team
 
 ![Multi-Modal_Flowchart](./docs/assets/dl_breast_cancer_flowchart.png)
+![Multi-Modal_Flowchart](./docs/assets/multimodal_fed.png)
+
 
 
 ## Getting Started
