@@ -40,6 +40,15 @@ This project requires the following dependencies:
    - Linux: Follow [CRAN instructions](https://cran.r-project.org/)
    - Windows: Download from [CRAN](https://cran.r-project.org/)
 
+5. **Install R dependencies with renv**:
+   ```r
+   # Install renv if not already installed
+   install.packages("renv")
+   
+   # Restore R package dependencies
+   renv::restore()
+   ```
+
 ### Recommended VSCode Extensions
 
 For the best development experience, we recommend installing the following VSCode extensions:
