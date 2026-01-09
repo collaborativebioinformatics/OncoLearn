@@ -70,6 +70,8 @@ class StandaloneTrainer:
             max_genes=getattr(config, 'max_genes', 1000),
             cancer_type=getattr(config, 'cancer_type', None),
             extension=getattr(config, 'image_extension', '*.png'),
+            normalize_genes=getattr(config, 'normalize_genes', True),
+            standardize_genes=getattr(config, 'standardize_genes', True),
         )
 
         # Update config with detected num_classes

@@ -34,6 +34,8 @@ class MedicalImageDataset(Dataset):
         use_genetic_data: bool = True,
         max_genes: Optional[int] = 1000,
         cancer_type: Optional[str] = None,
+        normalize_genes: bool = True,
+        standardize_genes: bool = True,
     ):
         """
         Initialize medical image dataset with genetic data integration.
@@ -49,6 +51,8 @@ class MedicalImageDataset(Dataset):
             use_genetic_data: Whether to load and return genetic features
             max_genes: Maximum number of genes to use (uses top variance genes)
             cancer_type: Specific cancer type to load (e.g., 'BRCA', 'LUAD'). If None, loads all types.
+            normalize_genes: Whether to apply log2(x+1) normalization to gene expression
+            standardize_genes: Whether to apply z-score standardization to gene expression
         """
         self.data_dir = Path(data_dir)
         self.image_size = image_size
@@ -56,6 +60,8 @@ class MedicalImageDataset(Dataset):
         self.use_genetic_data = use_genetic_data
         self.max_genes = max_genes
         self.cancer_type = cancer_type
+        self.normalize_genes = normalize_genes
+        self.standardize_genes = standardize_genes
 
         # Load genetic data from processed directory
         self.genetic_data = None
@@ -66,7 +72,8 @@ class MedicalImageDataset(Dataset):
             self._load_genetic_data(genetic_data_dir, cancer_type)
             # Use genetic data file which already contains clinical info
             self.clinical_data = self.genetic_data
-            print(f"Using genetic data file with {len(self.clinical_data)} samples")
+            print(
+                f"Using genetic data file with {len(self.clinical_data)} samples")
         elif clinical_file and os.path.exists(clinical_file):
             self.clinical_data = pd.read_csv(clinical_file, sep='\t')
             print(f"Loaded clinical data: {len(self.clinical_data)} samples")
@@ -180,15 +187,21 @@ class MedicalImageDataset(Dataset):
         self.gene_features[self.gene_columns] = self.gene_features[self.gene_columns].fillna(
             0)
 
-        # Normalize gene expression (log2 transform + standardization)
-        print("  Normalizing gene expression...")
+        # Optional normalization and standardization
         gene_matrix = self.gene_features[self.gene_columns].values
-        # Log2(x + 1) transform
-        gene_matrix = np.log2(gene_matrix + 1)
-        # Standardize
-        mean = gene_matrix.mean(axis=0)
-        std = gene_matrix.std(axis=0) + 1e-8
-        gene_matrix = (gene_matrix - mean) / std
+
+        if self.normalize_genes:
+            print("  Normalizing gene expression (log2 transform)...")
+            # Log2(x + 1) transform
+            gene_matrix = np.log2(gene_matrix + 1)
+
+        if self.standardize_genes:
+            print("  Standardizing gene expression (z-score)...")
+            # Standardize (z-score normalization)
+            mean = gene_matrix.mean(axis=0)
+            std = gene_matrix.std(axis=0) + 1e-8
+            gene_matrix = (gene_matrix - mean) / std
+
         self.gene_features[self.gene_columns] = gene_matrix
 
         print("✓ Genetic data loaded successfully")
@@ -457,6 +470,8 @@ def create_data_loaders(
     max_genes: Optional[int] = 1000,
     cancer_type: Optional[str] = None,
     extension: str = "*.png",
+    normalize_genes: bool = True,
+    standardize_genes: bool = True,
 ) -> Tuple[DataLoader, DataLoader, DataLoader, int]:
     """
     Create train, validation, and test data loaders with genetic data integration.
@@ -475,6 +490,8 @@ def create_data_loaders(
         use_genetic_data: Whether to load and return genetic features
         max_genes: Maximum number of genes to use (selects top variance genes)
         cancer_type: Specific cancer type to load (e.g., 'BRCA', 'LUAD'). If None, loads all types.
+        normalize_genes: Whether to apply log2(x+1) normalization to gene expression
+        standardize_genes: Whether to apply z-score standardization to gene expression
 
     Returns:
         Tuple of (train_loader, val_loader, test_loader, num_classes)
@@ -511,6 +528,8 @@ def create_data_loaders(
         max_genes=max_genes,
         cancer_type=cancer_type,
         extension=extension,
+        normalize_genes=normalize_genes,
+        standardize_genes=standardize_genes,
     )
 
     num_classes = full_dataset.get_num_classes()
