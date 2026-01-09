@@ -4,3 +4,6 @@
 [submodule "multimodal_data_fusion"]
 	path = multimodal_data_fusion
 	url = https://github.com/AstraZeneca/multimodal_data_fusion.git
+[submodule "ultralytics"]
+	path = ultralytics
+	url = https://github.com/ultralytics/ultralytics.git
