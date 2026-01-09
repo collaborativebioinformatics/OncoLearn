@@ -1,11 +1,11 @@
-# Cancer Biomarker Discovery
+# OncoLearn
 
 ![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
 ![R](https://img.shields.io/badge/R-4.0+-blue.svg)
 ![uv](https://img.shields.io/badge/uv-package%20manager-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-A comprehensive bioinformatics pipeline for cancer subtyping and discovering cancer biomarkers using RNA-seq data from The Cancer Genome Atlas (TCGA). This project leverages machine learning and statistical methods to identify potential diagnostic and prognostic markers.
+A comprehensive toolkit for cancer genomics analysis and biomarker discovery using RNA-seq data from The Cancer Genome Atlas (TCGA). OncoLearn leverages machine learning and statistical methods for cancer subtyping and identifying potential diagnostic and prognostic markers.
 
 ## Contributors
 
@@ -89,7 +89,7 @@ docker compose ps
 2. **Clone the repository**:
    ```bash
    git clone <repository-url>
-   cd Cancer_biomarker_discovery
+   cd oncolearn
    ```
 
 3. **Install Python dependencies**:

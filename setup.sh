@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Setup script for Cancer Biomarker Discovery project
+# Setup script for OncoLearn project
 
 # Activate the conda environment
 # Note: Make sure the DeepOmix environment exists before running this

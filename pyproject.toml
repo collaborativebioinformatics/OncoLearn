@@ -1,7 +1,7 @@
 [project]
-name = "cancer-biomarker-discovery"
+name = "oncolearn"
 version = "0.1.0"
-description = "Add your description here"
+description = "A comprehensive toolkit for cancer genomics analysis and biomarker discovery"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -14,10 +14,13 @@ dependencies = [
     "seaborn>=0.13.2",
     "tqdm>=4.67.1",
     "umap-learn>=0.5.9.post2",
+    "llvmlite>=0.40.0,<0.46.0",
+    "transformers>=4.57.3",
 ]
 
 [dependency-groups]
 dev = [
+    "oncolearn",
     "ipykernel>=7.1.0",
     "ipywidgets>=8.1.8",
     "rpy2>=3.6.4",
@@ -58,6 +61,7 @@ torch = [
 pytorch-triton-rocm = [
   { index = "pytorch-rocm", extra = "rocm" },
 ]
+oncolearn = { workspace = true, editable = true }
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
@@ -78,3 +82,15 @@ explicit = true
 name = "pytorch-rocm"
 url = "https://download.pytorch.org/whl/rocm6.4"
 explicit = true
+
+[tool.uv.workspace]
+members = [
+    ".",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,4 +1,4 @@
-# Multi-stage build for Cancer Biomarker Discovery
+# Multi-stage build for OncoLearn
 FROM ubuntu:22.04 AS base
 
 # Prevent interactive prompts during package installation
@@ -66,8 +66,9 @@ WORKDIR /workspace
 COPY pyproject.toml ./
 COPY README.md ./
 COPY LICENSE ./
+COPY src/ ./src/
 
-# Install Python dependencies
+# Install Python dependencies including dev tools and fusion extra
 RUN uv sync
 
 # Copy R environment files
