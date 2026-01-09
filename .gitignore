@@ -5,4 +5,4 @@ src/multimodal/pre_trained/*
 
 *.pyc
 *.pyo
-*.pyd
+*.pydsrc/multimodal/pre_trained/breast_MR_checkpoint.pth.tar
