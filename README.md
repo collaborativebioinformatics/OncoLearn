@@ -8,22 +8,26 @@
 
 A comprehensive toolkit for cancer genomics analysis and biomarker discovery using RNA-seq data from The Cancer Genome Atlas (TCGA). OncoLearn leverages machine learning and statistical methods for cancer subtyping and identifying potential diagnostic and prognostic markers.
 
-## Overview
-
-**Development Environment**: This project is hosted on [Brev](https://brev.dev), a cloud-based development platform. Log in to Brev to access your development instance.
-
-**Data Storage**: Project data is located in an AWS S3 bucket. Ensure you have the necessary credentials configured to access the data.
-
 ## Contributors
 
 River Zhu, Zoey (zhaoyiyou.zoey@gmail.com), Arunannamalai Sujatha Bharath Raj (asujatha@andrew.cmu.edu), Qiyu (Charlie) Yang (qiyuy@andrew.cmu.edu), Diya Patidar (dpatidar@andrew.cmu.edu), Xinru Zhang, Isha Parikh(parikh.i@northeastern.edu), Aryan Sharan Guda, Seohyun Lee (seohyun4@andrew.cmu.edu), Yosen Lin (yosenl@andrew.cmu.edu), Seungjin Han (seungjih@andrew.cmu.edu), Andrew Scouten (yzb2@txstate.edu), Jeffrey Wang (jdw2@andrew.cmu.edu)
 
 ## Table of Contents
 
+- [Overview](#overview)
 - [Getting Started](#getting-started)
+  - [Option A: Docker Installation](#option-a-docker-installation-recommended)
+  - [Option B: Local Installation](#option-b-local-installation)
 - [Usage](#usage)
-- [AI Disclosure](#ai-disclosure)
+- [Documentation](#documentation)
 - [License](#license)
+- [AI Disclosure](#ai-disclosure)
+
+## Overview
+
+**Development Environment**: This project is hosted on [Brev](https://brev.dev), a cloud-based development platform. Log in to Brev to access your development instance.
+
+**Data Storage**: Project data is located in an AWS S3 bucket. Ensure you have the necessary credentials configured to access the data.
 
 ## Getting Started
 
@@ -124,41 +128,6 @@ docker compose ps
 
 ---
 
-### GitHub Authentication Setup
-
-To push and pull code from GitHub (especially with multi-factor authentication enabled), set up SSH authentication:
-
-1. **Generate an SSH key** (if not already generated):
-   ```bash
-   ssh-keygen -t ed25519 -C "your.email@example.com"
-   ```
-   Press Enter to accept the default location and optionally set a passphrase.
-
-2. **Copy your public SSH key**:
-   ```bash
-   cat ~/.ssh/id_ed25519.pub
-   ```
-
-3. **Add the key to GitHub**:
-   - Go to GitHub → Settings → [SSH and GPG keys](https://github.com/settings/keys)
-   - Click "New SSH key"
-   - Paste your public key
-   - Give it a descriptive title (e.g., "Brev Docker Instance")
-
-4. **Test the connection**:
-   ```bash
-   ssh -T git@github.com
-   ```
-   You should see: `Hi username! You've successfully authenticated...`
-
-5. **Configure git** (if not already configured):
-   ```bash
-   git config --global user.name "Your Name"
-   git config --global user.email "your.email@example.com"
-   ```
-
----
-
 ### Recommended VSCode Extensions
 
 For the best development experience, we recommend installing the following VSCode extensions:
@@ -174,40 +143,42 @@ For the best development experience, we recommend installing the following VSCod
 
 ## Usage
 
-### Downloading TCGA Data
+### Quick Start
 
-Download scripts are provided in [`scripts/data/`](scripts/data/) to fetch RNA-Seq (STAR FPKM-UQ) and phenotype data for various TCGA cancer cohorts.
+1. **Set up your environment** using either Docker (recommended) or local installation (see [Getting Started](#getting-started))
 
-**Download all cohorts at once**:
-```bash
-bash ./scripts/data/download_all_tcga.sh
-```
+2. **Download TCGA data** for your cancer cohort of interest:
+   ```bash
+   # Download all cohorts
+   bash ./scripts/data/download_all_tcga.sh
+   
+   # Or download a specific cohort (e.g., Lung Adenocarcinoma)
+   bash ./scripts/data/download_tcga_luad.sh
+   ```
 
-**Download individual cohorts**:
-```bash
-# Lung Adenocarcinoma
-bash ./scripts/data/download_tcga_luad.sh
+3. **Explore the data** using the provided Jupyter notebooks in [`notebooks/data/`](notebooks/data/)
 
-# Lung Squamous Cell Carcinoma
-bash ./scripts/data/download_tcga_lusc.sh
+4. **Run analyses** using the preprocessing and analysis scripts
 
-# Breast Cancer
-bash ./scripts/data/download_tcga_brca.sh
+For detailed instructions on downloading and working with TCGA data, see the [TCGA Data Download Guide](docs/TCGA_Data_Download_Guide.md).
 
-# Colon Cancer
-bash ./scripts/data/download_tcga_coad.sh
+---
 
-# Melanoma
-bash ./scripts/data/download_tcga_skcm.sh
+## Documentation
 
-# Mesothelioma
-bash ./scripts/data/download_tcga_meso.sh
+Comprehensive guides and documentation are available in the [`docs/`](docs/) folder:
 
-# Acute Myeloid Leukemia
-bash ./scripts/data/download_tcga_laml.sh
-```
+- **[TCGA Data Download Guide](docs/TCGA_Data_Download_Guide.md)** - Detailed instructions for downloading and managing TCGA datasets
+- **[TCIA Data Download Guide](docs/TCIA_Data_Download_Guide.md)** - Guide for downloading imaging data from TCIA
+- **[GitHub Authentication Setup](docs/GitHub_Authentication_Guide.md)** - Configure SSH authentication for GitHub access
 
-All data will be downloaded and extracted to `data/GDCdata/`.
+### Project Structure
+
+- **`data/`** - Data storage directory (downloaded TCGA datasets)
+- **`docs/`** - Project documentation and guides
+- **`notebooks/`** - Jupyter notebooks for data exploration and analysis
+- **`scripts/`** - Data download and preprocessing scripts
+- **`src/oncolearn/`** - Core Python package for analysis
 
 ## License
 
