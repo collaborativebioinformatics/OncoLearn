@@ -1,5 +1,6 @@
 .DS_Store
-data/
+data/*
+!data/BRCA-data-top1000.tsv
 GDCdata/
 
 # Byte-compiled / optimized / DLL files
