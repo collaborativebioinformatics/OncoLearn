@@ -25,6 +25,19 @@ River Zhu(riverz@andrew.cmu.edu), Zoey (zhaoyiyou.zoey@gmail.com), Arunannamalai
 
 ## Overview
 
+### XGBoost
+
+![xgboost1](./docs/assets/last_round.png)
+![xgboost2](./docs/assets/box_plot1.png)
+![xgboost3](./docs/assets/genes.png)
+
+### Multi-Modal
+
+![multimodal](./docs/assets/multimodal_fed_final.png)
+
+
+### Environment
+
 **Development Environment**: This project is hosted on [Brev](https://brev.dev), a cloud-based development platform. Log in to Brev to access your development instance.
 
 **Data Storage**: Project data is located in an AWS S3 bucket. Ensure you have the necessary credentials configured to access the data.
