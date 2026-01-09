@@ -10,7 +10,7 @@ A comprehensive toolkit for cancer genomics analysis and biomarker discovery usi
 
 ## Contributors
 
-River Zhu, Zoey (zhaoyiyou.zoey@gmail.com), Arunannamalai Sujatha Bharath Raj (asujatha@andrew.cmu.edu), Qiyu (Charlie) Yang (qiyuy@andrew.cmu.edu), Diya Patidar (dpatidar@andrew.cmu.edu), Xinru Zhang, Isha Parikh(parikh.i@northeastern.edu), Aryan Sharan Guda, Seohyun Lee (seohyun4@andrew.cmu.edu), Yosen Lin (yosenl@andrew.cmu.edu), Seungjin Han (seungjih@andrew.cmu.edu), Andrew Scouten (yzb2@txstate.edu), Jeffrey Wang (jdw2@andrew.cmu.edu)
+River Zhu(riverz@andrew.cmu.edu), Zoey (zhaoyiyou.zoey@gmail.com), Arunannamalai Sujatha Bharath Raj (asujatha@andrew.cmu.edu), Qiyu (Charlie) Yang (qiyuy@andrew.cmu.edu), Diya Patidar (dpatidar@andrew.cmu.edu), Xinru Zhang, Isha Parikh(parikh.i@northeastern.edu), Aryan Sharan Guda, Seohyun Lee (seohyun4@andrew.cmu.edu), Yosen Lin (yosenl@andrew.cmu.edu), Seungjin Han (seungjih@andrew.cmu.edu), Andrew Scouten (yzb2@txstate.edu), Jeffrey Wang (jdw2@andrew.cmu.edu)
 
 ## Table of Contents
 
