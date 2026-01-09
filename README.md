@@ -35,6 +35,9 @@ River Zhu(riverz@andrew.cmu.edu), Zoey (zhaoyiyou.zoey@gmail.com), Arunannamalai
 
 ![multimodal](./docs/assets/multimodal_fed_final.png)
 
+### Image
+
+![multimodal](./docs/assets/YOLO_cancer.png)
 
 ### Environment
 
