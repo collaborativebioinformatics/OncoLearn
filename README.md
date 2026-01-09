@@ -7,6 +7,12 @@
 
 A comprehensive toolkit for cancer genomics analysis and biomarker discovery using RNA-seq data from The Cancer Genome Atlas (TCGA). OncoLearn leverages machine learning and statistical methods for cancer subtyping and identifying potential diagnostic and prognostic markers.
 
+## Overview
+
+**Development Environment**: This project is hosted on [Brev](https://brev.dev), a cloud-based development platform. Log in to Brev to access your development instance.
+
+**Data Storage**: Project data is located in an AWS S3 bucket. Ensure you have the necessary credentials configured to access the data.
+
 ## Contributors
 
 River Zhu, Zoey (zhaoyiyou.zoey@gmail.com), Arunannamalai Sujatha Bharath Raj (asujatha@andrew.cmu.edu), Qiyu (Charlie) Yang (qiyuy@andrew.cmu.edu), Diya Patidar (dpatidar@andrew.cmu.edu), Xinru Zhang, Isha Parikh(parikh.i@northeastern.edu), Aryan Sharan Guda, Seohyun Lee (seohyun4@andrew.cmu.edu), Yosen Lin (yosenl@andrew.cmu.edu), Seungjin Han (seungjih@andrew.cmu.edu), Andrew Scouten (yzb2@txstate.edu), Jeffrey Wang (jdw2@andrew.cmu.edu)
@@ -48,6 +54,7 @@ Docker provides a consistent development environment and eliminates dependency a
    ```bash
    git clone <repository-url>
    cd Cancer_biomarker_discovery
+   git submodule update --init --recursive
    ```
 
 3. **Start the environment**:
@@ -90,6 +97,7 @@ docker compose ps
    ```bash
    git clone <repository-url>
    cd oncolearn
+   git submodule update --init --recursive
    ```
 
 3. **Install Python dependencies**:
@@ -111,6 +119,41 @@ docker compose ps
 
    # Restore R package dependencies
    renv::restore()
+   ```
+
+---
+
+### GitHub Authentication Setup
+
+To push and pull code from GitHub (especially with multi-factor authentication enabled), set up SSH authentication:
+
+1. **Generate an SSH key** (if not already generated):
+   ```bash
+   ssh-keygen -t ed25519 -C "your.email@example.com"
+   ```
+   Press Enter to accept the default location and optionally set a passphrase.
+
+2. **Copy your public SSH key**:
+   ```bash
+   cat ~/.ssh/id_ed25519.pub
+   ```
+
+3. **Add the key to GitHub**:
+   - Go to GitHub → Settings → [SSH and GPG keys](https://github.com/settings/keys)
+   - Click "New SSH key"
+   - Paste your public key
+   - Give it a descriptive title (e.g., "Brev Docker Instance")
+
+4. **Test the connection**:
+   ```bash
+   ssh -T git@github.com
+   ```
+   You should see: `Hi username! You've successfully authenticated...`
+
+5. **Configure git** (if not already configured):
+   ```bash
+   git config --global user.name "Your Name"
+   git config --global user.email "your.email@example.com"
    ```
 
 ---
