@@ -1,6 +1,6 @@
 # OncoLearn
 
-![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
+![Python](https://img.shields.io/badge/python-3.12%20|%203.13-blue.svg)
 ![R](https://img.shields.io/badge/R-4.0+-blue.svg)
 ![uv](https://img.shields.io/badge/uv-package%20manager-green.svg)
 ![renv](https://img.shields.io/badge/renv-package%20manager-green.svg)
