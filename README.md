@@ -173,6 +173,41 @@ For the best development experience, we recommend installing the following VSCod
 
 ## Usage
 
+### Downloading TCGA Data
+
+Download scripts are provided in [`scripts/data/`](scripts/data/) to fetch RNA-Seq (STAR FPKM-UQ) and phenotype data for various TCGA cancer cohorts.
+
+**Download all cohorts at once**:
+```bash
+bash ./scripts/data/download_all_tcga.sh
+```
+
+**Download individual cohorts**:
+```bash
+# Lung Adenocarcinoma
+bash ./scripts/data/download_tcga_luad.sh
+
+# Lung Squamous Cell Carcinoma
+bash ./scripts/data/download_tcga_lusc.sh
+
+# Breast Cancer
+bash ./scripts/data/download_tcga_brca.sh
+
+# Colon Cancer
+bash ./scripts/data/download_tcga_coad.sh
+
+# Melanoma
+bash ./scripts/data/download_tcga_skcm.sh
+
+# Mesothelioma
+bash ./scripts/data/download_tcga_meso.sh
+
+# Acute Myeloid Leukemia
+bash ./scripts/data/download_tcga_laml.sh
+```
+
+All data will be downloaded and extracted to `data/GDCdata/`.
+
 ### Running Analysis Notebooks
 
 - **Notebooks**: Located in [`notebooks/`](notebooks/data/)
@@ -183,9 +218,13 @@ Open notebooks in VSCode or Jupyter Lab and execute cells sequentially.
 ### Data Organization
 
 TCGA data is organized by cohort:
-- `data/GDCdata/TCGA-LUAD/` - Lung Adenocarcinoma
-- `data/GDCdata/TCGA-LUSC/` - Lung Squamous Cell Carcinoma
-- `data/GDCdata/TCGA-MESO/` - Mesothelioma
+- `data/GDCdata/TCGA-BRCA.*` - Breast Cancer
+- `data/GDCdata/TCGA-LUAD.*` - Lung Adenocarcinoma
+- `data/GDCdata/TCGA-LUSC.*` - Lung Squamous Cell Carcinoma
+- `data/GDCdata/TCGA-SKCM.*` - Melanoma
+- `data/GDCdata/TCGA-MESO.*` - Mesothelioma
+- `data/GDCdata/TCGA-COAD.*` - Colon Cancer
+- `data/GDCdata/TCGA-LAML.*` - Acute Myeloid Leukemia
 
 ## License
 
