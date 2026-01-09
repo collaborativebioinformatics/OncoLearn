@@ -29,15 +29,19 @@ dev = [
 [project.optional-dependencies]
 cpu = [
   "torch>=2.9.1",
+  "torchvision",
 ]
 cu128 = [
   "torch>=2.9.1",
+  "torchvision",
 ]
 cu130 = [
   "torch>=2.9.1",
+  "torchvision",
 ]
 rocm = [
   "torch>=2.9.1",
+  "torchvision",
   "pytorch-triton-rocm"
 ]
 
@@ -53,6 +57,12 @@ conflicts = [
 
 [tool.uv.sources]
 torch = [
+  { index = "pytorch-cpu", extra = "cpu" },
+  { index = "pytorch-cu128", extra = "cu128" },
+  { index = "pytorch-cu130", extra = "cu130" },
+  { index = "pytorch-rocm", extra = "rocm" },
+]
+torchvision = [
   { index = "pytorch-cpu", extra = "cpu" },
   { index = "pytorch-cu128", extra = "cu128" },
   { index = "pytorch-cu130", extra = "cu130" },
