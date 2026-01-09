@@ -1,0 +1,61 @@
+# Quick BRCA Training Test Configuration
+
+# Data parameters
+data_dir: "/workspace/data/TCIA_BRCA/TCIA_TCGA-BRCA_09-16-2015_part1_of_4/TCGA-BRCA"
+clinical_file: null  # Will use genetic data file
+genetic_data_dir: "/workspace/data/processed"
+image_size: [224, 224]  # Smaller for faster testing
+batch_size: 4
+num_workers: 2
+cancer_type: "BRCA"  # BRCA only
+label_column: "ajcc_pathologic_stage.diagnoses"
+use_genetic_data: true
+max_genes: 500
+image_extension: "*.dcm"  # DICOM files
+normalize_genes: true  # Apply log2(x+1) normalization
+standardize_genes: true  # Apply z-score standardization
+
+# Model parameters
+yolo_model_name: "yolov8n.pt"
+yolo_pretrained: true
+freeze_yolo: true
+num_attention_layers: 2
+num_attention_heads: 4
+attention_dropout: 0.1
+latent_dim: 128
+vae_hidden_dims: [512, 256]
+vae_dropout: 0.1
+num_classes: 12  # Will be updated from data
+classifier_hidden_dim: null
+classifier_dropout: 0.1
+use_vae_loss: false
+kld_weight: 0.1
+classification_weight: 1.0
+
+# Training parameters (quick test)
+num_epochs: 2
+learning_rate: 0.0001
+weight_decay: 0.00001
+scheduler: "cosine"
+scheduler_patience: 10
+gradient_clip_val: 1.0
+
+# Output
+output_dir: "/workspace/outputs"
+experiment_name: "brca_test_run"
+log_interval: 10
+save_interval: 1
+save_best_only: true
+early_stopping_patience: 20
+
+# Hardware
+device: "cuda"
+mixed_precision: true
+
+# NVFlare federated learning parameters
+use_nvflare: false
+nvflare_workspace: null
+client_id: null
+
+# Random seed
+random_seed: 42
