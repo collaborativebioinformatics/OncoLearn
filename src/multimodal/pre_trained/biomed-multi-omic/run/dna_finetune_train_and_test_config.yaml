@@ -1,0 +1,48 @@
+defaults:
+  - data_module: dna_base_seq_cls
+  - tokenizer: ref2vec
+  - fields: dna_chunks
+  - trainer: default
+  - task: train_and_test
+  - model: modernbert
+  - label_columns: dnaeval_default
+  - _self_
+
+seed:
+  seed_value: 1234
+
+
+
+data_module:
+  dataset_kwargs:
+    processed_data_source: ${input_directory}
+    dataset_name: ${dataset_name}
+    label_dict_path: ${input_directory}/${dataset_name}_all_labels.json
+
+
+trainer:
+  batch_size: ${batch_size}
+  learning_rate: ${learning_rate}
+  losses:
+    - name: cross_entropy
+      label_column_name: ${label_columns[0].label_column_name}
+
+
+batch_size: 32
+dataset_name: coreprom
+label_column_name: label
+model_name: modernbert
+checkpoint: null
+checkpoint_name: ""
+accelerator: gpu
+input_directory: /proj/bmfm/datasets/omics/genome/finetune_datasets/core_promoter_prediction
+working_dir: /tmp
+max_epochs: 2
+learning_rate: 1e-5
+model_pe: 128
+val_check_interval: 0.5
+accumulate_grad_batches: 5
+checkpoints_every_n_train_steps: 5000
+
+extra_tag: ""
+extra_clearml_tags: ""

@@ -1,0 +1,6 @@
+defaults:
+ - base_language_modeling
+
+_target_: bmfm_targets.datasets.bulk_rna.BulkRnaDataModuleUnlabeled
+
+max_length: 8092

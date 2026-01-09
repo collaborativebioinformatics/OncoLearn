@@ -1,0 +1,44 @@
+defaults:
+  - data_module: base_multi_task
+  - tokenizer: all_genes
+  - fields: genes_expressions_masked
+  - trainer: default
+  - task: train
+  - model: scbert
+  - _self_
+
+seed:
+  seed_value: 1234
+
+model:
+  checkpoint: null
+
+
+data_module:
+  max_length: 32
+  data_dir: /PATH/TO/DATA/
+  processed_name: processed_data
+  batch_size: 20
+  limit_genes: protein_coding #could be null, protein_coding, or tokenizer
+  transform_datasets: false
+
+trainer:
+  learning_rate: 1.0e-5
+  losses:
+    - name: cross_entropy
+      label_column_name: ${label_column_name}
+      weight: 0.4
+    - field_name: expressions
+      name: cross_entropy
+      weight: 0.3
+    - field_name: genes
+      name: cross_entropy
+      weight: 0.3
+
+
+label_column_name: celltype
+working_dir: /tmp
+accelerator: gpu
+val_check_interval: 0.5
+max_epochs: 20
+checkpoints_every_n_train_steps: 5000

@@ -1,0 +1,9 @@
+- _target_: bmfm_targets.config.FieldInfo
+  field_name: "genes"
+  pretrained_embedding: null
+  is_masked: false
+- _target_: bmfm_targets.config.FieldInfo
+  field_name: "expressions"
+  pretrained_embedding: null
+  is_masked: false
+  vocab_update_strategy: dynamic

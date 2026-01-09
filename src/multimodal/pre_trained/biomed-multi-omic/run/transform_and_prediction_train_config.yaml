@@ -1,0 +1,64 @@
+defaults:
+  - data_module: base_seq_cls
+  - tokenizer: all_genes
+  - fields: genes_expressions_unmasked
+  - trainer: default
+  - task: train
+  - label_columns: default
+  - model: scbert
+  - _self_
+seed:
+  seed_value: 1234
+
+model:
+  checkpoint: null
+
+
+data_module:
+  max_length: 256
+  data_dir: /PATH/TO/DATA/
+  processed_name: processed_data
+  limit_genes: protein_coding
+  transform_datasets: true
+
+  transform_kwargs:
+    source_h5ad_file_name: /PATH/TO/DATA/input_data.h5ad
+    transforms:
+       - transform_name: KeepVocabGenesTransform
+         transform_args:
+           vocab_identifier: all_genes
+
+       - transform_name: TPMNormalizationTransform
+         transform_args:
+           gtf_file: /PATH/TO/GTF/GRCh38_latest_genomic.gtf
+           filter_genes_min_value: 0.01
+           filter_genes_min_percentage: 0.01
+
+       - transform_name: LogTransform
+         transform_args:
+           add_one: False
+           base: 2
+
+       - transform_name: BinTransform
+         transform_args:
+          num_bins: 15
+          binning_method: int_cast
+
+       - transform_name: FilterGenesTransform
+         transform_args:
+           min_counts: 1
+
+
+trainer:
+  learning_rate: 1.0e-5
+  losses:
+    - name: cross_entropy
+      label_column_name: ${label_column_name}
+
+
+label_column_name: cell_type
+working_dir: /tmp/
+accelerator: gpu
+val_check_interval: 0.5
+max_epochs: 100
+checkpoints_every_n_train_steps: 100

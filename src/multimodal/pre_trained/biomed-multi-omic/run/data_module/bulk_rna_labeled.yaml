@@ -1,0 +1,6 @@
+defaults:
+ - base_seq_cls
+
+_target_: bmfm_targets.datasets.bulk_rna.BulkRnaDataModuleLabeled
+
+max_length: 8092

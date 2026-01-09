@@ -1,6 +1,7 @@
 src/multimodal/pre_trained/*
 
 **/__pycache__/
+/src/data/*
 
 *.pyc
 *.pyo

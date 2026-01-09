@@ -1,0 +1,38 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Python package
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install the latest version of uv and set the python version
+      uses: astral-sh/setup-uv@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install cURL Headers (for hic-straw install/build)
+      run: sudo apt-get install libcurl4-openssl-dev
+    - name: Install python build/environment requirements
+      run: uv pip install -q pip wheel pytest-cov nbqa pylint
+    - name: Install package
+      run: uv pip install -q .[bulk_rna,benchmarking,test,notebook]
+    - name: Print environment
+      run: uv pip freeze
+    - name: Test package import
+      run: pushd /tmp; python -c "import bmfm_targets"; popd;
+    - name: Run package tests
+      run: python -m pytest -v --durations=40 bmfm_targets/tests/

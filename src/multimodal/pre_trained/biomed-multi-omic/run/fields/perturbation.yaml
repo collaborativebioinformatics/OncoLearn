@@ -1,0 +1,20 @@
+  - _target_: bmfm_targets.config.FieldInfo
+    field_name: "genes"
+  - _target_: bmfm_targets.config.FieldInfo
+    field_name: "expressions"
+    tokenization_strategy: continuous_value_encoder
+    continuous_value_encoder_kwargs:
+      kind: mlp_with_special_token_embedding
+      zero_as_special_token: true
+  - _target_: bmfm_targets.config.FieldInfo
+    field_name: "perturbations"
+  - _target_: bmfm_targets.config.FieldInfo
+    field_name: "label_expressions"
+    is_input: false
+    tokenization_strategy: continuous_value_encoder
+    continuous_value_encoder_kwargs:
+      kind: mlp_with_special_token_embedding
+      zero_as_special_token: true
+    decode_modes:
+      - "regression"
+      - "is_zero"

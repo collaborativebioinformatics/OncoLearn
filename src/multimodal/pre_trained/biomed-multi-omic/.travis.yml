@@ -1,0 +1,63 @@
+dist: jammy
+
+language: python
+
+cache:
+  directories:
+    - $HOME/.cache/pre-commit
+
+python:
+  - "3.11"
+
+addons:
+  apt:
+    packages:
+      - libcurl4-openssl-dev
+
+matrix:
+  include:
+    - name: "Package Tests"
+      env:
+        - BMFM_TARGETS_TESTS_SKIP_DATASET_TESTS='true'
+        - COV_CONFIG='./.travis/nondatasets-coverage.rc'
+        - TESTS_DIR=bmfm_targets
+        - MODULE_DIR=bmfm_targets
+    - name: "Datasets Tests"
+      env:
+        - BMFM_TARGETS_TESTS_SKIP_DATASET_TESTS=''
+        - COV_CONFIG='./.travis/datasets-coverage.rc'
+        - TESTS_DIR=bmfm_targets/tests/datasets/
+        - MODULE_DIR=bmfm_targets/datasets
+
+
+install:
+  - curl -LsSf https://astral.sh/uv/install.sh | sh
+  - uv pip install -q pip wheel pre-commit pytest-cov nbqa pylint
+  - uv pip install -q .[t5]
+  - uv pip install -q -r notebooks/notebook_requirements.txt
+  - uv pip install --force-reinstall torchdata==0.7.1
+  - uv pip list
+  - uv pip freeze
+
+
+script:
+  # style checking
+  - pre-commit install
+  - pre-commit run --all-files --show-diff-on-failure
+
+  # test import
+  - pushd /tmp; python -c "import bmfm_targets"; popd;
+  - python -c "import socket; print(socket.gethostname())"
+
+  # run notebooks qa
+  - nbqa pylint notebooks/*.ipynb --disable=all --enable=E
+
+  # run unit tests
+  - python -m pytest -v --durations=40 --cov=$MODULE_DIR --cov-config=$COV_CONFIG --cov-fail-under=70 $TESTS_DIR
+
+notifications:
+  email: false
+  slack:
+    rooms: ibm-research:xPyj74jQ2IbcMhv7Uh5Y0BX2
+    on_success: always
+    on_failure: always

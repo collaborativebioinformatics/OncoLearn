@@ -1,0 +1,7 @@
+_target_: bmfm_targets.config.TestTaskConfig
+default_root_dir: "${working_dir}"
+precision: 16-mixed
+accelerator: "${accelerator}"
+tf32_mode: medium
+checkpoint: best
+num_bootstrap_runs: 0

@@ -1,0 +1,18 @@
+[
+    {
+        "label_name": "celltype",
+        "label_values": {
+            "CD14+ Monocyte": 0,
+            "CD19+ B": 1,
+            "CD34+": 2,
+            "CD4+ T Helper2": 3,
+            "CD4+/CD25 T Reg": 4,
+            "CD4+/CD45RA+/CD25- Naive T": 5,
+            "CD4+/CD45RO+ Memory": 6,
+            "CD56+ NK": 7,
+            "CD8+ Cytotoxic T": 8,
+            "CD8+/CD45RA+ Naive Cytotoxic": 9,
+            "Dendritic": 10
+        }
+    }
+]

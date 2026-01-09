@@ -1,0 +1,3 @@
+- _target_: bmfm_targets.config.LabelColumnInfo
+  label_column_name: "CellType"
+  is_stratification_label: true

@@ -1,0 +1,36 @@
+defaults:
+  - data_module: base_language_modeling
+  - tokenizer: all_genes
+  - fields: genes_expressions_masked
+  - trainer: default
+  - task: train
+  - model: scbert
+  - _self_
+
+seed:
+  seed_value: 1234
+
+model:
+  checkpoint: null
+
+trainer:
+  - field_name: expressions
+    name: mse
+    ignore_zero: true
+  - field_name: expressions
+    name: is_zero_bce
+
+data_module:
+  max_length: 32
+  data_dir: /PATH/TO/DATA/
+  processed_name: processed_data
+  batch_size: 20
+  limit_genes: protein_coding #could be null, protein_coding, or tokenizer
+  transform_datasets: false
+
+
+working_dir: /tmp
+accelerator: gpu
+val_check_interval: 0.5
+max_epochs: 20
+checkpoints_every_n_train_steps: 5000

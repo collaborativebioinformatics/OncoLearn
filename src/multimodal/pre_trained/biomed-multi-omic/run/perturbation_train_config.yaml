@@ -1,0 +1,31 @@
+defaults:
+  - data_module: gears
+  - tokenizer: all_genes
+  - fields: perturbation
+  - trainer: perturbation
+  - task: train
+  - model: scbert
+  - _self_
+
+seed:
+  seed_value: 1234
+
+model:
+  checkpoint: null
+
+data_module:
+  max_length: 32
+  data_dir: ${oc.env:BMFM_TARGETS_ADAMSON_DATA}
+  processed_name: processed_data
+  batch_size: 20
+  limit_genes: protein_coding #could be null, protein_coding, or tokenizer
+
+
+trainer:
+  learning_rate: 1.0e-5
+
+working_dir: /tmp
+accelerator: gpu
+val_check_interval: 0.5
+max_epochs: 20
+checkpoints_every_n_train_steps: 5000

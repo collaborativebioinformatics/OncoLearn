@@ -1,0 +1,6 @@
+defaults:
+ - base_seq_cls
+
+_target_: bmfm_targets.datasets.zheng68k.Zheng68kDataModule
+data_dir: ${oc.env:BMFM_TARGETS_ZHENG68K_DATA}
+processed_name: processed_data

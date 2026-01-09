@@ -1,0 +1,41 @@
+defaults:
+  - data_module: base_seq_cls
+  - tokenizer: all_genes
+  - fields: genes_expressions_unmasked
+  - trainer: default
+  - task: train
+  - model: scbert
+  - label_columns: grl_default
+  - _self_
+
+seed:
+  seed_value: 1234
+
+model:
+  checkpoint: null
+
+data_module:
+  max_length: 32
+  data_dir: /PATH/TO/DATA/
+  processed_name: processed_data
+  batch_size: 20
+  limit_genes: protein_coding #could be null, protein_coding, or tokenizer
+  transform_datasets: false
+
+trainer:
+  learning_rate: 1.0e-5
+  losses:
+    - name: cross_entropy
+      label_column_name: ${label_column_name}
+    - name: cross_entropy
+      label_column_name: ${grl_label_column_name}$
+
+
+label_column_name: celltype
+grl_label_column_name: n_counts
+gradient_reversal_coefficient: 0.1
+working_dir: /tmp
+accelerator: gpu
+val_check_interval: 0.5
+max_epochs: 20
+checkpoints_every_n_train_steps: 5000
