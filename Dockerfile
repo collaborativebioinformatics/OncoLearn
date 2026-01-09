@@ -80,6 +80,10 @@ COPY src/ ./src/
 # Install Python dependencies including dev tools and fusion extra
 RUN uv sync --extra cu130
 
+# Install linting and formatting tools for VSCode extensions
+# This prevents the extensions from installing servers on every container start
+RUN /workspace/.venv/bin/pip install autopep8 ruff
+
 # Copy R environment files
 COPY renv.lock ./
 COPY renv/ ./renv/
