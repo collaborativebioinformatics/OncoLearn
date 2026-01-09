@@ -39,19 +39,17 @@ RUN apt-get update && apt-get install -y \
     libpng-dev \
     libtiff5-dev \
     libjpeg-dev \
-    # NBIA Data Retriever dependencies
-    libasound2 \
-    libgif7 \
-    openjdk-11-jre \
-    # Cleanup
     && rm -rf /var/lib/apt/lists/*
 
 # Install NBIA Data Retriever
-RUN wget -q https://cbiit-download.nci.nih.gov/nbia/releases/ForTCIA/NBIADataRetriever_4.4.3/nbia-data-retriever_4.4.3-1_amd64.deb -O /tmp/nbia-data-retriever.deb \
+RUN apt-get update \
+    && mkdir -p /usr/share/desktop-directories \
+    && wget -q https://github.com/CBIIT/NBIA-TCIA/releases/download/DR-4_4_3-TCIA-20240916-1/nbia-data-retriever_4.4.3-1_amd64.deb -O /tmp/nbia-data-retriever.deb \
     && dpkg -i /tmp/nbia-data-retriever.deb || true \
+    && apt --fix-broken install -y \
+    && ln -sf /opt/nbia-data-retriever/bin/nbia-data-retriever /usr/local/bin/nbia-data-retriever \
     && rm /tmp/nbia-data-retriever.deb \
-    # Create symlink for CLI access (executable is in bin subdirectory)
-    && ln -sf /opt/nbia-data-retriever/bin/nbia-data-retriever /usr/local/bin/nbia-data-retriever
+    && rm -rf /var/lib/apt/lists/*
 
 # Install LLVM 20 from official repository
 RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc \
