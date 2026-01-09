@@ -208,24 +208,6 @@ bash ./scripts/data/download_tcga_laml.sh
 
 All data will be downloaded and extracted to `data/GDCdata/`.
 
-### Running Analysis Notebooks
-
-- **Notebooks**: Located in [`notebooks/`](notebooks/data/)
-- **Scripts**: Located in [`scripts/`](scripts/data/)
-
-Open notebooks in VSCode or Jupyter Lab and execute cells sequentially.
-
-### Data Organization
-
-TCGA data is organized by cohort:
-- `data/GDCdata/TCGA-BRCA.*` - Breast Cancer
-- `data/GDCdata/TCGA-LUAD.*` - Lung Adenocarcinoma
-- `data/GDCdata/TCGA-LUSC.*` - Lung Squamous Cell Carcinoma
-- `data/GDCdata/TCGA-SKCM.*` - Melanoma
-- `data/GDCdata/TCGA-MESO.*` - Mesothelioma
-- `data/GDCdata/TCGA-COAD.*` - Colon Cancer
-- `data/GDCdata/TCGA-LAML.*` - Acute Myeloid Leukemia
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
