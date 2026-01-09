@@ -80,7 +80,7 @@ COPY LICENSE ./
 COPY src/ ./src/
 
 # Install Python dependencies including dev tools and fusion extra
-RUN uv sync
+RUN uv sync --extra cu130
 
 # Copy R environment files
 COPY renv.lock ./
