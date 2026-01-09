@@ -1,22 +1,33 @@
 # OncoLearn
 
-![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
+![Python](https://img.shields.io/badge/python-3.12%20|%203.13-blue.svg)
 ![R](https://img.shields.io/badge/R-4.0+-blue.svg)
 ![uv](https://img.shields.io/badge/uv-package%20manager-green.svg)
+![renv](https://img.shields.io/badge/renv-package%20manager-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 A comprehensive toolkit for cancer genomics analysis and biomarker discovery using RNA-seq data from The Cancer Genome Atlas (TCGA). OncoLearn leverages machine learning and statistical methods for cancer subtyping and identifying potential diagnostic and prognostic markers.
 
 ## Contributors
 
-River Zhu, Zoey (zhaoyiyou.zoey@gmail.com), Arunannamalai Sujatha Bharath Raj (asujatha@andrew.cmu.edu), Qiyu (Charlie) Yang (qiyuy@andrew.cmu.edu), Diya Patidar (dpatidar@andrew.cmu.edu), Xinru Zhang, Isha Parikh(parikh.i@northeastern.edu), Aryan Sharan Guda, Seohyun Lee (seohyun4@andrew.cmu.edu), Yosen Lin (yosenl@andrew.cmu.edu), Seungjin Han (seungjih@andrew.cmu.edu), Andrew Scouten (yzb2@txstate.edu), Jeffrey Wang (jdw2@andrew.cmu.edu)
+River Zhu(riverz@andrew.cmu.edu), Zoey (zhaoyiyou.zoey@gmail.com), Arunannamalai Sujatha Bharath Raj (asujatha@andrew.cmu.edu), Qiyu (Charlie) Yang (qiyuy@andrew.cmu.edu), Diya Patidar (dpatidar@andrew.cmu.edu), Xinru Zhang, Isha Parikh(parikh.i@northeastern.edu), Aryan Sharan Guda, Seohyun Lee (seohyun4@andrew.cmu.edu), Yosen Lin (yosenl@andrew.cmu.edu), Seungjin Han (seungjih@andrew.cmu.edu), Andrew Scouten (yzb2@txstate.edu), Jeffrey Wang (jdw2@andrew.cmu.edu)
 
 ## Table of Contents
 
+- [Overview](#overview)
 - [Getting Started](#getting-started)
+  - [Option A: Docker Installation](#option-a-docker-installation-recommended)
+  - [Option B: Local Installation](#option-b-local-installation)
 - [Usage](#usage)
-- [AI Disclosure](#ai-disclosure)
+- [Documentation](#documentation)
 - [License](#license)
+- [AI Disclosure](#ai-disclosure)
+
+## Overview
+
+**Development Environment**: This project is hosted on [Brev](https://brev.dev), a cloud-based development platform. Log in to Brev to access your development instance.
+
+**Data Storage**: Project data is located in an AWS S3 bucket. Ensure you have the necessary credentials configured to access the data.
 
 ## Getting Started
 
@@ -48,6 +59,7 @@ Docker provides a consistent development environment and eliminates dependency a
    ```bash
    git clone <repository-url>
    cd Cancer_biomarker_discovery
+   git submodule update --init --recursive
    ```
 
 3. **Start the environment**:
@@ -90,6 +102,7 @@ docker compose ps
    ```bash
    git clone <repository-url>
    cd oncolearn
+   git submodule update --init --recursive
    ```
 
 3. **Install Python dependencies**:
@@ -130,19 +143,42 @@ For the best development experience, we recommend installing the following VSCod
 
 ## Usage
 
-### Running Analysis Notebooks
+### Quick Start
 
-- **Notebooks**: Located in [`notebooks/`](notebooks/data/)
-- **Scripts**: Located in [`scripts/`](scripts/data/)
+1. **Set up your environment** using either Docker (recommended) or local installation (see [Getting Started](#getting-started))
 
-Open notebooks in VSCode or Jupyter Lab and execute cells sequentially.
+2. **Download TCGA data** for your cancer cohort of interest:
+   ```bash
+   # Download all cohorts
+   bash ./scripts/data/download_all_tcga.sh
+   
+   # Or download a specific cohort (e.g., Lung Adenocarcinoma)
+   bash ./scripts/data/download_tcga_luad.sh
+   ```
 
-### Data Organization
+3. **Explore the data** using the provided Jupyter notebooks in [`notebooks/data/`](notebooks/data/)
 
-TCGA data is organized by cohort:
-- `data/GDCdata/TCGA-LUAD/` - Lung Adenocarcinoma
-- `data/GDCdata/TCGA-LUSC/` - Lung Squamous Cell Carcinoma
-- `data/GDCdata/TCGA-MESO/` - Mesothelioma
+4. **Run analyses** using the preprocessing and analysis scripts
+
+For detailed instructions on downloading and working with TCGA data, see the [TCGA Data Download Guide](docs/TCGA_Data_Download_Guide.md).
+
+---
+
+## Documentation
+
+Comprehensive guides and documentation are available in the [`docs/`](docs/) folder:
+
+- **[TCGA Data Download Guide](docs/TCGA_Data_Download_Guide.md)** - Detailed instructions for downloading and managing TCGA datasets
+- **[TCIA Data Download Guide](docs/TCIA_Data_Download_Guide.md)** - Guide for downloading imaging data from TCIA
+- **[GitHub Authentication Setup](docs/GitHub_Authentication_Guide.md)** - Configure SSH authentication for GitHub access
+
+### Project Structure
+
+- **`data/`** - Data storage directory (downloaded TCGA datasets)
+- **`docs/`** - Project documentation and guides
+- **`notebooks/`** - Jupyter notebooks for data exploration and analysis
+- **`scripts/`** - Data download and preprocessing scripts
+- **`src/oncolearn/`** - Core Python package for analysis
 
 ## License
 

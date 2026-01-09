@@ -1,6 +1,9 @@
 [submodule "NVFlare"]
-	path = NVFlare
+	path = submodules/NVFlare
 	url = https://github.com/NVIDIA/NVFlare.git
 [submodule "multimodal_data_fusion"]
-	path = multimodal_data_fusion
+	path = submodules/multimodal_data_fusion
 	url = https://github.com/AstraZeneca/multimodal_data_fusion.git
+[submodule "ultralytics"]
+	path = submodules/ultralytics
+	url = https://github.com/ultralytics/ultralytics.git

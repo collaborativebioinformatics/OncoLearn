@@ -22,7 +22,10 @@
         "python.defaultInterpreterPath": "/workspace/.venv/bin/python",
         "python.terminal.activateEnvironment": true,
         "jupyter.notebookFileRoot": "${workspaceFolder}",
-        "terminal.integrated.defaultProfile.linux": "bash"
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "autopep8.path": ["/workspace/.venv/bin/autopep8"],
+        "ruff.path": ["/workspace/.venv/bin/ruff"],
+        "ruff.interpreter": ["/workspace/.venv/bin/python"]
       }
     }
   },
@@ -37,7 +40,7 @@
   },
 
   // Post-create command
-  "postCreateCommand": "uv sync",
+  "postCreateCommand": "uv sync --extra cu130",
 
   // Keep container running
   "shutdownAction": "stopCompose",

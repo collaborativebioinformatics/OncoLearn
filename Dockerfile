@@ -39,7 +39,16 @@ RUN apt-get update && apt-get install -y \
     libpng-dev \
     libtiff5-dev \
     libjpeg-dev \
-    # Cleanup
+    && rm -rf /var/lib/apt/lists/*
+
+# Install NBIA Data Retriever
+RUN apt-get update \
+    && mkdir -p /usr/share/desktop-directories \
+    && wget -q https://github.com/CBIIT/NBIA-TCIA/releases/download/DR-4_4_3-TCIA-20240916-1/nbia-data-retriever_4.4.3-1_amd64.deb -O /tmp/nbia-data-retriever.deb \
+    && dpkg -i /tmp/nbia-data-retriever.deb || true \
+    && apt --fix-broken install -y \
+    && ln -sf /opt/nbia-data-retriever/bin/nbia-data-retriever /usr/local/bin/nbia-data-retriever \
+    && rm /tmp/nbia-data-retriever.deb \
     && rm -rf /var/lib/apt/lists/*
 
 # Install LLVM 20 from official repository
@@ -69,7 +78,7 @@ COPY LICENSE ./
 COPY src/ ./src/
 
 # Install Python dependencies including dev tools and fusion extra
-RUN uv sync
+RUN uv sync --extra cu130
 
 # Copy R environment files
 COPY renv.lock ./

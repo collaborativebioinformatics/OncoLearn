@@ -1,0 +1,62 @@
+# Training Configuration for Cancer Subtyping Model
+# YOLO → Attention → VAE → ViT Classifier
+
+# Data parameters
+data_dir: "data/TCIA_BRCA"
+clinical_file: "data/GDCdata/TCGA-BRCA.clinical.tsv"
+genetic_data_dir: "/workspace/data/processed"
+image_size: [512, 512]
+batch_size: 16
+num_workers: 4
+image_extension: "*.png"
+label_column: "ajcc_pathologic_stage.diagnoses"
+use_genetic_data: true
+max_genes: 1000
+cancer_type: null  # e.g., 'BRCA', 'LUAD', null for all
+normalize_genes: true  # Apply log2(x+1) normalization
+standardize_genes: true  # Apply z-score standardization
+
+# Model parameters
+yolo_model_name: "yolov8n.pt"
+yolo_pretrained: true
+freeze_yolo: true
+num_attention_layers: 2
+num_attention_heads: 8
+attention_dropout: 0.1
+latent_dim: 128
+vae_hidden_dims: [512, 256]
+vae_dropout: 0.1
+num_classes: 5
+classifier_hidden_dim: null
+classifier_dropout: 0.1
+use_vae_loss: true
+kld_weight: 0.1
+
+# Training parameters
+num_epochs: 100
+learning_rate: 0.0001
+weight_decay: 0.00001
+scheduler: "cosine"  # Options: cosine, step, plateau
+scheduler_patience: 10
+early_stopping_patience: 20
+gradient_clip_val: 1.0
+classification_weight: 1.0
+
+# Logging and checkpointing
+output_dir: "outputs"
+experiment_name: "cancer_subtyping_yolo_vae_vit"
+log_interval: 10
+save_interval: 5
+save_best_only: true
+
+# Hardware
+device: "cuda"
+mixed_precision: true
+
+# NVFlare federated learning parameters
+use_nvflare: false
+nvflare_workspace: null
+client_id: null
+
+# Random seed for reproducibility
+random_seed: 42
