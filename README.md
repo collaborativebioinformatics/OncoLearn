@@ -3,6 +3,7 @@
 ![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
 ![R](https://img.shields.io/badge/R-4.0+-blue.svg)
 ![uv](https://img.shields.io/badge/uv-package%20manager-green.svg)
+![renv](https://img.shields.io/badge/renv-package%20manager-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 A comprehensive toolkit for cancer genomics analysis and biomarker discovery using RNA-seq data from The Cancer Genome Atlas (TCGA). OncoLearn leverages machine learning and statistical methods for cancer subtyping and identifying potential diagnostic and prognostic markers.

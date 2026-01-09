@@ -3,7 +3,7 @@ name = "oncolearn"
 version = "0.1.0"
 description = "A comprehensive toolkit for cancer genomics analysis and biomarker discovery"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "hdbscan>=0.8.41",
     "matplotlib>=3.10.8",
