@@ -1,12 +1,12 @@
 # OncoLearn
 
+<img src="/docs/assets/oncoLearn.png" height="200" width="350"/>
+
 ![Python](https://img.shields.io/badge/python-3.12%20|%203.13-blue.svg)
 ![R](https://img.shields.io/badge/R-4.0+-blue.svg)
 ![uv](https://img.shields.io/badge/uv-package%20manager-green.svg)
 ![renv](https://img.shields.io/badge/renv-package%20manager-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-
-![logo](./docs/assets/oncoLearn.png)
 
 A comprehensive toolkit for cancer genomics analysis and biomarker discovery using RNA-seq data from The Cancer Genome Atlas (TCGA). OncoLearn leverages machine learning and statistical methods for cancer subtyping and identifying potential diagnostic and prognostic markers.
 
@@ -26,20 +26,6 @@ Aryan Sharan Guda (aryanshg@andrew.cmu.edu), Seungjin Han (seungjih@andrew.cmu.e
 - [AI Disclosure](#ai-disclosure)
 
 ## Overview
-
-### XGBoost
-
-![xgboost1](./docs/assets/last_round.png)
-![xgboost2](./docs/assets/box_plot1.png)
-![xgboost3](./docs/assets/genes.png)
-
-### Multi-Modal
-
-![multimodal](./docs/assets/multimodal_fed_final.png)
-
-### Image
-
-![multimodal](./docs/assets/YOLO_cancer.png)
 
 ### Environment
 
