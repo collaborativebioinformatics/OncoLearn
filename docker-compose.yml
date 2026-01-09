@@ -5,6 +5,14 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: cancer-biomarker-dev
+    # Enable GPU access
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     volumes:
       # Mount project files for live development
       - .:/workspace
@@ -15,6 +23,9 @@ services:
     environment:
       - LLVM_CONFIG=/usr/bin/llvm-config-20
       - CMAKE_PREFIX_PATH=/usr/lib/llvm-20
+      # NVIDIA environment variables
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
     # Keep container running - VSCode Dev Containers handles everything
     stdin_open: true
     tty: true
