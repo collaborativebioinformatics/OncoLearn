@@ -73,17 +73,16 @@ WORKDIR /workspace
 
 # Copy project files
 COPY pyproject.toml ./
-COPY README.md ./
-COPY LICENSE ./
+COPY uv.lock ./
+
+COPY .Rprofile ./
+COPY renv/ ./renv/
+COPY renv.lock ./
+
 COPY src/ ./src/
 
 # Install Python dependencies including dev tools and fusion extra
 RUN uv sync --extra cu130
-
-# Copy R environment files
-COPY renv.lock ./
-COPY renv/ ./renv/
-COPY .Rprofile ./
 
 # Install R dependencies
 RUN R -e "if (!requireNamespace('renv', quietly = TRUE)) install.packages('renv', repos='https://cloud.r-project.org/')" \
