@@ -1,0 +1,44 @@
+---
+# PersistentVolumeClaim for shared data storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: oncolearn-data-pvc
+  namespace: oncolearn
+spec:
+  accessModes:
+    - ReadWriteMany  # Multiple pods can read/write simultaneously
+  resources:
+    requests:
+      storage: 500Gi  # Adjust based on your data requirements
+  # storageClassName: nfs  # Uncomment and set if using specific storage class
+  
+---
+# PersistentVolumeClaim for UV cache (Python packages)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: oncolearn-uv-cache-pvc
+  namespace: oncolearn
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  # storageClassName: nfs
+
+---
+# PersistentVolumeClaim for R environment cache
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: oncolearn-renv-cache-pvc
+  namespace: oncolearn
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+  # storageClassName: nfs

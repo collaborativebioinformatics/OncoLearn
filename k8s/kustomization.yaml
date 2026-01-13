@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Namespace for all resources
+namespace: oncolearn
+
+# Resources to deploy
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - storage.yaml
+  - training-config.yaml
+  - data-downloader-job.yaml
+  - training-deployment.yaml
+
+# Common labels for all resources
+commonLabels:
+  project: oncolearn
+  environment: production
+
+# Images to use (customize as needed)
+images:
+  - name: oncolearn
+    newName: your-registry/oncolearn
+    newTag: latest

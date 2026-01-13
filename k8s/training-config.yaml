@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oncolearn-training-config
+  namespace: oncolearn
+data:
+  train_config.yaml: |
+    # Training configuration for OncoLearn
+    # This will be mounted at /config/train_config.yaml
+    
+    data:
+      data_dir: /data/xenabrowser
+      batch_size: 32
+      num_workers: 4
+    
+    model:
+      type: transformer
+      hidden_size: 768
+      num_layers: 12
+      num_heads: 12
+    
+    training:
+      epochs: 100
+      learning_rate: 0.0001
+      optimizer: adam
+      scheduler: cosine
+    
+    output:
+      checkpoint_dir: /data/checkpoints
+      log_dir: /data/logs

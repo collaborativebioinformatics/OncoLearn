@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oncolearn-config
+  namespace: oncolearn
+data:
+  # Data sources and cohorts
+  XENA_COHORTS: "BRCA,LUAD,ACC,BLCA,CESC,CHOL,COAD,DLBC,ESCA,GBM,HNSC,KICH,KIRC,KIRP,LAML,LGG,LIHC,MESO,OV,PAAD,PCPG,PRAD,READ,SARC,SKCM,STAD,TGCT,THCA,THYM,UCEC,UCS,UVM"
+  TCIA_COHORTS: "BRCA,LUAD,ACC,BLCA,CESC,CHOL,COAD"
+  
+  # Download settings
+  DOWNLOAD_XENA: "true"
+  DOWNLOAD_TCIA: "false"
+  DOWNLOAD_IMAGES: "false"
+  
+  # Data categories (for Xena)
+  DATA_CATEGORY: "mrna_seq,clinical,mutation"
+  
+  # Output paths
+  DATA_DIR: "/data"
+  XENA_DIR: "/data/xenabrowser"
+  TCIA_DIR: "/data/tcia"
+  
+  # Parallelization settings
+  PARALLEL_WORKERS: "4"

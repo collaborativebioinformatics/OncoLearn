@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oncolearn-training
+  namespace: oncolearn
+spec:
+  replicas: 1  # For training, typically one main pod
+  selector:
+    matchLabels:
+      app: oncolearn-training
+  
+  template:
+    metadata:
+      labels:
+        app: oncolearn-training
+        component: model-training
+    spec:
+      # Optional: Use node selector for GPU nodes
+      # nodeSelector:
+      #   nvidia.com/gpu: "true"
+      
+      containers:
+      - name: trainer
+        image: oncolearn:latest
+        imagePullPolicy: IfNotPresent
+        
+        command:
+        - /bin/bash
+        - -c
+        - |
+          #!/bin/bash
+          echo "OncoLearn Training Pod Starting..."
+          
+          # Activate Python environment
+          source /workspace/.venv/bin/activate
+          
+          # Wait for data to be available
+          while [ ! -d "/data/xenabrowser" ] || [ -z "$(ls -A /data/xenabrowser 2>/dev/null)" ]; do
+            echo "Waiting for data to be downloaded..."
+            sleep 30
+          done
+          
+          echo "Data found, starting training..."
+          
+          # Run training
+          cd /workspace
+          python3 src/oncolearn/train.py \
+            --config /config/train_config.yaml \
+            --data-dir /data
+          
+          echo "Training complete"
+          # Keep container running for debugging
+          tail -f /dev/null
+        
+        envFrom:
+        - configMapRef:
+            name: oncolearn-config
+        
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0"  # Adjust based on GPU availability
+        
+        volumeMounts:
+        - name: data
+          mountPath: /data
+          readOnly: true  # Training only reads data
+        - name: workspace
+          mountPath: /workspace
+        - name: configs
+          mountPath: /config
+        - name: uv-cache
+          mountPath: /root/.cache/uv
+        - name: renv-cache
+          mountPath: /workspace/renv
+        
+        resources:
+          requests:
+            memory: "16Gi"
+            cpu: "4"
+            nvidia.com/gpu: "1"  # Request 1 GPU
+          limits:
+            memory: "32Gi"
+            cpu: "8"
+            nvidia.com/gpu: "1"
+      
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: oncolearn-data-pvc
+      - name: workspace
+        emptyDir: {}
+      - name: configs
+        configMap:
+          name: oncolearn-training-config
+      - name: uv-cache
+        persistentVolumeClaim:
+          claimName: oncolearn-uv-cache-pvc
+      - name: renv-cache
+        persistentVolumeClaim:
+          claimName: oncolearn-renv-cache-pvc
