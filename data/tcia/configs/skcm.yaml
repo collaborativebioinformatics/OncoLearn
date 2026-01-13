@@ -1,0 +1,6 @@
+cohort:
+  code: SKCM
+  name: TCGA-SKCM
+  description: TCGA Skin Cutaneous Melanoma cohort (no TCIA manifests available)
+
+datasets: []

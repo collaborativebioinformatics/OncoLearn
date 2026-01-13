@@ -1,0 +1,13 @@
+cohort:
+  code: STAD
+  name: TCGA-STAD
+  description: TCGA Stomach Adenocarcinoma cohort with imaging data
+
+datasets:
+  - name: STAD Imaging Manifest
+    description: TCGA stomach cancer imaging manifest
+    category: manifest
+    url: https://www.cancerimagingarchive.net/wp-content/uploads/TCIA_TCGA-STAD_09-16-2015.tcia
+    filename: TCIA_TCGA-STAD_09-16-2015.tcia
+    default_subdir: TCGA-STAD
+    file_type: manifest

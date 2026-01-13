@@ -1,0 +1,6 @@
+cohort:
+  code: THYM
+  name: TCGA-THYM
+  description: TCGA Thymoma cohort (no TCIA manifests available)
+
+datasets: []

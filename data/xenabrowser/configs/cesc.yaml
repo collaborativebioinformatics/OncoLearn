@@ -1,0 +1,53 @@
+cohort:
+  code: CESC
+  name: TCGA-CESC
+  description: TCGA Cervical Cancer cohort with multi-modal genomics data
+datasets:
+- name: CESC Gene Expression (HiSeq)
+  description: Illumina HiSeq gene expression (RNAseq) data
+  category: mrna_seq
+  url: https://tcga.xenahubs.net/download/TCGA.CESC.sampleMap/HiSeqV2.gz
+  filename: HiSeqV2.gz
+  default_subdir: TCGA-CESC/gene_expression
+- name: CESC Copy Number (GISTIC2)
+  description: GISTIC2 copy number variation data
+  category: cnv
+  url: https://tcga.xenahubs.net/download/TCGA.CESC.sampleMap/Gistic2_CopyNumber_Gistic2_all_data_by_genes.gz
+  filename: Gistic2_CopyNumber_Gistic2_all_data_by_genes.gz
+  default_subdir: TCGA-CESC/copy_number
+- name: CESC Methylation (450k)
+  description: Illumina HumanMethylation450 DNA methylation data
+  category: methylation
+  url: https://tcga.xenahubs.net/download/TCGA.CESC.sampleMap/HumanMethylation450.gz
+  filename: HumanMethylation450.gz
+  default_subdir: TCGA-CESC/methylation
+- name: CESC miRNA (Illumina HiSeq)
+  description: Illumina HiSeq microRNA expression data
+  category: mirna_seq
+  url: https://tcga.xenahubs.net/download/TCGA.CESC.sampleMap/miRNA_HiSeq_gene.gz
+  filename: miRNA_HiSeq_gene.gz
+  default_subdir: TCGA-CESC/mirna
+- name: CESC Protein Expression (RPPA)
+  description: Reverse Phase Protein Array protein expression data
+  category: protein
+  url: https://tcga.xenahubs.net/download/TCGA.CESC.sampleMap/RPPA_RBN.gz
+  filename: RPPA_RBN.gz
+  default_subdir: TCGA-CESC/protein
+- name: CESC Mutations (MC3)
+  description: MC3 somatic mutation data
+  category: mutation
+  url: https://tcga.xenahubs.net/download/TCGA.CESC.sampleMap/mc3.v0.2.8.PUBLIC.xena.gz
+  filename: mc3.v0.2.8.PUBLIC.xena.gz
+  default_subdir: TCGA-CESC/mutations
+- name: CESC Clinical Data
+  description: Clinical and phenotype data for CESC patients
+  category: clinical
+  url: https://tcga.xenahubs.net/download/TCGA.CESC.sampleMap/CESC_clinicalMatrix.gz
+  filename: CESC_clinicalMatrix.gz
+  default_subdir: TCGA-CESC/clinical
+- name: CESC Survival Data
+  description: Curated survival data for CESC patients
+  category: clinical
+  url: https://tcga.xenahubs.net/download/TCGA.CESC.sampleMap/survival.gz
+  filename: survival.gz
+  default_subdir: TCGA-CESC/clinical

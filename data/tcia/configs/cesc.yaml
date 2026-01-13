@@ -1,0 +1,13 @@
+cohort:
+  code: CESC
+  name: TCGA-CESC
+  description: TCGA Cervical Squamous Cell Carcinoma cohort with imaging data
+
+datasets:
+  - name: CESC Imaging Manifest
+    description: TCGA cervical cancer imaging manifest
+    category: manifest
+    url: https://www.cancerimagingarchive.net/wp-content/uploads/TCIA_TCGA-CESC_09-16-2015.tcia
+    filename: TCIA_TCGA-CESC_09-16-2015.tcia
+    default_subdir: TCGA-CESC
+    file_type: manifest

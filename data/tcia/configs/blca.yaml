@@ -1,0 +1,13 @@
+cohort:
+  code: BLCA
+  name: TCGA-BLCA
+  description: TCGA Bladder Urothelial Carcinoma cohort with imaging data
+
+datasets:
+  - name: BLCA Imaging Manifest
+    description: TCGA bladder cancer imaging manifest
+    category: manifest
+    url: https://www.cancerimagingarchive.net/wp-content/uploads/TCGA-BLCA-August-30-2019-NBIA-manifest.tcia
+    filename: TCGA-BLCA-August-30-2019-NBIA-manifest.tcia
+    default_subdir: TCGA-BLCA
+    file_type: manifest

@@ -1,0 +1,6 @@
+cohort:
+  code: HNSC
+  name: TCGA-HNSC
+  description: TCGA Head and Neck Squamous Cell Carcinoma cohort (no TCIA manifests available)
+
+datasets: []

@@ -1,0 +1,13 @@
+cohort:
+  code: UCEC
+  name: TCGA-UCEC
+  description: TCGA Uterine Corpus Endometrial Carcinoma cohort with imaging data
+
+datasets:
+  - name: UCEC Imaging Manifest
+    description: TCGA uterine cancer imaging manifest
+    category: manifest
+    url: https://www.cancerimagingarchive.net/wp-content/uploads/TCIA_TCGA-UCEC-2018-10-24.tcia
+    filename: TCIA_TCGA-UCEC-2018-10-24.tcia
+    default_subdir: TCGA-UCEC
+    file_type: manifest

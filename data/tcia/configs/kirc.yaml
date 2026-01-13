@@ -1,0 +1,13 @@
+cohort:
+  code: KIRC
+  name: TCGA-KIRC
+  description: TCGA Kidney Renal Clear Cell Carcinoma cohort with imaging data
+
+datasets:
+  - name: KIRC Imaging Manifest
+    description: TCGA kidney clear cell cancer imaging manifest
+    category: manifest
+    url: https://www.cancerimagingarchive.net/wp-content/uploads/TCIA_TCGA-KIRC_09-16-2015.tcia
+    filename: TCIA_TCGA-KIRC_09-16-2015.tcia
+    default_subdir: TCGA-KIRC
+    file_type: manifest

@@ -1,0 +1,6 @@
+cohort:
+  code: LAML
+  name: TCGA-LAML
+  description: TCGA Acute Myeloid Leukemia cohort (no TCIA manifests available)
+
+datasets: []
