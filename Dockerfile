@@ -17,6 +17,7 @@ ARG GPU_EXTRA=cu130
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
+    unzip \
     # Python development headers (required for rpy2)
     python3-dev \
     python3-pip \
