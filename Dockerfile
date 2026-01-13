@@ -50,11 +50,13 @@ RUN mkdir -p /usr/share/desktop-directories \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PDC CLI
-RUN wget https://pdc-download-clients.s3.amazonaws.com/pdc-client_v1.0.8_Ubuntu_x64.zip -O /tmp/pdc-client.zip \
-    && unzip /tmp/pdc-client.zip -d /opt/pdc-client \
-    && chmod +x /opt/pdc-client/pdc_client \
-    && ln -sf /opt/pdc-client/pdc_client /usr/local/bin/pdc_client \
-    && rm /tmp/pdc-client.zip
+RUN mkdir -p /opt/pdc-client \
+    && wget https://pdc-download-clients.s3.amazonaws.com/pdc-client_v1.0.8_Ubuntu_x64.zip -O /tmp/pdc-client.zip \
+    && unzip /tmp/pdc-client.zip -d /tmp \
+    && unzip /tmp/pdc-client_v1.0.8_Ubuntu_x64/pdc-client_CL_v1.0.8_Ubuntu_x64.zip -d /opt/pdc-client \
+    && chmod +x /opt/pdc-client/pdc-client \
+    && ln -sf /opt/pdc-client/pdc-client /usr/local/bin/pdc_client \
+    && rm -rf /tmp/pdc-client.zip /tmp/pdc-client_v1.0.8_Ubuntu_x64 /tmp/__MACOSX
 
 # Install LLVM 20 from official repository
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
