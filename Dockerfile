@@ -43,8 +43,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install NBIA Data Retriever
-RUN apt-get update \
-    && mkdir -p /usr/share/desktop-directories \
+RUN mkdir -p /usr/share/desktop-directories \
     && wget -q https://github.com/CBIIT/NBIA-TCIA/releases/download/DR-4_4_3-TCIA-20240916-1/nbia-data-retriever_4.4.3-1_amd64.deb -O /tmp/nbia-data-retriever.deb \
     && dpkg -i /tmp/nbia-data-retriever.deb || true \
     && apt --fix-broken install -y \
@@ -53,12 +52,12 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PDC CLI
-RUN wget -q https://pdc-download-clients.s3.amazonaws.com/pdc-client_v1.0.8_Ubuntu_x64.zip -O /tmp/pdc-client.zip \
+RUN wget https://pdc-download-clients.s3.amazonaws.com/pdc-client_v1.0.8_Ubuntu_x64.zip -O /tmp/pdc-client.zip \
     && unzip /tmp/pdc-client.zip -d /opt/pdc-client \
     && chmod +x /opt/pdc-client/pdc_client \
     && ln -sf /opt/pdc-client/pdc_client /usr/local/bin/pdc_client \
     && rm /tmp/pdc-client.zip \
-    && rm -rf /var/lib/apt/lists/*
+    || echo "PDC client installation failed, continuing without it"
 
 # Install LLVM 20 from official repository
 RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc \
