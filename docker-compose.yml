@@ -70,6 +70,16 @@ services:
       - /dev/dxg  # WSL2 DirectX Graphics device for GPU passthrough
     group_add:
       - video
+
+  # Main development environment with Python + R (CPU only)
+  dev-cpu:
+    <<: *common-config
+    profiles: ["cpu"]
+    build:
+      <<: *common-build
+      args:
+        GPU_EXTRA: cpu
+    container_name: cancer-biomarker-dev-cpu
     
 volumes:
   uv-cache:
