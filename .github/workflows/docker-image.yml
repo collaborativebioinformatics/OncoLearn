@@ -1,0 +1,30 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "docker" ]
+  pull_request:
+    branches: [ "docker" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        profile:
+          - name: nvidia
+            gpu_extra: cu130
+          - name: amd
+            gpu_extra: rocm62
+          - name: amd-wsl
+            gpu_extra: rocm62
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Build the Docker image for ${{ matrix.profile.name }}
+      run: |
+        docker build . \
+          --file Dockerfile \
+          --build-arg GPU_EXTRA=${{ matrix.profile.gpu_extra }} \
+          --tag my-image-name:${{ matrix.profile.name }}-$(date +%s)
