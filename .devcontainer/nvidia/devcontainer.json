@@ -2,6 +2,7 @@
   "name": "OncoLearn (NVIDIA)",
   "dockerComposeFile": "../../docker-compose.yml",
   "service": "dev",
+  "runServices": ["dev"],
   "workspaceFolder": "/workspace",
 
   // Configure which extensions should be installed
