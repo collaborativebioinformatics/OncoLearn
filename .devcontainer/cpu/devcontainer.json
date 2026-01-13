@@ -1,8 +1,8 @@
 {
-  "name": "OncoLearn (AMD-WSL)",
+  "name": "OncoLearn (CPU)",
   "dockerComposeFile": "../../docker-compose.yml",
-  "service": "dev-amd-wsl",
-  "runServices": ["dev-amd-wsl"],
+  "service": "dev-cpu",
+  "runServices": ["dev-cpu"],
   "workspaceFolder": "/workspace",
 
   // Configure which extensions should be installed
