@@ -5,6 +5,11 @@ FROM buildpack-deps:jammy AS base
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 
+# Set uv (Python package manager) environment variables
+ENV UV_CACHE_DIR=/root/.cache/uv
+ENV UV_LINK_MODE=copy
+ENV UV_PROJECT_ENVIRONMENT=/workspace/.venv
+
 # Set LLVM environment variables
 ENV LLVM_CONFIG=/usr/bin/llvm-config-20
 ENV CMAKE_PREFIX_PATH=/usr/lib/llvm-20
