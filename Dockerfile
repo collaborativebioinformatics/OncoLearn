@@ -5,8 +5,17 @@ FROM ubuntu:22.04 AS base
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 
+# Set LLVM environment variables
+ENV LLVM_CONFIG=/usr/bin/llvm-config-20
+ENV CMAKE_PREFIX_PATH=/usr/lib/llvm-20
+
+# Build argument for GPU-specific PyTorch extras
+ARG GPU_EXTRA=cu130
+
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y \
     # Build essentials
     build-essential \
     cmake \
@@ -39,8 +48,7 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     libpng-dev \
     libtiff5-dev \
-    libjpeg-dev \
-    && rm -rf /var/lib/apt/lists/*
+    libjpeg-dev
 
 # Install NBIA Data Retriever
 RUN mkdir -p /usr/share/desktop-directories \
@@ -56,52 +64,44 @@ RUN wget https://pdc-download-clients.s3.amazonaws.com/pdc-client_v1.0.8_Ubuntu_
     && unzip /tmp/pdc-client.zip -d /opt/pdc-client \
     && chmod +x /opt/pdc-client/pdc_client \
     && ln -sf /opt/pdc-client/pdc_client /usr/local/bin/pdc_client \
-    && rm /tmp/pdc-client.zip \
-    || echo "PDC client installation failed, continuing without it"
+    && rm /tmp/pdc-client.zip
 
 # Install LLVM 20 from official repository
-RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc \
     && echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-20 main" > /etc/apt/sources.list.d/llvm.list \
     && apt-get update \
-    && apt-get install -y llvm-20 llvm-20-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Set LLVM environment variables
-ENV LLVM_CONFIG=/usr/bin/llvm-config-20
-ENV CMAKE_PREFIX_PATH=/usr/lib/llvm-20
+    && apt-get install -y llvm-20 llvm-20-dev
 
 # Install uv (Python package manager) system-wide
 RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/usr/local/bin" sh
 
-# Set uv cache directory to avoid hardlink issues
-ENV UV_CACHE_DIR=/tmp/uv-cache
-
-# Build argument for GPU-specific PyTorch extras
-ARG GPU_EXTRA=cu130
-
 # Set working directory
 WORKDIR /workspace
 
-# Copy project files
-COPY pyproject.toml ./
-COPY uv.lock ./
-
-COPY .Rprofile ./
-COPY renv/ ./renv/
-COPY renv.lock ./
-
+# Copy only dependency files first for better caching
+COPY pyproject.toml uv.lock ./
 COPY src/ ./src/
 
-# Install Python dependencies including dev tools and fusion extra
-RUN uv sync --extra ${GPU_EXTRA}
+# Install Python dependencies with BuildKit cache mount for much faster WSL builds
+RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked \
+    uv sync --extra ${GPU_EXTRA}
+
+# Copy R dependency files
+COPY .Rprofile renv.lock ./
+COPY renv/ ./renv/
 
 # Install R dependencies
 RUN R -e "if (!requireNamespace('renv', quietly = TRUE)) install.packages('renv', repos='https://cloud.r-project.org/')" \
     && R -e "renv::restore()" \
     && R -e "if (!requireNamespace('languageserver', quietly = TRUE)) install.packages('languageserver', repos='https://cloud.r-project.org/')"
 
-# Copy the rest of the project
-COPY . .
+# Copy source code (now that dependencies are cached)
+COPY scripts/ ./scripts/
+COPY configs/ ./configs/
+COPY notebooks/ ./notebooks/
+COPY README.md ./
 
 # Keep container running for VSCode Dev Containers
 # VSCode's Jupyter extension uses ipykernel directly (already in dev dependencies)

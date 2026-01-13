@@ -1,22 +1,30 @@
+# Shared configuration using YAML anchors
+x-common-config: &common-config
+  env_file: .docker.env
+  volumes:
+    - .:/workspace
+    - uv-cache:/root/.cache/uv
+    - renv-cache:/workspace/renv
+  environment:
+    - LLVM_CONFIG=/usr/bin/llvm-config-20
+    - CMAKE_PREFIX_PATH=/usr/lib/llvm-20
+  stdin_open: true
+  tty: true
+
+x-common-build: &common-build
+  context: .
+  dockerfile: Dockerfile
+
 services:
   # Main development environment with Python + R (NVIDIA GPU)
-  dev:
+  dev-nvidia:
+    <<: *common-config
     profiles: ["nvidia"]
     build:
-      context: .
-      dockerfile: Dockerfile
+      <<: *common-build
       args:
         GPU_EXTRA: cu130
     container_name: cancer-biomarker-dev-nvidia
-    volumes:
-      - .:/workspace
-      - uv-cache:/root/.cache/uv
-      - renv-cache:/workspace/renv
-    environment:
-      - LLVM_CONFIG=/usr/bin/llvm-config-20
-      - CMAKE_PREFIX_PATH=/usr/lib/llvm-20
-    stdin_open: true
-    tty: true
     deploy:
       resources:
         reservations:
@@ -27,22 +35,13 @@ services:
 
   # Main development environment with Python + R (AMD GPU - Native Linux)
   dev-amd:
+    <<: *common-config
     profiles: ["amd"]
     build:
-      context: .
-      dockerfile: Dockerfile
+      <<: *common-build
       args:
         GPU_EXTRA: rocm
     container_name: cancer-biomarker-dev-amd
-    volumes:
-      - .:/workspace
-      - uv-cache:/root/.cache/uv
-      - renv-cache:/workspace/renv
-    environment:
-      - LLVM_CONFIG=/usr/bin/llvm-config-20
-      - CMAKE_PREFIX_PATH=/usr/lib/llvm-20
-    stdin_open: true
-    tty: true
     devices:
       - /dev/kfd
       - /dev/dri
@@ -51,10 +50,10 @@ services:
 
   # Main development environment with Python + R (AMD GPU - WSL2)
   dev-amd-wsl:
+    <<: *common-config
     profiles: ["amd-wsl"]
     build:
-      context: .
-      dockerfile: Dockerfile
+      <<: *common-build
       args:
         GPU_EXTRA: rocm
     container_name: cancer-biomarker-dev-amd-wsl
@@ -67,13 +66,11 @@ services:
       - LLVM_CONFIG=/usr/bin/llvm-config-20
       - CMAKE_PREFIX_PATH=/usr/lib/llvm-20
       - LD_LIBRARY_PATH=/usr/lib/wsl/lib
-    stdin_open: true
-    tty: true
     devices:
       - /dev/dxg  # WSL2 DirectX Graphics device for GPU passthrough
     group_add:
       - video
-
+    
 volumes:
   uv-cache:
   renv-cache:

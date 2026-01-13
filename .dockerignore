@@ -73,4 +73,5 @@ data/
 
 # Cache directories
 .cache/
+uv-cache/
 *.log
