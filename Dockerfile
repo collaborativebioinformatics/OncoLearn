@@ -1,5 +1,5 @@
 # Multi-stage build for OncoLearn
-FROM ubuntu:22.04 AS base
+FROM buildpack-deps:jammy AS base
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -13,34 +13,22 @@ ENV CMAKE_PREFIX_PATH=/usr/lib/llvm-20
 ARG GPU_EXTRA=cu130
 
 # Install system dependencies
+# Note: buildpack-deps already includes: build-essential, git, curl, wget, etc.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get update && apt-get install -y \
-    # Build essentials
-    build-essential \
-    cmake \
-    git \
-    curl \
-    wget \
-    gnupg \
-    lsb-release \
-    software-properties-common \
-    unzip \
+    apt-get update && apt-get install -y --no-install-recommends \
     # Python development headers (required for rpy2)
     python3-dev \
     python3-pip \
     # R dependencies
     r-base \
     r-base-dev \
-    # Additional R libraries needed for rpy2
+    # Additional compatability libraries
     libreadline-dev \
     libpcre2-dev \
     liblzma-dev \
     libbz2-dev \
     libicu-dev \
-    # Additional libraries
-    libcurl4-openssl-dev \
-    libssl-dev \
     libxml2-dev \
     libfontconfig1-dev \
     libharfbuzz-dev \
@@ -48,7 +36,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     libfreetype6-dev \
     libpng-dev \
     libtiff5-dev \
-    libjpeg-dev
+    libjpeg-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install NBIA Data Retriever
 RUN mkdir -p /usr/share/desktop-directories \
@@ -72,7 +61,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc \
     && echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-20 main" > /etc/apt/sources.list.d/llvm.list \
     && apt-get update \
-    && apt-get install -y llvm-20 llvm-20-dev
+    && apt-get install -y --no-install-recommends llvm-20 llvm-20-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install uv (Python package manager) system-wide
 RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/usr/local/bin" sh
