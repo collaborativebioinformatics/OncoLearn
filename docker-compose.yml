@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
       args:
         GPU_EXTRA: cu130
-    container_name: cancer-biomarker-dev
+    container_name: cancer-biomarker-dev-nvidia
     volumes:
       - .:/workspace
       - uv-cache:/root/.cache/uv
@@ -33,7 +33,7 @@ services:
       dockerfile: Dockerfile
       args:
         GPU_EXTRA: rocm
-    container_name: cancer-biomarker-dev
+    container_name: cancer-biomarker-dev-amd
     volumes:
       - .:/workspace
       - uv-cache:/root/.cache/uv
@@ -57,7 +57,7 @@ services:
       dockerfile: Dockerfile
       args:
         GPU_EXTRA: rocm
-    container_name: cancer-biomarker-dev
+    container_name: cancer-biomarker-dev-amd-wsl
     volumes:
       - .:/workspace
       - uv-cache:/root/.cache/uv

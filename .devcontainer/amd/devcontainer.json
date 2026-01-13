@@ -1,7 +1,7 @@
 {
-  "name": "OncoLearn",
-  "dockerComposeFile": "../docker-compose.yml",
-  "service": "dev",
+  "name": "OncoLearn (AMD)",
+  "dockerComposeFile": "../../docker-compose.yml",
+  "service": "dev-amd",
   "workspaceFolder": "/workspace",
 
   // Configure which extensions should be installed
@@ -38,9 +38,6 @@
       "onAutoForward": "notify"
     }
   },
-
-  // Post-create command
-  "postCreateCommand": "uv sync --extra cu130",
 
   // Keep container running
   "shutdownAction": "stopCompose",
