@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y \
     gnupg \
     lsb-release \
     software-properties-common \
+    unzip \
     # Python development headers (required for rpy2)
     python3-dev \
     python3-pip \
@@ -51,6 +52,14 @@ RUN apt-get update \
     && rm /tmp/nbia-data-retriever.deb \
     && rm -rf /var/lib/apt/lists/*
 
+# Install PDC CLI
+RUN wget -q https://pdc-download-clients.s3.amazonaws.com/pdc-client_v1.0.8_Ubuntu_x64.zip -O /tmp/pdc-client.zip \
+    && unzip /tmp/pdc-client.zip -d /opt/pdc-client \
+    && chmod +x /opt/pdc-client/pdc_client \
+    && ln -sf /opt/pdc-client/pdc_client /usr/local/bin/pdc_client \
+    && rm /tmp/pdc-client.zip \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install LLVM 20 from official repository
 RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc \
     && echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-20 main" > /etc/apt/sources.list.d/llvm.list \
@@ -68,6 +77,9 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/usr/local/
 # Set uv cache directory to avoid hardlink issues
 ENV UV_CACHE_DIR=/tmp/uv-cache
 
+# Build argument for GPU-specific PyTorch extras
+ARG GPU_EXTRA=cu130
+
 # Set working directory
 WORKDIR /workspace
 
@@ -82,7 +94,7 @@ COPY renv.lock ./
 COPY src/ ./src/
 
 # Install Python dependencies including dev tools and fusion extra
-RUN uv sync --extra cu130
+RUN uv sync --extra ${GPU_EXTRA}
 
 # Install R dependencies
 RUN R -e "if (!requireNamespace('renv', quietly = TRUE)) install.packages('renv', repos='https://cloud.r-project.org/')" \
