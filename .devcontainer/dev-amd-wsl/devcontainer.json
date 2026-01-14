@@ -47,6 +47,9 @@
   // Run as root (can be changed for better security)
   "remoteUser": "root",
 
+  // Run uv sync on container start
+  "postStartCommand": "uv sync --extra rocm",
+
   // Features to add
   "features": {
     "ghcr.io/devcontainers/features/git:1": {},

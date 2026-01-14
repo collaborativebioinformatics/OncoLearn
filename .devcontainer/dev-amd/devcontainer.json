@@ -1,8 +1,8 @@
 {
-  "name": "OncoLearn (NVIDIA)",
+  "name": "OncoLearn (AMD)",
   "dockerComposeFile": "../../docker-compose.yml",
-  "service": "dev-nvidia",
-  "runServices": ["dev-nvidia"],
+  "service": "dev-amd",
+  "runServices": ["dev-amd"],
   "workspaceFolder": "/workspace",
 
   // Configure which extensions should be installed
@@ -46,6 +46,9 @@
 
   // Run as root (can be changed for better security)
   "remoteUser": "root",
+
+  // Run uv sync on container start
+  "postStartCommand": "uv sync --extra rocm",
 
   // Features to add
   "features": {

@@ -19,11 +19,12 @@ services:
   # Main development environment with Python + R (NVIDIA GPU)
   dev-nvidia:
     <<: *common-config
-    profiles: ["nvidia"]
+    profiles: ["dev-nvidia"]
     build:
       <<: *common-build
       args:
         GPU_EXTRA: cu130
+      target: dev
     container_name: cancer-biomarker-dev-nvidia
     deploy:
       resources:
@@ -36,11 +37,12 @@ services:
   # Main development environment with Python + R (AMD GPU - Native Linux)
   dev-amd:
     <<: *common-config
-    profiles: ["amd"]
+    profiles: ["dev-amd"]
     build:
       <<: *common-build
       args:
         GPU_EXTRA: rocm
+      target: dev
     container_name: cancer-biomarker-dev-amd
     devices:
       - /dev/kfd
@@ -51,11 +53,12 @@ services:
   # Main development environment with Python + R (AMD GPU - WSL2)
   dev-amd-wsl:
     <<: *common-config
-    profiles: ["amd-wsl"]
+    profiles: ["dev-amd-wsl"]
     build:
       <<: *common-build
       args:
         GPU_EXTRA: rocm
+      target: dev
     container_name: cancer-biomarker-dev-amd-wsl
     volumes:
       - .:/workspace
@@ -74,12 +77,73 @@ services:
   # Main development environment with Python + R (CPU only)
   dev-cpu:
     <<: *common-config
-    profiles: ["cpu"]
+    profiles: ["dev-cpu"]
     build:
       <<: *common-build
       args:
         GPU_EXTRA: cpu
+      target: dev
     container_name: cancer-biomarker-dev-cpu
+
+  # Production PyTorch environment (NVIDIA GPU - Optimized Size)
+  pytorch-prod-nvidia:
+    env_file: .docker.env
+    profiles: ["prod-nvidia"]
+    build:
+      <<: *common-build
+      args:
+        GPU_EXTRA: cu130
+      target: pytorch-prod
+    container_name: cancer-biomarker-pytorch-prod-nvidia
+    volumes:
+      - ./configs:/workspace/configs:ro
+      - ./data:/workspace/data:ro
+      - ./models:/workspace/models
+      - ./outputs:/workspace/outputs
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # Production PyTorch environment (AMD GPU - Optimized Size)
+  pytorch-prod-amd:
+    env_file: .docker.env
+    profiles: ["prod-amd"]
+    build:
+      <<: *common-build
+      args:
+        GPU_EXTRA: rocm
+      target: pytorch-prod
+    container_name: cancer-biomarker-pytorch-prod-amd
+    volumes:
+      - ./configs:/workspace/configs:ro
+      - ./data:/workspace/data:ro
+      - ./models:/workspace/models
+      - ./outputs:/workspace/outputs
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - video
+
+  # Production PyTorch environment (CPU only - Optimized Size)
+  pytorch-prod-cpu:
+    env_file: .docker.env
+    profiles: ["prod-cpu"]
+    build:
+      <<: *common-build
+      args:
+        GPU_EXTRA: cpu
+      target: pytorch-prod
+    container_name: cancer-biomarker-pytorch-prod-cpu
+    volumes:
+      - ./configs:/workspace/configs:ro
+      - ./data:/workspace/data:ro
+      - ./models:/workspace/models
+      - ./outputs:/workspace/outputs
     
 volumes:
   uv-cache:
