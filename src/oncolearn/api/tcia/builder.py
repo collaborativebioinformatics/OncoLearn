@@ -2,9 +2,10 @@
 Cohort builder that constructs TCIA cohorts from YAML configuration files.
 """
 
-import yaml
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
+import yaml
 
 from ..cohort import Cohort
 from ..cohort_builder import CohortBuilder as BaseCohortBuilder
@@ -122,7 +123,7 @@ class TCIACohortBuilder(BaseCohortBuilder):
                     datasets=datasets
                 )
             
-            def download(self, output_dir=None, download_all=True, download_images=False, verbose=True):
+            def download(self, output_dir=None, download_all=True, download_images=False, extract=True, verbose=True):
                 """
                 Download all datasets in the cohort.
                 
@@ -130,6 +131,7 @@ class TCIACohortBuilder(BaseCohortBuilder):
                     output_dir: Base output directory
                     download_all: If True, download all datasets
                     download_images: If True, run nbia-data-retriever for .tcia files
+                    extract: Whether to extract gzipped files after download
                     verbose: Print progress messages
                 """
                 if output_dir is None:
@@ -144,7 +146,7 @@ class TCIACohortBuilder(BaseCohortBuilder):
                 if download_all:
                     for dataset in self.datasets:
                         try:
-                            dataset.download(str(output_path), download_images=download_images, verbose=verbose)
+                            dataset.download(str(output_path), download_images=download_images, extract=extract, verbose=verbose)
                         except Exception as e:
                             if verbose:
                                 print(f"    ✗ Error downloading {dataset.name}: {e}")

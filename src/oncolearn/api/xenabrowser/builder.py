@@ -2,9 +2,10 @@
 Cohort builder that constructs cohorts from YAML configuration files.
 """
 
-import yaml
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
+import yaml
 
 from ..cohort import Cohort
 from ..cohort_builder import CohortBuilder as BaseCohortBuilder
@@ -118,7 +119,7 @@ class XenaCohortBuilder(BaseCohortBuilder):
                     datasets=datasets
                 )
             
-            def download(self, output_dir=None, download_all=True):
+            def download(self, output_dir=None, download_all=True, extract=True):
                 if output_dir is None:
                     output_dir = f"data/xenabrowser/{cohort_info['name']}"
                 
@@ -130,7 +131,7 @@ class XenaCohortBuilder(BaseCohortBuilder):
                 if download_all:
                     for dataset in self.datasets:
                         try:
-                            dataset.download(str(output_path))
+                            dataset.download(str(output_path), extract=extract)
                         except Exception as e:
                             print(f"Error downloading {dataset.name}: {e}")
         

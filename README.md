@@ -49,13 +49,13 @@ Aryan Sharan Guda (aryanshg@andrew.cmu.edu), Seungjin Han (seungjih@andrew.cmu.e
 3. **Download sample data**:
    ```bash
    # Download genomics data from Xena Browser
-   docker compose exec dev uv run scripts/download.py --xena --cohorts BRCA
+   docker compose exec dev oncolearn download --xena --cohorts BRCA
    
    # Download imaging data from TCIA (manifest only)
-   docker compose exec dev uv run scripts/download.py --tcia --cohorts BRCA
+   docker compose exec dev oncolearn download --tcia --cohorts BRCA
    
    # Download imaging data from TCIA (manifest + images)
-   docker compose exec dev uv run scripts/download.py --tcia --cohorts BRCA --download-images
+   docker compose exec dev oncolearn download --tcia --cohorts BRCA --download-images
    ```
 
 4. **Start exploring** with the Jupyter notebooks in [`notebooks/data/`](notebooks/data/)
@@ -198,37 +198,42 @@ OncoLearn provides a unified download script for acquiring cancer data from mult
 
 ```bash
 # Download a single cohort (all data types)
-uv run scripts/download.py --xena --cohorts BRCA
+oncolearn download --xena --cohorts BRCA
+
+# Download and extract gzipped files
+oncolearn download --xena --cohorts BRCA --unzip
 
 # Download specific data category
-uv run scripts/download.py --xena --cohorts BRCA --category mutation
+oncolearn download --xena --cohorts BRCA --category mutation
 
 # Download multiple cohorts
-uv run scripts/download.py --xena --cohorts BRCA,LUAD,ACC
+oncolearn download --xena --cohorts BRCA,LUAD,ACC
 
 # Download all available cohorts
-uv run scripts/download.py --xena --all
+oncolearn download --xena --all
 
 # List available cohorts
-uv run scripts/download.py --xena --list
+oncolearn download --xena --list
 ```
 
 **Available categories:** `clinical`, `mutation`, `cnv`, `mrna`, `mirna`, `protein`, `methylation`
+
+**Note:** By default, gzipped files are NOT automatically extracted. Use `--unzip` to extract them after download.
 
 #### Download from TCIA (Imaging Data)
 
 ```bash
 # Download manifest file only
-uv run scripts/download.py --tcia --cohorts BRCA
+oncolearn download --tcia --cohorts BRCA
 
 # Download manifest and images (requires nbia-data-retriever)
-uv run scripts/download.py --tcia --cohorts BRCA --download-images
+oncolearn download --tcia --cohorts BRCA --download-images
 
 # Download multiple cohorts with images
-uv run scripts/download.py --tcia --cohorts BRCA,LUAD --download-images
+oncolearn download --tcia --cohorts BRCA,LUAD --download-images
 
 # List available cohorts
-uv run scripts/download.py --tcia --list
+oncolearn download --tcia --list
 ```
 
 **Note:** The `--download-images` flag requires the [nbia-data-retriever](https://wiki.cancerimagingarchive.net/display/NBIA/NBIA+Data+Retriever+Command-Line+Interface+Guide) tool to be installed.
@@ -239,10 +244,23 @@ When using Docker, prefix commands with the container execution:
 
 ```bash
 # NVIDIA GPU container
-docker compose exec dev uv run scripts/download.py --xena --cohorts BRCA
+docker compose exec dev oncolearn download --xena --cohorts BRCA
 
 # AMD GPU container
-docker compose exec dev-amd uv run scripts/download.py --tcia --cohorts BRCA --download-images
+docker compose exec dev-amd oncolearn download --tcia --cohorts BRCA --download-images
+```
+
+### Installation as a CLI Tool
+
+After installation, `oncolearn` is available as a command-line tool:
+
+```bash
+# Using uv (development)
+uv run oncolearn download --xena --cohorts BRCA
+
+# After pip install (production)
+pip install -e .
+oncolearn download --xena --cohorts BRCA
 ```
 
 ---

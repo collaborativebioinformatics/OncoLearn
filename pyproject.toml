@@ -25,7 +25,8 @@ dependencies = [
 ]
 
 [project.scripts]
-download = "scripts.data.download:main"
+oncolearn = "oncolearn.cli.cli:main"
+download = "oncolearn.cli.download:main"
 
 [dependency-groups]
 dev = [

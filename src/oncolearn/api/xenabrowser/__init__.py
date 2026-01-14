@@ -6,7 +6,7 @@ from the UCSC Xena Browser. Cohorts are configured using YAML files and
 built dynamically using the XenaCohortBuilder.
 
 Usage:
-    from oncolearn.data.xenabrowser import XenaCohortBuilder
+    from oncolearn.api.xenabrowser import XenaCohortBuilder
     
     builder = XenaCohortBuilder()
     brca_cohort = builder.build_cohort("BRCA")

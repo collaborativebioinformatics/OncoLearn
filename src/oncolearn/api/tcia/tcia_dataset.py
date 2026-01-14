@@ -2,13 +2,12 @@
 TCIA dataset implementation for downloading imaging data manifests.
 """
 
-import subprocess
 from pathlib import Path
 from typing import Optional
-from urllib.request import urlretrieve
-from urllib.error import URLError
 
-from ..dataset import Dataset, DataCategory
+from oncolearn.utils.download import download_file, run_external_command
+
+from ..dataset import DataCategory, Dataset
 
 
 class TCIADataset(Dataset):
@@ -56,13 +55,14 @@ class TCIADataset(Dataset):
         self.default_subdir = default_subdir
         self.file_type = file_type
     
-    def download(self, output_dir: Optional[str] = None, download_images: bool = False, verbose: bool = True) -> bool:
+    def download(self, output_dir: Optional[str] = None, download_images: bool = False, extract: bool = True, verbose: bool = True) -> bool:
         """
         Download the manifest file and optionally the imaging data.
         
         Args:
             output_dir: Directory to save the manifest file
             download_images: If True and file is a .tcia manifest, run nbia-data-retriever
+            extract: Whether to extract gzipped files after download (currently unused for TCIA)
             verbose: Print progress messages
             
         Returns:
@@ -77,19 +77,15 @@ class TCIADataset(Dataset):
         dest_file = output_path / self.filename
         
         # Download the manifest file
-        try:
-            if verbose:
-                print(f"    Downloading {self.filename}...")
-            urlretrieve(self.url, dest_file)
-            if verbose:
-                print(f"    ✓ {self.filename}")
-        except URLError as e:
-            if verbose:
-                print(f"    ✗ {self.filename}: URL error - {e}")
-            return False
-        except Exception as e:
-            if verbose:
-                print(f"    ✗ {self.filename}: {e}")
+        success = download_file(
+            url=self.url,
+            output_dir=str(output_path),
+            filename=self.filename,
+            dataset_name=self.filename if verbose else None,
+            verbose=verbose
+        )
+        
+        if not success:
             return False
         
         # If this is a .tcia manifest and download_images is True, run nbia-data-retriever
@@ -117,6 +113,9 @@ class TCIADataset(Dataset):
                 print(f"    ✗ Manifest file not found: {manifest_path}")
             return False
         
+        # Ensure output directory exists
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
         # Build command
         cmd = [
             "nbia-data-retriever",
@@ -128,32 +127,9 @@ class TCIADataset(Dataset):
         
         if verbose:
             print(f"    Downloading images from {manifest_path.name}...")
-            print(f"      Running: {' '.join(cmd)}")
         
-        try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            if verbose:
-                print(f"      ✓ Images downloaded successfully")
-                if result.stdout:
-                    print(f"      {result.stdout}")
-            return True
-        except FileNotFoundError:
-            if verbose:
-                print(f"      ✗ nbia-data-retriever not found. Please install it first.")
-            return False
-        except subprocess.CalledProcessError as e:
-            error_msg = f"Command failed with exit code {e.returncode}"
-            if e.stderr:
-                error_msg += f": {e.stderr}"
-            if verbose:
-                print(f"      ✗ {error_msg}")
-            return False
-        except Exception as e:
-            if verbose:
-                print(f"      ✗ {e}")
-            return False
+        return run_external_command(
+            command=cmd,
+            command_name=f"nbia-data-retriever for {manifest_path.name}",
+            verbose=verbose
+        )

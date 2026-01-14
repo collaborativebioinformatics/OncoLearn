@@ -2,11 +2,11 @@
 Generic dataset implementation that can be configured from YAML files.
 """
 
-from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional
 
-from ..dataset import Dataset, DataCategory
-from .utils import download_and_extract_gzip
+from oncolearn.utils.download import download_and_extract_gzip
+
+from ..dataset import DataCategory, Dataset
 
 
 class XenaDataset(Dataset):
@@ -43,8 +43,13 @@ class XenaDataset(Dataset):
         self.filename = filename
         self.default_subdir = default_subdir
     
-    def download(self, output_dir: Optional[str] = None) -> None:
-        """Download the dataset."""
+    def download(self, output_dir: Optional[str] = None, extract: bool = True) -> None:
+        """Download the dataset.
+        
+        Args:
+            output_dir: Optional directory to save the downloaded data
+            extract: Whether to extract gzipped files after download
+        """
         if output_dir is None:
             output_dir = f"data/xenabrowser/{self.default_subdir}"
         
@@ -52,5 +57,7 @@ class XenaDataset(Dataset):
             url=self.url,
             output_dir=output_dir,
             filename=self.filename,
-            dataset_name=self.name
+            dataset_name=self.name,
+            extract=extract,
+            verbose=True
         )

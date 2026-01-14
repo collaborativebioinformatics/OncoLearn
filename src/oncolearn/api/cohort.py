@@ -7,7 +7,8 @@ datasets with download and management capabilities.
 
 from abc import ABC, abstractmethod
 from typing import List, Optional
-from .dataset import Dataset
+
+from oncolearn.api.dataset import Dataset
 
 
 class Cohort(ABC):

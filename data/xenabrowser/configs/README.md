@@ -22,10 +22,10 @@ xenabrowser/
 ### Basic Usage
 
 ```python
-from oncolearn.data.xenabrowser import CohortBuilder
+from oncolearn.api.xenabrowser import XenaCohortBuilder
 
 # Create a builder
-builder = CohortBuilder()
+builder = XenaCohortBuilder()
 
 # Build and download a cohort
 brca_cohort = builder.build_cohort("BRCA")
@@ -38,9 +38,9 @@ brca_cohort.download(output_dir="my_data/brca")
 ### List Available Cohorts
 
 ```python
-from oncolearn.data.xenabrowser import CohortBuilder
+from oncolearn.api.xenabrowser import XenaCohortBuilder
 
-builder = CohortBuilder()
+builder = XenaCohortBuilder()
 cohorts = builder.list_available_cohorts()
 print(cohorts)  # ['ACC', 'BLCA', 'BRCA', ...]
 ```
@@ -48,9 +48,9 @@ print(cohorts)  # ['ACC', 'BLCA', 'BRCA', ...]
 ### Access Individual Datasets
 
 ```python
-from oncolearn.data.xenabrowser import CohortBuilder
+from oncolearn.api.xenabrowser import XenaCohortBuilder
 
-builder = CohortBuilder()
+builder = XenaCohortBuilder()
 brca_cohort = builder.build_cohort("BRCA")
 
 # List all datasets
@@ -65,10 +65,10 @@ gene_expr.download("my_data/brca/gene_expression")
 ### Filter Datasets by Category
 
 ```python
-from oncolearn.data.xenabrowser import CohortBuilder
-from oncolearn.data.dataset import DataCategory
+from oncolearn.api.xenabrowser import XenaCohortBuilder
+from oncolearn.api.dataset import DataCategory
 
-builder = CohortBuilder()
+builder = XenaCohortBuilder()
 brca_cohort = builder.build_cohort("BRCA")
 
 # Get all clinical datasets

@@ -6,9 +6,9 @@ This module defines the interface that all cohort builders should implement.
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
-from .cohort import Cohort
+from oncolearn.api.cohort import Cohort
 
 
 class CohortBuilder(ABC):
