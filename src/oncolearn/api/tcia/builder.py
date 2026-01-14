@@ -7,6 +7,8 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
+from oncolearn.utils.download import confirm_cohort_download
+
 from ..cohort import Cohort
 from ..cohort_builder import CohortBuilder as BaseCohortBuilder
 from ..dataset import DataCategory
@@ -144,12 +146,40 @@ class TCIACohortBuilder(BaseCohortBuilder):
                     print(f"Downloading {cohort_info['code']} cohort to {output_path}")
                 
                 if download_all:
+                    # Calculate size for each dataset and build file details list
+                    from oncolearn.utils.download import get_file_size_from_url
+                    
+                    file_details = []
+                    total_size = 0
+                    
+                    if verbose:
+                        print("Calculating total download size...")
+                    
+                    for dataset in self.datasets:
+                        size = get_file_size_from_url(dataset.url)
+                        if size:
+                            total_size += size
+                        file_details.append((dataset.filename, size if size else 0))
+                    
+                    # Show single confirmation for entire cohort if we have size info
+                    if total_size > 0:
+                        if not confirm_cohort_download(
+                            cohort_name=cohort_info['code'],
+                            total_size_bytes=total_size,
+                            file_details=file_details,
+                            verbose=verbose
+                        ):
+                            if verbose:
+                                print("Cohort download cancelled.")
+                            return
+                    
+                    # Download all datasets without individual confirmations
                     for dataset in self.datasets:
                         try:
-                            dataset.download(str(output_path), download_images=download_images, extract=extract, verbose=verbose)
+                            dataset.download(str(output_path), download_images=download_images, extract=extract, verbose=verbose, confirm=False)
                         except Exception as e:
                             if verbose:
-                                print(f"    ✗ Error downloading {dataset.name}: {e}")
+                                print(f"    [ERROR] Error downloading {dataset.name}: {e}")
         
         return ConfiguredCohort()
     

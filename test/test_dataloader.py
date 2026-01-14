@@ -48,7 +48,7 @@ def test_genetic_data_loader():
             cancer_type="BRCA",  # Only load BRCA data
         )
 
-        print("\n✓ Dataset created successfully!")
+        print("\n[OK] Dataset created successfully!")
         print(f"  Total samples: {len(dataset)}")
         print(f"  Num classes: {dataset.get_num_classes()}")
         print(f"  Num genes: {dataset.get_num_genes()}")
@@ -58,7 +58,7 @@ def test_genetic_data_loader():
             print("\nTesting sample retrieval...")
             sample = dataset[0]
 
-            print("✓ Sample retrieved successfully!")
+            print("[OK] Sample retrieved successfully!")
             print(f"  Image shape: {sample['image'].shape}")
             print(f"  Label: {sample['label'].item()}")
             print(f"  Patient ID: {sample['patient_id']}")
@@ -72,7 +72,7 @@ def test_genetic_data_loader():
                 print("  Warning: No genetic features in sample")
 
         print("\n" + "="*60)
-        print("✓ ALL TESTS PASSED!")
+        print("[OK] ALL TESTS PASSED!")
         print("="*60)
 
     except Exception as e:

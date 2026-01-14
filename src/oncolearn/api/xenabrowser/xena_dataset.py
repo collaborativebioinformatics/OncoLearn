@@ -43,12 +43,13 @@ class XenaDataset(Dataset):
         self.filename = filename
         self.default_subdir = default_subdir
     
-    def download(self, output_dir: Optional[str] = None, extract: bool = True) -> None:
+    def download(self, output_dir: Optional[str] = None, extract: bool = True, confirm: bool = True) -> None:
         """Download the dataset.
         
         Args:
             output_dir: Optional directory to save the downloaded data
             extract: Whether to extract gzipped files after download
+            confirm: Whether to ask for confirmation before downloading
         """
         if output_dir is None:
             output_dir = f"data/xenabrowser/{self.default_subdir}"
@@ -59,5 +60,6 @@ class XenaDataset(Dataset):
             filename=self.filename,
             dataset_name=self.name,
             extract=extract,
-            verbose=True
+            verbose=True,
+            confirm=confirm
         )

@@ -65,17 +65,17 @@ def download_cohort(
         )
         
         if verbose:
-            print(f"  ✓ {cohort_code}: Complete")
+            print(f"  [OK] {cohort_code}: Complete")
         return True
         
     except FileNotFoundError as e:
         if verbose:
-            print(f"  ✗ {cohort_code}: Configuration not found")
+            print(f"  [ERROR] {cohort_code}: Configuration not found")
             print(f"    Reason: {e}")
         return False
     except Exception as e:
         if verbose:
-            print(f"  ✗ {cohort_code}: Failed")
+            print(f"  [ERROR] {cohort_code}: Failed")
             print(f"    Reason: {e}")
         return False
 

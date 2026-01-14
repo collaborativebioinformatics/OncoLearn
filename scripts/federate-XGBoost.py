@@ -4,13 +4,15 @@ Modified for distributed deployment across EC2 instances with local data storage
 """
 
 import os
+
 from nvflare import FedJob
 from nvflare.app_common.workflows.scatter_and_gather import ScatterAndGather
 from nvflare.app_opt.xgboost.tree_based.bagging_aggregator import XGBBaggingAggregator
 from nvflare.app_opt.xgboost.tree_based.model_persistor import XGBModelPersistor
-from nvflare.app_opt.xgboost.tree_based.shareable_generator import XGBModelShareableGenerator
+from nvflare.app_opt.xgboost.tree_based.shareable_generator import (
+    XGBModelShareableGenerator,
+)
 from nvflare.job_config.script_runner import FrameworkType, ScriptRunner
-
 
 if __name__ == "__main__":
     print("=" * 80)
@@ -52,7 +54,7 @@ if __name__ == "__main__":
             raise FileNotFoundError(f"Missing data file: {data_file}")
         if not os.path.exists(header_file):
             raise FileNotFoundError(f"Missing header file: {header_file}")
-        print(f"✓ Found {data_file} and {header_file}")
+        print(f"[OK] Found {data_file} and {header_file}")
 
     # Script arguments passed to local-XGBoost.py
     script_args = (
@@ -106,10 +108,10 @@ if __name__ == "__main__":
             framework=FrameworkType.RAW,
         )
         job.to(runner, f"site-{i}")
-        print(f"✓ Added site-{i}")
+        print(f"[OK] Added site-{i}")
 
     # Export Job
     print("\nExporting job configuration...")
     os.makedirs(JOB_EXPORT_DIR, exist_ok=True)
     job.export_job(JOB_EXPORT_DIR)
-    print(f"✓ Job exported to {JOB_EXPORT_DIR}")
+    print(f"[OK] Job exported to {JOB_EXPORT_DIR}")

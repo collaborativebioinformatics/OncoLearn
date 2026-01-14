@@ -55,7 +55,7 @@ class TCIADataset(Dataset):
         self.default_subdir = default_subdir
         self.file_type = file_type
     
-    def download(self, output_dir: Optional[str] = None, download_images: bool = False, extract: bool = True, verbose: bool = True) -> bool:
+    def download(self, output_dir: Optional[str] = None, download_images: bool = False, extract: bool = True, verbose: bool = True, confirm: bool = True) -> bool:
         """
         Download the manifest file and optionally the imaging data.
         
@@ -64,6 +64,7 @@ class TCIADataset(Dataset):
             download_images: If True and file is a .tcia manifest, run nbia-data-retriever
             extract: Whether to extract gzipped files after download (currently unused for TCIA)
             verbose: Print progress messages
+            confirm: Whether to ask for confirmation before downloading
             
         Returns:
             True if successful, False otherwise
@@ -82,7 +83,8 @@ class TCIADataset(Dataset):
             output_dir=str(output_path),
             filename=self.filename,
             dataset_name=self.filename if verbose else None,
-            verbose=verbose
+            verbose=verbose,
+            confirm=confirm
         )
         
         if not success:
@@ -110,7 +112,7 @@ class TCIADataset(Dataset):
         """
         if not manifest_path.exists():
             if verbose:
-                print(f"    ✗ Manifest file not found: {manifest_path}")
+                print(f"    [ERROR] Manifest file not found: {manifest_path}")
             return False
         
         # Ensure output directory exists

@@ -204,7 +204,7 @@ class MedicalImageDataset(Dataset):
 
         self.gene_features[self.gene_columns] = gene_matrix
 
-        print("✓ Genetic data loaded successfully")
+        print("[OK] Genetic data loaded successfully")
 
     def _cross_reference_samples(self):
         """
