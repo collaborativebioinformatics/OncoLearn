@@ -9,7 +9,6 @@ dependencies = [
     "matplotlib>=3.10.8",
     "pandas>=2.3.3",
     "plotly>=6.5.1",
-    "pyreadr>=0.5.4",
     "scikit-learn>=1.7.2",
     "seaborn>=0.13.2",
     "tqdm>=4.67.1",
@@ -22,11 +21,7 @@ dependencies = [
     "simpleitk>=2.5.3",
     "scipy>=1.16.3",
     "pyyaml>=6.0.3",
-    "beautifulsoup4>=4.14.3",
-    "lxml>=6.0.2",
     "requests>=2.32.5",
-    "selenium>=4.39.0",
-    "webdriver-manager>=4.0.2",
 ]
 
 [project.scripts]
