@@ -76,27 +76,44 @@ def download_tcia(
     output_dir: str = None,
     download_all_flag: bool = False,
     download_images: bool = False,
+    manifest_only: bool = False,
+    manifest_path: str = None,
     unzip: bool = True,
     confirm: bool = True
 ) -> dict[str, bool]:
     """
-    Download TCIA manifests for cohorts.
+    Download TCIA manifests and/or images for cohorts.
 
     Args:
         cohorts: List of cohort codes
         output_dir: Optional output directory
         download_all_flag: Download all available cohorts
         download_images: If True, run nbia-data-retriever to download images
+        manifest_only: If True, download only manifests (not images)
+        manifest_path: Path to existing manifest file to use for image download
         unzip: Whether to extract gzipped files after download
         confirm: If True, ask for confirmation before downloading
 
     Returns:
         Dictionary mapping cohort codes to success status
     """
-    if download_all_flag:
-        return download_tcia_all(output_dir, download_images=download_images, unzip=unzip, verbose=True, confirm=confirm)
+    # Determine what to download based on flags
+    # --manifest-only: download_images=False (only manifest)
+    # default (no flags): download_images=True (manifest + images)
+    # --manifest <path>: use existing manifest, download_images=True
+    if manifest_only:
+        actual_download_images = False
+    elif manifest_path:
+        # Using existing manifest, only download images
+        actual_download_images = True
     else:
-        return download_tcia_cohorts(cohorts, output_dir, download_images=download_images, unzip=unzip, verbose=True, confirm=confirm)
+        # Default: download manifest and images
+        actual_download_images = True
+
+    if download_all_flag:
+        return download_tcia_all(output_dir, download_images=actual_download_images, manifest_path=manifest_path, unzip=unzip, verbose=True, confirm=confirm)
+    else:
+        return download_tcia_cohorts(cohorts, output_dir, download_images=actual_download_images, manifest_path=manifest_path, unzip=unzip, verbose=True, confirm=confirm)
 
 
 def parse_category(category_str: str) -> DataCategory:
@@ -171,11 +188,14 @@ Examples:
   # Download multiple cohorts
   oncolearn download --xena --cohorts BRCA,LUAD,ACC
   
-  # Download TCIA manifest only
+  # Download TCIA manifest and images (default)
   oncolearn download --tcia --cohorts BRCA
   
-  # Download TCIA manifest and images
-  oncolearn download --tcia --cohorts BRCA --download-images
+  # Download TCIA manifest only (no images)
+  oncolearn download --tcia --cohorts BRCA --manifest-only
+  
+  # Download images using existing manifest
+  oncolearn download --tcia --cohorts BRCA --manifest /path/to/manifest.tcia
   
   # Download all Xena cohorts
   oncolearn download --xena --all
@@ -209,7 +229,11 @@ Examples:
         "--ids", type=str, help="Specific dataset ID(s) to download, comma-separated (Xena only)")
     parser.add_argument("--output", type=str, help="Custom output directory")
     parser.add_argument("--download-images", action="store_true",
-                        help="Download actual images using nbia-data-retriever (TCIA only)")
+                        help="Download actual images using nbia-data-retriever (TCIA only) - DEPRECATED: images are downloaded by default now")
+    parser.add_argument("--manifest-only", action="store_true",
+                        help="Download only manifest files, not images (TCIA only)")
+    parser.add_argument("--manifest", type=str,
+                        help="Path to existing manifest file to use for downloading images (TCIA only)")
     parser.add_argument("--unzip", action="store_true",
                         default=False, help="Extract gzipped files after download")
     parser.add_argument("--mapping", action="store_true", default=False,
@@ -239,10 +263,26 @@ def execute(args):
         print("ERROR: --category can only be used with --xena")
         sys.exit(1)
 
-    # Download images only works with TCIA
-    if hasattr(args, 'download_images') and args.download_images and args.xena:
-        print("ERROR: --download-images can only be used with --tcia")
-        sys.exit(1)
+    # TCIA-specific flags
+    if args.xena:
+        if hasattr(args, 'download_images') and args.download_images:
+            print("ERROR: --download-images can only be used with --tcia")
+            sys.exit(1)
+        if hasattr(args, 'manifest_only') and args.manifest_only:
+            print("ERROR: --manifest-only can only be used with --tcia")
+            sys.exit(1)
+        if hasattr(args, 'manifest') and args.manifest:
+            print("ERROR: --manifest can only be used with --tcia")
+            sys.exit(1)
+
+    # Validate TCIA flag combinations
+    if args.tcia:
+        manifest_only = hasattr(args, 'manifest_only') and args.manifest_only
+        manifest_path = getattr(args, 'manifest', None)
+
+        if manifest_only and manifest_path:
+            print("ERROR: Cannot use both --manifest-only and --manifest together")
+            sys.exit(1)
 
     # Parse cohorts
     if args.all:
@@ -266,9 +306,11 @@ def execute(args):
     else:  # tcia
         download_images = hasattr(
             args, 'download_images') and args.download_images
+        manifest_only = hasattr(args, 'manifest_only') and args.manifest_only
+        manifest_path = getattr(args, 'manifest', None)
         confirm = not (hasattr(args, 'yes') and args.yes)
         results = download_tcia(cohort_list, args.output,
-                                args.all, download_images, unzip, confirm)
+                                args.all, download_images, manifest_only, manifest_path, unzip, confirm)
 
     # Summary
     successful = sum(results.values())

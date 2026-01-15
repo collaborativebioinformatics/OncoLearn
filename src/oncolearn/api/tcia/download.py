@@ -25,6 +25,7 @@ def download_cohort(
     cohort_code: str,
     output_dir: str = None,
     download_images: bool = False,
+    manifest_path: str = None,
     unzip: bool = True,
     verbose: bool = True,
     confirm: bool = True
@@ -36,6 +37,7 @@ def download_cohort(
         cohort_code: Cohort code (e.g., 'BRCA')
         output_dir: Optional output directory
         download_images: If True, run nbia-data-retriever to download images
+        manifest_path: Path to existing manifest file (skips manifest download)
         unzip: Whether to extract gzipped files after download
         verbose: Print progress messages
         confirm: If True, ask for confirmation before downloading
@@ -51,21 +53,41 @@ def download_cohort(
         if verbose:
             print(f"Downloading {cohort_code}...")
 
-        # Check if cohort has any datasets
-        if not cohort.datasets:
-            if verbose:
-                print(f"  ⚠ {cohort_code}: No manifests available")
-            return False
+        # If using existing manifest, only download images
+        if manifest_path:
+            if not download_images:
+                if verbose:
+                    print(
+                        f"  ⚠ {cohort_code}: --manifest specified but images not requested")
+                return False
 
-        # Download all datasets for this cohort
-        cohort.download(
-            output_dir=output_dir,
-            download_all=True,
-            download_images=download_images,
-            extract=unzip,
-            verbose=verbose,
-            confirm=confirm
-        )
+            # Download images using provided manifest
+            cohort.download(
+                output_dir=output_dir,
+                download_all=False,
+                download_images=True,
+                manifest_path=manifest_path,
+                extract=unzip,
+                verbose=verbose,
+                confirm=confirm
+            )
+        else:
+            # Check if cohort has any datasets
+            if not cohort.datasets:
+                if verbose:
+                    print(f"  ⚠ {cohort_code}: No manifests available")
+                return False
+
+            # Download manifest and optionally images
+            cohort.download(
+                output_dir=output_dir,
+                download_all=True,
+                download_images=download_images,
+                manifest_path=None,
+                extract=unzip,
+                verbose=verbose,
+                confirm=confirm
+            )
 
         if verbose:
             print(f"  [OK] {cohort_code}: Complete")
@@ -87,6 +109,7 @@ def download_cohorts(
     cohorts: list[str],
     output_dir: str = None,
     download_images: bool = False,
+    manifest_path: str = None,
     unzip: bool = True,
     verbose: bool = True,
     confirm: bool = True
@@ -98,6 +121,7 @@ def download_cohorts(
         cohorts: List of cohort codes
         output_dir: Optional base output directory
         download_images: If True, run nbia-data-retriever to download images
+        manifest_path: Path to existing manifest file (skips manifest download)
         unzip: Whether to extract gzipped files after download
         verbose: Print progress messages
         confirm: If True, ask for confirmation before downloading
@@ -110,7 +134,7 @@ def download_cohorts(
     for cohort_code in cohorts:
         cohort_upper = cohort_code.upper()
         success = download_cohort(
-            cohort_upper, output_dir, download_images, unzip, verbose, confirm)
+            cohort_upper, output_dir, download_images, manifest_path, unzip, verbose, confirm)
         results[cohort_upper] = success
 
     return results
@@ -119,6 +143,7 @@ def download_cohorts(
 def download_all(
     output_dir: str = None,
     download_images: bool = False,
+    manifest_path: str = None,
     unzip: bool = True,
     verbose: bool = True,
     confirm: bool = True
@@ -129,6 +154,7 @@ def download_all(
     Args:
         output_dir: Optional base output directory
         download_images: If True, run nbia-data-retriever to download images
+        manifest_path: Path to existing manifest file (skips manifest download)
         unzip: Whether to extract gzipped files after download
         verbose: Print progress messages
         confirm: If True, ask for confirmation before downloading
@@ -142,4 +168,4 @@ def download_all(
         print(f"Downloading all {len(available_cohorts)} cohorts...")
         print()
 
-    return download_cohorts(available_cohorts, output_dir, download_images, unzip, verbose, confirm)
+    return download_cohorts(available_cohorts, output_dir, download_images, manifest_path, unzip, verbose, confirm)

@@ -126,7 +126,7 @@ class TCIACohortBuilder(BaseCohortBuilder):
                     datasets=datasets
                 )
 
-            def download(self, output_dir=None, download_all=True, download_images=False, extract=True, verbose=True, confirm=True):
+            def download(self, output_dir=None, download_all=True, download_images=False, manifest_path=None, extract=True, verbose=True, confirm=True):
                 """
                 Download all datasets in the cohort.
 
@@ -134,6 +134,7 @@ class TCIACohortBuilder(BaseCohortBuilder):
                     output_dir: Base output directory
                     download_all: If True, download all datasets
                     download_images: If True, run nbia-data-retriever for .tcia files
+                    manifest_path: Path to existing manifest file (skips manifest download)
                     extract: Whether to extract gzipped files after download
                     verbose: Print progress messages
                     confirm: If True, ask for confirmation before downloading
@@ -143,6 +144,40 @@ class TCIACohortBuilder(BaseCohortBuilder):
 
                 output_path = Path(output_dir)
                 output_path.mkdir(parents=True, exist_ok=True)
+
+                # If using existing manifest, only download images
+                if manifest_path:
+                    from pathlib import Path as ManifestPath
+                    manifest_file = ManifestPath(manifest_path)
+
+                    if not manifest_file.exists():
+                        if verbose:
+                            print(
+                                f"  [ERROR] Manifest file not found: {manifest_path}")
+                        return
+
+                    # Determine which dataset this manifest belongs to
+                    # For now, use the first .tcia dataset or assume it's for the cohort
+                    tcia_datasets = [
+                        d for d in self.datasets if d.filename.endswith('.tcia')]
+
+                    if not tcia_datasets:
+                        if verbose:
+                            print(
+                                "  [ERROR] No .tcia datasets found in cohort configuration")
+                        return
+
+                    # Use the first TCIA dataset to download images
+                    dataset = tcia_datasets[0]
+                    images_dir = Path(f"data/tcia/{dataset.default_subdir}")
+
+                    if verbose:
+                        print(
+                            f"Downloading images using manifest: {manifest_path}")
+
+                    dataset._download_images(
+                        manifest_file, images_dir, verbose)
+                    return
 
                 if verbose:
                     print(
