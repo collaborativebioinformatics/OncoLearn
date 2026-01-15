@@ -328,7 +328,7 @@ class StandaloneTrainer:
                 checkpoint_path = self.output_dir / "best_model.pth"
                 self.save_checkpoint(checkpoint_path, epoch, is_best=True)
                 print(
-                    f"  ✓ New best model saved (acc={self.best_val_acc:.4f})")
+                    f"  [OK] New best model saved (acc={self.best_val_acc:.4f})")
             else:
                 self.epochs_without_improvement += 1
 
@@ -370,7 +370,7 @@ class StandaloneTrainer:
             save_path=self.output_dir / "training_curves.png"
         )
 
-        print(f"\n✓ Training complete! Results saved to {self.output_dir}")
+        print(f"\n[OK] Training complete! Results saved to {self.output_dir}")
 
     def save_checkpoint(self, path: Path, epoch: int, is_best: bool = False):
         """Save model checkpoint."""

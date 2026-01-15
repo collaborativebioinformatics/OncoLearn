@@ -1,0 +1,13 @@
+cohort:
+  code: LUAD
+  name: TCGA-LUAD
+  description: TCGA Lung Adenocarcinoma cohort with imaging data
+
+datasets:
+  - name: LUAD Imaging Manifest
+    description: TCGA lung adenocarcinoma imaging manifest
+    category: manifest
+    url: https://www.cancerimagingarchive.net/wp-content/uploads/doiJNLP-TCGA-LUAD-01-30-2017.tcia
+    filename: doiJNLP-TCGA-LUAD-01-30-2017.tcia
+    default_subdir: TCGA-LUAD
+    file_type: manifest

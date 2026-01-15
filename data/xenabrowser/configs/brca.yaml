@@ -1,0 +1,291 @@
+cohort:
+  code: BRCA
+  name: TCGA-BRCA
+  description: TCGA Breast Cancer cohort with multi-modal genomics data
+
+datasets:
+  - dataset_id: IDbrca/brca_peak_Log2Counts_dedup
+    download: https://tcgaatacseq.s3.us-east-1.amazonaws.com/download/brca%2Fbrca_peak_Log2Counts_dedup
+    samples: 74
+    version: 2018-07-04
+    data_type: ATAC-seq
+    unit: log2((count+5)PM)-qn
+    gene_mapping: https://tcgaatacseq.s3.us-east-1.amazonaws.com/download/brca%2Fbrca_peak.probeMap
+    raw_data: https://gdc.cancer.gov/about-data/publications/ATACseq-AWG
+    wrangling: Normalized count matrix a prior count of 5 is added to the raw counts, then put into a "counts per million", then log2 transformed, then quantile normalized, the result is embedded in the file BRCA.fwp.filter.non_overlapping.annotated.rds. We downloaded BRCA.fwp.filter.non_overlapping.annotated.rds from synapse, averaged the values in the file (i.e. log2((count+5)PM)-qn values) across all technical replicates and all biospecimens belong to the same TCGA sample. The result is the genomic matrix brca_peak_Log2Counts_dedup. Peak location information is from file BRCA.fwp.filter.non_overlapping.annotated.rds. Peak to gene mapping is defined as any peak summit locates within 500kp from a gene's TSS sites.
+    input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+
+  - dataset_id: brca/brca_peak_Log2Counts_dedup_hQlinkage
+    download: https://tcgaatacseq.s3.us-east-1.amazonaws.com/download/brca%2Fbrca_peak_Log2Counts_dedup_hQlinkage
+    samples: 74
+    version: 2018-07-04
+    data_type: ATAC-seq
+    unit: log2((count+5)PM)-qn
+    gene_mapping: https://tcgaatacseq.s3.us-east-1.amazonaws.com/download/brca%2Fbrca_enhencer.probeMap
+    raw_data: https://gdc.cancer.gov/about-data/publications/ATACseq-AWG
+    wrangling: > 
+      Normalized count matrix: a prior count of 5 is added to the raw counts, then put into a "counts per million", then log2 transformed, then quantile normalized, the result is embedded in the file BRCA.fwp.filter.non_overlapping.annotated.rds. We downloaded BRCA.fwp.filter.non_overlapping.annotated.rds from synapse, averaged the values in the file (i.e. log2(count+5)-qn values) across all technical replicates and all biospecimens belong to the same TCGA sample. The result is the genomic matrix file brca_peak_Log2Counts_dedup_hQlinkage.
+      Peak locations are from file BRCA.fwp.filter.non_overlapping.annotated.rds. Enhancer peak to gene linkage is from https://gdc.cancer.gov/about-data/publications/ATACseq-AWG. The peak to gene mapping is the predicted peak-gene links, excluded promoters to be conservative.
+    input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+
+  - dataset_id: brca/brca_peak_Log2Counts_dedup_promoter
+    download: https://tcgaatacseq.s3.us-east-1.amazonaws.com/download/brca%2Fbrca_peak_Log2Counts_dedup_promoter
+    samples: 74
+    version: 2018-07-05
+    data_type: ATAC-seq
+    unit: log2((count+5)PM)-qn
+    gene_mapping: https://tcgaatacseq.s3.us-east-1.amazonaws.com/download/brca%2Fbrca_promoter.probeMap
+    raw_data: https://gdc.cancer.gov/about-data/publications/ATACseq-AWG
+    wrangling: >
+      Normalized count matrix: a prior count of 5 is added to the raw counts, then put into a "counts per million", then log2 transformed, then quantile normalized, the result is embedded in the file BRCA.fwp.filter.non_overlapping.annotated.rds. We downloaded BRCA.fwp.filter.non_overlapping.annotated.rds from synapse, averaged the values in the file (i.e. log2((count+5)PM)-qn values) across all technical replicates and all biospecimens belong to the same TCGA sample. The result is the genomic matrix file brca_peak_Log2Counts_dedup_promoter.
+      Promoters are defined as in -1000 to 100bp from a gene's TSS sites. Promoter peaks are those peaks whose summit locates in the promoter region. Peak location is from file BRCA.fwp.filter.non_overlapping.annotated.rds.
+    input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+
+  - dataset_id: TCGA-BRCA.allele_cnv_ascat2.tsv
+    download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-BRCA.allele_cnv_ascat2.tsv.gz
+    samples: 1082
+    version: 06-17-2024
+    data_type: copy_number
+    assembly: hg38
+    unit: copy number
+    author: Genomic Data Commons
+    raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+    wrangling: Chromosome location and segment mean data are presented.
+    input_data_format: Genomic Segment (i.e. genomicSegment)
+
+  - dataset_id: TCGA-BRCA.allele_cnv_ascat3.tsv
+    download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-BRCA.allele_cnv_ascat3.tsv.gz
+    samples: 1060
+    version: 06-17-2024
+    data_type: copy_number
+    assembly: hg38
+    unit: copy number
+    author: Genomic Data Commons
+    raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+    wrangling: Chromosome location and segment mean data are presented.
+    input_data_format: Genomic Segment (i.e. genomicSegment)
+
+  - dataset_id: TCGA-BRCA.segment_cnv_ascat-ngs.tsv
+    download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-BRCA.segment_cnv_ascat-ngs.tsv.gz
+    samples: 102
+    version: 04-12-2024
+    data_type: copy_number
+    assembly: hg38
+    unit: copy number
+    author: Genomic Data Commons
+    raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+    wrangling: Chromosome location and segment mean data are presented.
+    input_data_format: Genomic Segment (i.e. genomicSegment)
+
+  - dataset_id: TCGA-BRCA.masked_cnv_DNAcopy.tsv
+    download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-BRCA.masked_cnv_DNAcopy.tsv.gz
+    samples: 1111
+    version: 04-12-2024
+    data_type: copy_number
+    assembly: hg38
+    unit: copy number
+    author: Genomic Data Commons
+    raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+    wrangling: Chromosome location and segment mean data are presented.
+    input_data_format: Genomic Segment (i.e. genomicSegment)
+
+  - dataset_id: TCGA-BRCA.gene-level_absolute.tsv
+    download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-BRCA.gene-level_absolute.tsv.gz
+    samples: 1057
+    version: 04-12-2024
+    data_type: copy_number_gene_level
+    unit: copy number
+    gene_mapping: https://gdc-hub.s3.us-east-1.amazonaws.com/download/gencode.v36.annotation.gtf.gene.probemap
+    author: Genomic Data Commons
+    raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+    wrangling: Loaded data directly into Xena
+    input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+
+  - dataset_id: TCGA-BRCA.gene-level_ascat2.tsv
+    download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-BRCA.gene-level_ascat2.tsv.gz
+    samples: 1082
+    version: 04-18-2024
+    data_type: copy_number_gene_level
+    unit: copy number
+    gene_mapping: https://gdc-hub.s3.us-east-1.amazonaws.com/download/gencode.v36.annotation.gtf.gene.probemap
+    author: Genomic Data Commons
+    raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+    wrangling: Loaded data directly into Xena
+    input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+
+  - dataset_id: TCGA-BRCA.gene-level_ascat3.tsv
+    download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-BRCA.gene-level_ascat3.tsv.gz
+    samples: 1060
+    version: 04-18-2024
+    data_type: copy_number_gene_level
+    unit: copy number
+    gene_mapping: https://gdc-hub.s3.us-east-1.amazonaws.com/download/gencode.v36.annotation.gtf.gene.probemap
+    author: Genomic Data Commons
+    raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+    wrangling: Loaded data directly into Xena
+    input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+
+  - dataset_id: TCGA-BRCA.gene-level_ascat-ngs.tsv
+    download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-BRCA.gene-level_ascat-ngs.tsv.gz
+    samples: 102
+    version: 04-12-2024
+    data_type: copy_number_gene_level
+    unit: copy number
+    gene_mapping: https://gdc-hub.s3.us-east-1.amazonaws.com/download/gencode.v36.annotation.gtf.gene.probemap
+    author: Genomic Data Commons
+    raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+    wrangling: Loaded data directly into Xena
+    input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+
+  - dataset_id: brca/TCGA-BRCA.methylation450.tsv
+    download: https://tcgaatacseq.s3.us-east-1.amazonaws.com/download/brca%2FTCGA-BRCA.methylation450.tsv
+    samples: 890
+    version: 2018-07-02
+    data_type: DNA_methylation
+    unit: beta value
+    platform: Illumina Human Methylation 450
+    gene_mapping: https://tcgaatacseq.s3.us-east-1.amazonaws.com/download/brca%2Felmer.all.pairs.significant.probeMap
+    raw_data: https://gdc.cancer.gov/about-data/publications/ATACseq-AWG
+    wrangling: >
+      Beta_values are downloaded from GDC. Beta values from the same sample but from different vials/portions/analytes/aliquotes is averaged; beta_value from different samples is combined into genomicMatrix.
+      Probe to gene mapping is Elmer analysis performed on TCGA breast cancer samples using both supervised and unsupervised methods. Download BRCA_supervised_analaysis_molecular_subtypes_hg38_may_7.zip and BRCA_unsupervised_hg38.zip from synapse. Use all files getPair.*.pairs.significant.csv to generate probe to gene mapping.
+    input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+
+  - dataset_id: TCGA-BRCA.methylation27.tsv
+    download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-BRCA.methylation27.tsv.gz
+    samples: 343
+    version: 08-01-2024
+    data_type: DNA_methylation
+    unit: beta value
+    platform: Illumina Human Methylation 27
+    gene_mapping: https://gdc-hub.s3.us-east-1.amazonaws.com/download/HM27.hg38.manifest.gencode.v36.probeMap
+    author: Genomic Data Commons
+    raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+    wrangling: Beta_value from the same sample but from different vials/portions/analytes/aliquotes is averaged; beta_value from different samples is combined into genomicMatrix.
+    input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+
+  - dataset_id: TCGA-BRCA.methylation450.tsv
+    download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-BRCA.methylation450.tsv.gz
+    samples: 893
+    version: 08-01-2024
+    data_type: DNA_methylation
+    unit: beta value
+    platform: Illumina Human Methylation 450
+    gene_mapping: https://gdc-hub.s3.us-east-1.amazonaws.com/download/HM450.hg38.manifest.gencode.v36.probeMap
+    author: Genomic Data Commons
+    raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+    wrangling: Beta_value from the same sample but from different vials/portions/analytes/aliquotes is averaged; beta_value from different samples is combined into genomicMatrix.
+    input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+
+  - dataset_id: TCGA-BRCA.star_counts.tsv
+    download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-BRCA.star_counts.tsv.gz
+    samples: 1226
+    version: 05-20-2024
+    data_type: gene_expression_RNAseq
+    unit: log2(count+1)
+    platform: Illumina
+    gene_mapping: https://gdc-hub.s3.us-east-1.amazonaws.com/download/gencode.v36.annotation.gtf.gene.probemap
+    author: Genomic Data Commons
+    raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+    wrangling: Data from the same sample but from different vials/portions/analytes/aliquotes is averaged; all data is then log2(x+1) transformed.
+    input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+
+  - dataset_id: TCGA-BRCA.star_fpkm.tsv
+    download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-BRCA.star_fpkm.tsv.gz
+    samples: 1226
+    version: 05-20-2024
+    data_type: gene_expression_RNAseq
+    unit: log2(fpkm+1)
+    platform: Illumina
+    gene_mapping: https://gdc-hub.s3.us-east-1.amazonaws.com/download/gencode.v36.annotation.gtf.gene.probemap
+    author: Genomic Data Commons
+    raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+    wrangling: Data from the same sample but from different vials/portions/analytes/aliquotes is averaged; all data is then log2(x+1) transformed.
+    input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+
+  - dataset_id: TCGA-BRCA.star_fpkm-uq.tsv
+    download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-BRCA.star_fpkm-uq.tsv.gz
+    samples: 1226
+    version: 05-20-2024
+    data_type: gene_expression_RNAseq
+    unit: log2(fpkm-uq+1)
+    platform: Illumina
+    gene_mapping: https://gdc-hub.s3.us-east-1.amazonaws.com/download/gencode.v36.annotation.gtf.gene.probemap
+    author: Genomic Data Commons
+    raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+    wrangling: Data from the same sample but from different vials/portions/analytes/aliquotes is averaged; all data is then log2(x+1) transformed.
+    input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+
+  - dataset_id: TCGA-BRCA.star_tpm.tsv
+    download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-BRCA.star_tpm.tsv.gz
+    samples: 1226
+    version: 05-20-2024
+    data_type: gene_expression_RNAseq
+    unit: log2(tpm+1)
+    platform: Illumina
+    gene_mapping: https://gdc-hub.s3.us-east-1.amazonaws.com/download/gencode.v36.annotation.gtf.gene.probemap
+    author: Genomic Data Commons
+    raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+    wrangling: Data from the same sample but from different vials/portions/analytes/aliquotes is averaged; all data is then log2(x+1) transformed.
+    input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+
+  - dataset_id: brca/pam50
+    download: https://tcgaatacseq.s3.us-east-1.amazonaws.com/download/brca%2Fpam50
+    samples: 74
+    version: 2018-07-05
+    data_type: phenotype
+    input_data_format: ROWs (samples) x COLUMNs (identifiers) (i.e. clinicalMatrix)
+
+  - dataset_id: TCGA-BRCA.clinical.tsv
+    download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-BRCA.clinical.tsv.gz
+    samples: 1255
+    version: 09-07-2024
+    data_type: phenotype
+    author: Genomic Data Commons
+    raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-410
+    input_data_format: ROWs (samples) x COLUMNs (identifiers) (i.e. clinicalMatrix)
+
+  - dataset_id: TCGA-BRCA.survival.tsv
+    download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-BRCA.survival.tsv.gz
+    samples: 1232
+    version: 08-03-2024
+    data_type: phenotype
+    author: Genomic Data Commons
+    raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+    input_data_format: ROWs (samples) x COLUMNs (identifiers) (i.e. clinicalMatrix)
+
+  - dataset_id: TCGA-BRCA.protein.tsv
+    download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-BRCA.protein.tsv.gz
+    samples: 919
+    version: 09-07-2024
+    data_type: protein_expression
+    unit: normalized RPPA value
+    platform: rppa
+    author: Genomic Data Commons
+    raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-410
+    wrangling: value from different samples are combined into genomicMatrix
+    input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+
+  - dataset_id: TCGA-BRCA.somaticmutation_wxs.tsv
+    download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-BRCA.somaticmutation_wxs.tsv.gz
+    samples: 986
+    version: 08-01-2024
+    data_type: somatic_mutation
+    assembly: hg38
+    platform: Illumina
+    author: Genomic Data Commons
+    raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+    wrangling: Hugo_Symbol, Chromosome, Start_Position, End_Position, Reference_Allele, Tumor_Seq_Allele2, HGVSp_Short and Consequence data are renamed accordingly and presented; dna_vaf data is added and is calculated by t_alt_count / t_depth.
+    input_data_format: Variant by Position (i.e. mutationVector)
+
+  - dataset_id: TCGA-BRCA.mirna.tsv
+    download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-BRCA.mirna.tsv.gz
+    samples: 1202
+    version: 08-01-2024
+    data_type: stem_loop_expression
+    unit: log2(RPM+1)
+    platform: Illumina
+    author: Genomic Data Commons
+    raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+    wrangling: RPM Data from the same sample but from different vials/portions/analytes/aliquotes is averaged; all data is then log2(x+1) transformed.
+    input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)

@@ -1,0 +1,13 @@
+cohort:
+  code: PRAD
+  name: TCGA-PRAD
+  description: TCGA Prostate Adenocarcinoma cohort with imaging data
+
+datasets:
+  - name: PRAD Imaging Manifest
+    description: TCGA prostate cancer imaging manifest
+    category: manifest
+    url: https://www.cancerimagingarchive.net/wp-content/uploads/doiJNLP-Pz8ET39p.tcia
+    filename: doiJNLP-Pz8ET39p.tcia
+    default_subdir: TCGA-PRAD
+    file_type: manifest

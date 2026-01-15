@@ -22,6 +22,9 @@ Aryan Sharan Guda (aryanshg@andrew.cmu.edu), Seungjin Han (seungjih@andrew.cmu.e
   - [Option A: Docker Installation](#option-a-docker-installation-recommended)
   - [Option B: Local Installation](#option-b-local-installation)
   - [Recommended VSCode Extensions](#recommended-vscode-extensions)
+- [Data](#data)
+  - [Download from Xena Browser](#download-from-xena-browser-genomics-data)
+  - [Download from TCIA](#download-from-tcia-imaging-data)
 - [Documentation](#documentation)
 - [License](#license)
 - [AI Disclosure](#ai-disclosure)
@@ -35,12 +38,24 @@ Aryan Sharan Guda (aryanshg@andrew.cmu.edu), Seungjin Han (seungjih@andrew.cmu.e
    git clone https://github.com/collaborativebioinformatics/OncoLearn.git
    cd OncoLearn
    git submodule update --init --recursive
-   docker compose up -d
+   # For NVIDIA GPUs:
+   docker compose --profile nvidia up -d
+   # For AMD GPUs (native Linux):
+   docker compose --profile amd up -d
+   # For AMD GPUs (WSL2):
+   docker compose --profile amd-wsl up -d
    ```
 
 3. **Download sample data**:
    ```bash
-   docker compose exec dev bash ./scripts/data/download_tcga_brca.sh
+   # Download genomics data from Xena Browser
+   docker compose exec dev oncolearn download --xena --cohorts BRCA
+   
+   # Download imaging data from TCIA (manifest only)
+   docker compose exec dev oncolearn download --tcia --cohorts BRCA
+   
+   # Download imaging data from TCIA (manifest + images)
+   docker compose exec dev oncolearn download --tcia --cohorts BRCA --download-images
    ```
 
 4. **Start exploring** with the Jupyter notebooks in [`notebooks/data/`](notebooks/data/)
@@ -82,9 +97,20 @@ Docker provides a consistent development environment and eliminates dependency a
 
 3. **Start the environment**:
    ```bash
-   # Build and start the container
-   docker compose up -d
+   # For NVIDIA GPUs:
+   docker compose --profile nvidia up -d
+   
+   # For AMD GPUs (native Linux):
+   docker compose --profile amd up -d
+   
+   # For AMD GPUs (WSL2 on Windows):
+   docker compose --profile amd-wsl up -d
    ```
+   
+   > **Note**: The Docker setup includes GPU support for both NVIDIA and AMD GPUs. Choose the appropriate profile based on your hardware:
+   > - `nvidia`: For NVIDIA GPUs
+   > - `amd`: For AMD GPUs on native Linux
+   > - `amd-wsl`: For AMD GPUs on Windows Subsystem for Linux 2 (WSL2)
 
 4. **Open in VSCode Dev Container** (optional):
    - Install the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
@@ -97,14 +123,19 @@ Docker provides a consistent development environment and eliminates dependency a
 # Stop containers
 docker compose down
 
-# Rebuild after dependency changes
-docker compose build
+# Rebuild after dependency changes (use your GPU profile)
+docker compose --profile nvidia build  # or --profile amd or --profile amd-wsl
+docker compose --profile nvidia up -d  # or --profile amd or --profile amd-wsl
 
 # Execute commands in container
-docker compose exec dev bash
+docker compose exec dev bash  # NVIDIA
+docker compose exec dev-amd bash  # AMD (native Linux)
+docker compose exec dev-amd-wsl bash  # AMD (WSL2)
 
 # Add new Python packages
-docker compose exec dev uv add <package-name>
+docker compose exec dev uv add <package-name>  # NVIDIA
+docker compose exec dev-amd uv add <package-name>  # AMD (native Linux)
+docker compose exec dev-amd-wsl uv add <package-name>  # AMD (WSL2)
 
 # View running containers
 docker compose ps
@@ -159,6 +190,81 @@ For the best development experience, we recommend installing the following VSCod
 
 ---
 
+## Data
+
+OncoLearn provides a unified download script for acquiring cancer data from multiple sources:
+
+### Download from Xena Browser (Genomics Data)
+
+```bash
+# Download a single cohort (all data types)
+oncolearn download --xena --cohorts BRCA
+
+# Download and extract gzipped files
+oncolearn download --xena --cohorts BRCA --unzip
+
+# Download specific data category
+oncolearn download --xena --cohorts BRCA --category mutation
+
+# Download multiple cohorts
+oncolearn download --xena --cohorts BRCA,LUAD,ACC
+
+# Download all available cohorts
+oncolearn download --xena --all
+
+# List available cohorts
+oncolearn download --xena --list
+```
+
+**Available categories:** `clinical`, `mutation`, `cnv`, `mrna`, `mirna`, `protein`, `methylation`
+
+**Note:** By default, gzipped files are NOT automatically extracted. Use `--unzip` to extract them after download.
+
+#### Download from TCIA (Imaging Data)
+
+```bash
+# Download manifest file only
+oncolearn download --tcia --cohorts BRCA
+
+# Download manifest and images (requires nbia-data-retriever)
+oncolearn download --tcia --cohorts BRCA --download-images
+
+# Download multiple cohorts with images
+oncolearn download --tcia --cohorts BRCA,LUAD --download-images
+
+# List available cohorts
+oncolearn download --tcia --list
+```
+
+**Note:** The `--download-images` flag requires the [nbia-data-retriever](https://wiki.cancerimagingarchive.net/display/NBIA/NBIA+Data+Retriever+Command-Line+Interface+Guide) tool to be installed.
+
+### Docker Usage
+
+When using Docker, prefix commands with the container execution:
+
+```bash
+# NVIDIA GPU container
+docker compose exec dev oncolearn download --xena --cohorts BRCA
+
+# AMD GPU container
+docker compose exec dev-amd oncolearn download --tcia --cohorts BRCA --download-images
+```
+
+### Installation as a CLI Tool
+
+After installation, `oncolearn` is available as a command-line tool:
+
+```bash
+# Using uv (development)
+uv run oncolearn download --xena --cohorts BRCA
+
+# After pip install (production)
+pip install -e .
+oncolearn download --xena --cohorts BRCA
+```
+
+---
+
 ## Documentation
 
 Comprehensive guides and documentation are available in the [`docs/`](docs/) folder:
@@ -174,6 +280,9 @@ Comprehensive guides and documentation are available in the [`docs/`](docs/) fol
 - **`docs/`** - Project documentation and guides
 - **`notebooks/`** - Jupyter notebooks for data exploration and analysis
 - **`scripts/`** - Data download and preprocessing scripts
+  - **`download.py`** - Unified CLI for downloading data from Xena Browser and TCIA
+  - **`data/download_xena.py`** - Xena Browser download utilities
+  - **`data/download_tcia.py`** - TCIA download utilities
 - **`src/oncolearn/`** - Core Python package for cancer genomics analysis
 - **`src/multimodal/`** - Multimodal learning framework for integrating multi-omic data
 - **`configs/`** - Configuration files for training and testing

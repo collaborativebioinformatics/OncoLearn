@@ -1,0 +1,46 @@
+{
+  "name": "OncoLearn PyTorch Production (NVIDIA)",
+  "dockerComposeFile": "../../docker-compose.yml",
+  "service": "pytorch-prod-nvidia",
+  "runServices": ["pytorch-prod-nvidia"],
+  "workspaceFolder": "/workspace",
+
+  // Configure which extensions should be installed (minimal for production)
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "tamasfe.even-better-toml"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/workspace/.venv/bin/python",
+        "python.terminal.activateEnvironment": true,
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "ruff.path": ["/workspace/.venv/bin/ruff"],
+        "ruff.interpreter": ["/workspace/.venv/bin/python"]
+      }
+    }
+  },
+
+  // Expose TensorBoard port
+  "forwardPorts": [6006],
+  "portsAttributes": {
+    "6006": {
+      "label": "TensorBoard",
+      "onAutoForward": "notify"
+    }
+  },
+
+  // Keep container running
+  "shutdownAction": "stopCompose",
+
+  // Run as root
+  "remoteUser": "root",
+
+  // Features to add
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {}
+  }
+}

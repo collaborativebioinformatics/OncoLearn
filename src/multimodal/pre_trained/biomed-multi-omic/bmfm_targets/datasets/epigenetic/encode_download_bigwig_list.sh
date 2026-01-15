@@ -47,9 +47,9 @@ tail -n +2 "$DATA_FILE" | while IFS=$'\t' read -r CELL_LINE MEASUREMENT EXPERIME
 
     # Check if wget was successful
     if [ $? -eq 0 ]; then
-        echo "✓ Download successful."
+        echo "[OK] Download successful."
     else
-        echo "✗ Error downloading $FILE_ID. Please check the URL or your connection."
+        echo "[ERROR] Error downloading $FILE_ID. Please check the URL or your connection."
     fi
     echo "---"
 done

@@ -1,0 +1,13 @@
+cohort:
+  code: LUSC
+  name: TCGA-LUSC
+  description: TCGA Lung Squamous Cell Carcinoma cohort with imaging data
+
+datasets:
+  - name: LUSC Imaging Manifest
+    description: TCGA lung squamous cell cancer imaging manifest
+    category: manifest
+    url: https://www.cancerimagingarchive.net/wp-content/uploads/doiJNLP-TCGA-LUSC-01-30-2017.tcia
+    filename: doiJNLP-TCGA-LUSC-01-30-2017.tcia
+    default_subdir: TCGA-LUSC
+    file_type: manifest

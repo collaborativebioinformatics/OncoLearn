@@ -1165,8 +1165,8 @@ dependencies = [
     { name = "pillow" },
     { name = "plotly" },
     { name = "pydicom" },
-    { name = "pyreadr" },
     { name = "pyyaml" },
+    { name = "requests" },
     { name = "scikit-learn" },
     { name = "scipy" },
     { name = "seaborn" },
@@ -1205,7 +1205,6 @@ dev = [
     { name = "ipykernel" },
     { name = "ipywidgets" },
     { name = "oncolearn" },
-    { name = "rpy2" },
     { name = "ruff" },
 ]
 
@@ -1219,9 +1218,9 @@ requires-dist = [
     { name = "pillow", specifier = ">=12.1.0" },
     { name = "plotly", specifier = ">=6.5.1" },
     { name = "pydicom", specifier = ">=3.0.1" },
-    { name = "pyreadr", specifier = ">=0.5.4" },
     { name = "pytorch-triton-rocm", marker = "extra == 'rocm'", index = "https://download.pytorch.org/whl/rocm6.4", conflict = { package = "oncolearn", extra = "rocm" } },
     { name = "pyyaml", specifier = ">=6.0.3" },
+    { name = "requests", specifier = ">=2.32.5" },
     { name = "scikit-learn", specifier = ">=1.7.2" },
     { name = "scipy", specifier = ">=1.16.3" },
     { name = "seaborn", specifier = ">=0.13.2" },
@@ -1246,7 +1245,6 @@ dev = [
     { name = "ipykernel", specifier = ">=7.1.0" },
     { name = "ipywidgets", specifier = ">=8.1.8" },
     { name = "oncolearn", editable = "." },
-    { name = "rpy2", specifier = ">=3.6.4" },
     { name = "ruff", specifier = ">=0.14.11" },
 ]
 
@@ -1494,27 +1492,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pyreadr"
-version = "0.5.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pandas" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/1d/fe/90584d7f74bde81f57d44d640ead55c5f91c450ae47f569c803e138b5bc9/pyreadr-0.5.4.tar.gz", hash = "sha256:05b18cc830dceda3ef3d477bd8e50f072474e177f0cf67b6ad4fb3d7f3de11fd", size = 1292809, upload-time = "2025-11-25T16:40:14.191Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/51/6b/23c0cfa4bc7ca0f13d3643a939fdcb22172fa71968d62c73947e44b196cf/pyreadr-0.5.4-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:cae7b1588f2693c5bf6f4bc8b4dcffb87cdb184e38139fc587eb8519ed4e14b4", size = 318023, upload-time = "2025-11-25T16:39:48.226Z" },
-    { url = "https://files.pythonhosted.org/packages/3b/1d/b84fd46681359d2ffa092498d4a493b661bc2a77e8b19d02b5c60e3f6daf/pyreadr-0.5.4-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:f8698fb9c7f282a5b74f0c688f41830fde37cb1e2ff924dc8e5c94b16be6c0e4", size = 318263, upload-time = "2025-11-25T16:39:49.816Z" },
-    { url = "https://files.pythonhosted.org/packages/96/b7/b182d5ac9a73fa67a92d7c6785e4578653b633713fdbba7d4b534dc2418e/pyreadr-0.5.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:ada87f4c33267babf3f974d7e8a74d01b38c23f16441375323f9d7378abd3b6e", size = 776796, upload-time = "2025-11-25T16:39:51.377Z" },
-    { url = "https://files.pythonhosted.org/packages/6d/2e/6277d370feebbe99f992ee3e409480e86715f34e52b5eb0383eddd1e5e7f/pyreadr-0.5.4-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:5faf24517615bb8d30e7cc8a684a562f66496e415348823bf1f5f9fff7a39607", size = 776199, upload-time = "2025-11-25T16:39:52.653Z" },
-    { url = "https://files.pythonhosted.org/packages/22/79/d69ab3a1f608255ef669dc0810918de3cd72994a43a763092c0e13f03d13/pyreadr-0.5.4-cp312-cp312-win_amd64.whl", hash = "sha256:d0a5251cb2c36a7c72fffc689789d16d7d9f25ed28bd01e1ab35fc4ef66ef642", size = 2350540, upload-time = "2025-11-25T16:39:54.343Z" },
-    { url = "https://files.pythonhosted.org/packages/29/b9/8d538b79a67b40619381e2b5b56965ebaf3d74c50ac986adafe395a766f8/pyreadr-0.5.4-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:9390ca0cdb99bc72d3125bbb28bf36a31d1ba8cd07d7512cd522e5630656e5be", size = 317921, upload-time = "2025-11-25T16:39:55.962Z" },
-    { url = "https://files.pythonhosted.org/packages/28/02/722aaacb71bcec5eaf23718cd1de489ef82852f62a62214fca7cfc68a89f/pyreadr-0.5.4-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:53410aef1b517e814aedfc6f6dc25d5c6ff9ed07961971f5c7ef83e96846d1e7", size = 318134, upload-time = "2025-11-25T16:39:57.084Z" },
-    { url = "https://files.pythonhosted.org/packages/56/ec/6d3a1a6699ec85cfec0f7744a2ae299f359b581035c007cf7082df99b348/pyreadr-0.5.4-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:63fd4db6b279b9dd909d333fe441d001a5d199558aadf75b3e69d22027815fc7", size = 775512, upload-time = "2025-11-25T16:39:58.323Z" },
-    { url = "https://files.pythonhosted.org/packages/f9/6b/f7247630c56c5bd31cbde96a1e8de14a50f87959a5abaa7cf709edec0bef/pyreadr-0.5.4-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:6564c003792c281ae49739f1938a146708640aacb7f97b04c7b47d6f86467f7a", size = 775013, upload-time = "2025-11-25T16:39:59.741Z" },
-    { url = "https://files.pythonhosted.org/packages/e0/a9/430b0cc0f32e1d3fada1a5d6b07da187cd0be1dee9f7d43432482021e115/pyreadr-0.5.4-cp313-cp313-win_amd64.whl", hash = "sha256:ea541cc5248e0792a93caa1d79aea83a52561a8de72bb01a395c28bf352c4c6c", size = 2350499, upload-time = "2025-11-25T16:40:01.413Z" },
-]
-
-[[package]]
 name = "python-dateutil"
 version = "2.9.0.post0"
 source = { registry = "https://pypi.org/simple" }
@@ -1669,51 +1646,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c9/74/b3ff8e6c8446842c3f5c837e9c3dfcfe2018ea6ecef224c710c85ef728f4/requests-2.32.5.tar.gz", hash = "sha256:dbba0bac56e100853db0ea71b82b4dfd5fe2bf6d3754a8893c3af500cec7d7cf", size = 134517, upload-time = "2025-08-18T20:46:02.573Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/1e/db/4254e3eabe8020b458f1a747140d32277ec7a271daf1d235b70dc0b4e6e3/requests-2.32.5-py3-none-any.whl", hash = "sha256:2462f94637a34fd532264295e186976db0f5d453d1cdd31473c85a6a161affb6", size = 64738, upload-time = "2025-08-18T20:46:00.542Z" },
-]
-
-[[package]]
-name = "rpy2"
-version = "3.6.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "packaging", marker = "sys_platform == 'win32' or (extra == 'extra-9-oncolearn-cpu' and extra == 'extra-9-oncolearn-cu128') or (extra == 'extra-9-oncolearn-cpu' and extra == 'extra-9-oncolearn-cu130') or (extra == 'extra-9-oncolearn-cpu' and extra == 'extra-9-oncolearn-rocm') or (extra == 'extra-9-oncolearn-cu128' and extra == 'extra-9-oncolearn-cu130') or (extra == 'extra-9-oncolearn-cu128' and extra == 'extra-9-oncolearn-rocm') or (extra == 'extra-9-oncolearn-cu130' and extra == 'extra-9-oncolearn-rocm')" },
-    { name = "rpy2-rinterface" },
-    { name = "rpy2-robjects" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/df/ba/393d5aaf21204d7678e59f7e7cd54d9a929d5f7ad8218f172100c8c7a6c8/rpy2-3.6.4.tar.gz", hash = "sha256:a24e8dda5c5ff8cbd2b8ebd1ccf6f1a5a0a576623700cf91e2cce98d41a79fd3", size = 53247, upload-time = "2025-09-26T00:31:37.986Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/09/93/d49eccd6662ff5cec439f9de716e6520c990cec031fcdd8d08e7fd530681/rpy2-3.6.4-py3-none-any.whl", hash = "sha256:edf437d6637b89311f860fb3e44144ea5eff286a65c48645805833baff090621", size = 9895, upload-time = "2025-09-26T00:31:36.841Z" },
-]
-
-[[package]]
-name = "rpy2-rinterface"
-version = "3.6.3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "cffi" },
-    { name = "packaging", marker = "sys_platform == 'win32' or (extra == 'extra-9-oncolearn-cpu' and extra == 'extra-9-oncolearn-cu128') or (extra == 'extra-9-oncolearn-cpu' and extra == 'extra-9-oncolearn-cu130') or (extra == 'extra-9-oncolearn-cpu' and extra == 'extra-9-oncolearn-rocm') or (extra == 'extra-9-oncolearn-cu128' and extra == 'extra-9-oncolearn-cu130') or (extra == 'extra-9-oncolearn-cu128' and extra == 'extra-9-oncolearn-rocm') or (extra == 'extra-9-oncolearn-cu130' and extra == 'extra-9-oncolearn-rocm')" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/ff/2a/6ced3b62a9cbfd1f3c24f7005f6eca492d906a4b6a6d56d097a116f14539/rpy2_rinterface-3.6.3.tar.gz", hash = "sha256:477bc2f51d007ad1b8567c5d4ba1af0f59951686ee7f10576a06d0834de5776f", size = 79406, upload-time = "2025-09-04T22:50:50.048Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/cb/69/a24661f9ebdcd1d20ab7dd30a7d360437f19eb2446cbdb1bb3e651a9ff8d/rpy2_rinterface-3.6.3-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:830c6a636d1ad42abcd8f8ba096975d42bfcf05b396dfaf4ff3c9e59ae182881", size = 173483, upload-time = "2025-09-04T22:52:33.545Z" },
-    { url = "https://files.pythonhosted.org/packages/d8/d4/d06dea263670ba7938bd01c00de2ace3da4e9730b8a0becf08c7c8574e69/rpy2_rinterface-3.6.3-cp312-cp312-win_amd64.whl", hash = "sha256:c79572bb205f4eb19d51b81395f0370f7ea793e74352da1ed63b25d9f9970fd8", size = 174533, upload-time = "2025-09-04T22:53:31.954Z" },
-    { url = "https://files.pythonhosted.org/packages/72/ee/0c5774b75862b148ae9e0f97feed2b6abf899c652f0df8cc5556c149f6dc/rpy2_rinterface-3.6.3-cp313-cp313-macosx_10_13_universal2.whl", hash = "sha256:62c6bc4a4566d4cd227a377c95c2a2be0e30bfb7b9ed3d5bea58e1c4cdfdf024", size = 173477, upload-time = "2025-09-04T22:52:34.57Z" },
-    { url = "https://files.pythonhosted.org/packages/d8/0e/f0463f33815875e3b7da58c6f13df1d4e416d4abe57aa9261a31910ef6ca/rpy2_rinterface-3.6.3-cp313-cp313-win_amd64.whl", hash = "sha256:b6eb511a07e30d7253b6fc401c14dbc9cc94efd70abdaa421f5101654c012d68", size = 174531, upload-time = "2025-09-04T22:53:32.97Z" },
-]
-
-[[package]]
-name = "rpy2-robjects"
-version = "3.6.3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "jinja2" },
-    { name = "packaging", marker = "sys_platform == 'win32' or (extra == 'extra-9-oncolearn-cpu' and extra == 'extra-9-oncolearn-cu128') or (extra == 'extra-9-oncolearn-cpu' and extra == 'extra-9-oncolearn-cu130') or (extra == 'extra-9-oncolearn-cpu' and extra == 'extra-9-oncolearn-rocm') or (extra == 'extra-9-oncolearn-cu128' and extra == 'extra-9-oncolearn-cu130') or (extra == 'extra-9-oncolearn-cu128' and extra == 'extra-9-oncolearn-rocm') or (extra == 'extra-9-oncolearn-cu130' and extra == 'extra-9-oncolearn-rocm')" },
-    { name = "rpy2-rinterface" },
-    { name = "tzlocal" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/01/58/107252dab2d342eb77bd84d672abc6ecb57428758e251cfccf841c4b6a69/rpy2_robjects-3.6.3.tar.gz", hash = "sha256:731aa1a4905c4b25c0564d72cbfd85f9230102f989e7a22515885e91d4df3d40", size = 105849, upload-time = "2025-09-26T00:31:27.792Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/94/af/a794c935ddd3dd8b47a8931e0c8cee1b756ff983db288284786ad29a8bf8/rpy2_robjects-3.6.3-py3-none-any.whl", hash = "sha256:de58c7126dbcd66c4692e7aef91d3cc57a96134828d37a268669f78ee64b974d", size = 125862, upload-time = "2025-09-26T00:31:26.623Z" },
 ]
 
 [[package]]
@@ -2326,18 +2258,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/5e/a7/c202b344c5ca7daf398f3b8a477eeb205cf3b6f32e7ec3a6bac0629ca975/tzdata-2025.3.tar.gz", hash = "sha256:de39c2ca5dc7b0344f2eba86f49d614019d29f060fc4ebc8a417896a620b56a7", size = 196772, upload-time = "2025-12-13T17:45:35.667Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c7/b0/003792df09decd6849a5e39c28b513c06e84436a54440380862b5aeff25d/tzdata-2025.3-py2.py3-none-any.whl", hash = "sha256:06a47e5700f3081aab02b2e513160914ff0694bce9947d6b76ebd6bf57cfc5d1", size = 348521, upload-time = "2025-12-13T17:45:33.889Z" },
-]
-
-[[package]]
-name = "tzlocal"
-version = "5.3.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "tzdata", marker = "sys_platform == 'win32' or (extra == 'extra-9-oncolearn-cpu' and extra == 'extra-9-oncolearn-cu128') or (extra == 'extra-9-oncolearn-cpu' and extra == 'extra-9-oncolearn-cu130') or (extra == 'extra-9-oncolearn-cpu' and extra == 'extra-9-oncolearn-rocm') or (extra == 'extra-9-oncolearn-cu128' and extra == 'extra-9-oncolearn-cu130') or (extra == 'extra-9-oncolearn-cu128' and extra == 'extra-9-oncolearn-rocm') or (extra == 'extra-9-oncolearn-cu130' and extra == 'extra-9-oncolearn-rocm')" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/8b/2e/c14812d3d4d9cd1773c6be938f89e5735a1f11a9f184ac3639b93cef35d5/tzlocal-5.3.1.tar.gz", hash = "sha256:cceffc7edecefea1f595541dbd6e990cb1ea3d19bf01b2809f362a03dd7921fd", size = 30761, upload-time = "2025-03-05T21:17:41.549Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c2/14/e2a54fabd4f08cd7af1c07030603c3356b74da07f7cc056e600436edfa17/tzlocal-5.3.1-py3-none-any.whl", hash = "sha256:eb1a66c3ef5847adf7a834f1be0800581b683b5608e74f86ecbcef8ab91bb85d", size = 18026, upload-time = "2025-03-05T21:17:39.857Z" },
 ]
 
 [[package]]

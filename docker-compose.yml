@@ -1,11 +1,32 @@
+# Shared configuration using YAML anchors
+x-common-config: &common-config
+  env_file: .docker.env
+  volumes:
+    - .:/workspace
+    - uv-cache:/root/.cache/uv
+    - renv-cache:/workspace/renv
+  environment:
+    - LLVM_CONFIG=/usr/bin/llvm-config-20
+    - CMAKE_PREFIX_PATH=/usr/lib/llvm-20
+    - JAVA_TOOL_OPTIONS=-Djava.awt.headless=true
+  stdin_open: true
+  tty: true
+
+x-common-build: &common-build
+  context: .
+  dockerfile: Dockerfile
+
 services:
-  # Main development environment with Python + R
-  dev:
+  # Main development environment with Python + R (NVIDIA GPU)
+  dev-nvidia:
+    <<: *common-config
+    profiles: ["dev-nvidia"]
     build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: cancer-biomarker-dev
-    # Enable GPU access
+      <<: *common-build
+      args:
+        GPU_EXTRA: cu130
+      target: dev
+    container_name: cancer-biomarker-dev-nvidia
     deploy:
       resources:
         reservations:
@@ -13,48 +34,118 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
+
+  # Main development environment with Python + R (AMD GPU - Native Linux)
+  dev-amd:
+    <<: *common-config
+    profiles: ["dev-amd"]
+    build:
+      <<: *common-build
+      args:
+        GPU_EXTRA: rocm
+      target: dev
+    container_name: cancer-biomarker-dev-amd
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - video
+
+  # Main development environment with Python + R (AMD GPU - WSL2)
+  dev-amd-wsl:
+    <<: *common-config
+    profiles: ["dev-amd-wsl"]
+    build:
+      <<: *common-build
+      args:
+        GPU_EXTRA: rocm
+      target: dev
+    container_name: cancer-biomarker-dev-amd-wsl
     volumes:
-      # Mount project files for live development
       - .:/workspace
-      # Persist Python packages
       - uv-cache:/root/.cache/uv
-      # Persist R packages
       - renv-cache:/workspace/renv
+      - /usr/lib/wsl:/usr/lib/wsl:ro  # WSL GPU libraries
     environment:
       - LLVM_CONFIG=/usr/bin/llvm-config-20
       - CMAKE_PREFIX_PATH=/usr/lib/llvm-20
-      # NVIDIA environment variables
-      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-    # Keep container running - VSCode Dev Containers handles everything
-    stdin_open: true
-    tty: true
+      - LD_LIBRARY_PATH=/usr/lib/wsl/lib
+    devices:
+      - /dev/dxg  # WSL2 DirectX Graphics device for GPU passthrough
+    group_add:
+      - video
 
-  # Example: Database service (PostgreSQL) - uncomment if needed
-  # db:
-  #   image: postgres:15-alpine
-  #   container_name: cancer-biomarker-db
-  #   environment:
-  #     POSTGRES_USER: biomarker
-  #     POSTGRES_PASSWORD: biomarker
-  #     POSTGRES_DB: cancer_data
-  #   volumes:
-  #     - postgres-data:/var/lib/postgresql/data
-  #   ports:
-  #     - "5432:5432"
+  # Main development environment with Python + R (CPU only)
+  dev-cpu:
+    <<: *common-config
+    profiles: ["dev-cpu"]
+    build:
+      <<: *common-build
+      args:
+        GPU_EXTRA: cpu
+      target: dev
+    container_name: cancer-biomarker-dev-cpu
 
-  # Example: MLflow tracking server - uncomment if needed
-  # mlflow:
-  #   image: ghcr.io/mlflow/mlflow:latest
-  #   container_name: cancer-biomarker-mlflow
-  #   ports:
-  #     - "5000:5000"
-  #   volumes:
-  #     - mlflow-data:/mlflow
-  #   command: mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:///mlflow/mlflow.db --default-artifact-root /mlflow/artifacts
+  # Production PyTorch environment (NVIDIA GPU - Optimized Size)
+  pytorch-prod-nvidia:
+    env_file: .docker.env
+    profiles: ["prod-nvidia"]
+    build:
+      <<: *common-build
+      args:
+        GPU_EXTRA: cu130
+      target: pytorch-prod
+    container_name: cancer-biomarker-pytorch-prod-nvidia
+    volumes:
+      - ./configs:/workspace/configs:ro
+      - ./data:/workspace/data:ro
+      - ./models:/workspace/models
+      - ./outputs:/workspace/outputs
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
 
+  # Production PyTorch environment (AMD GPU - Optimized Size)
+  pytorch-prod-amd:
+    env_file: .docker.env
+    profiles: ["prod-amd"]
+    build:
+      <<: *common-build
+      args:
+        GPU_EXTRA: rocm
+      target: pytorch-prod
+    container_name: cancer-biomarker-pytorch-prod-amd
+    volumes:
+      - ./configs:/workspace/configs:ro
+      - ./data:/workspace/data:ro
+      - ./models:/workspace/models
+      - ./outputs:/workspace/outputs
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - video
+
+  # Production PyTorch environment (CPU only - Optimized Size)
+  pytorch-prod-cpu:
+    env_file: .docker.env
+    profiles: ["prod-cpu"]
+    build:
+      <<: *common-build
+      args:
+        GPU_EXTRA: cpu
+      target: pytorch-prod
+    container_name: cancer-biomarker-pytorch-prod-cpu
+    volumes:
+      - ./configs:/workspace/configs:ro
+      - ./data:/workspace/data:ro
+      - ./models:/workspace/models
+      - ./outputs:/workspace/outputs
+    
 volumes:
   uv-cache:
   renv-cache:
-  # postgres-data:
-  # mlflow-data:

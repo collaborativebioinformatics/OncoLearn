@@ -95,7 +95,7 @@ def main():
     # Export job
     job.export_job(args.output_dir)
 
-    print(f"✓ Job created and exported to {args.output_dir}/{args.job_name}")
+    print(f"[OK] Job created and exported to {args.output_dir}/{args.job_name}")
     print("\nTo submit the job:")
     print("  1. Start NVFlare server and clients")
     print(

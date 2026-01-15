@@ -279,7 +279,7 @@ class NVFlareTrainer:
         if accuracy > self.best_local_accuracy:
             self.best_local_accuracy = accuracy
             torch.save(model_weights, self.model_path)
-            print(f"✓ Saved best local model (acc={accuracy:.4f}) to {self.model_path}")
+            print(f"[OK] Saved best local model (acc={accuracy:.4f}) to {self.model_path}")
 
 
 def main():

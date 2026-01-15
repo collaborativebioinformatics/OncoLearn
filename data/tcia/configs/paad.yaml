@@ -1,0 +1,6 @@
+cohort:
+  code: PAAD
+  name: TCGA-PAAD
+  description: TCGA Pancreatic Adenocarcinoma cohort (no TCIA manifests available)
+
+datasets: []
