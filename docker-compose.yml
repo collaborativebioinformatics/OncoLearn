@@ -8,6 +8,7 @@ x-common-config: &common-config
   environment:
     - LLVM_CONFIG=/usr/bin/llvm-config-20
     - CMAKE_PREFIX_PATH=/usr/lib/llvm-20
+    - JAVA_TOOL_OPTIONS=-Djava.awt.headless=true
   stdin_open: true
   tty: true
 

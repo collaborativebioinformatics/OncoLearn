@@ -42,7 +42,7 @@ class XenaCohortBuilder(BaseCohortBuilder):
         Parse a category string to DataCategory enum.
         
         Args:
-            category_str: String representation of category (e.g., "mrna_seq")
+            category_str: String representation of category (e.g., "mrna_seq", "ATAC-seq", "gene expression RNAseq")
             
         Returns:
             DataCategory enum value
@@ -50,14 +50,34 @@ class XenaCohortBuilder(BaseCohortBuilder):
         category_map = {
             "image": DataCategory.IMAGE,
             "clinical": DataCategory.CLINICAL,
+            "phenotype": DataCategory.CLINICAL,
             "mrna_seq": DataCategory.MRNA_SEQ,
+            "mrna": DataCategory.MRNA_SEQ,
+            "gene expression rnaseq": DataCategory.MRNA_SEQ,
+            "gene_expression_rnaseq": DataCategory.MRNA_SEQ,
             "dna_seq": DataCategory.DNA_SEQ,
+            "dna": DataCategory.DNA_SEQ,
             "mirna_seq": DataCategory.MIRNA_SEQ,
+            "mirna": DataCategory.MIRNA_SEQ,
+            "stem loop expression": DataCategory.MIRNA_SEQ,
+            "stem_loop_expression": DataCategory.MIRNA_SEQ,
             "protein": DataCategory.PROTEIN,
+            "protein expression": DataCategory.PROTEIN,
+            "protein_expression": DataCategory.PROTEIN,
             "methylation": DataCategory.METHYLATION,
+            "dna methylation": DataCategory.METHYLATION,
+            "dna_methylation": DataCategory.METHYLATION,
             "cnv": DataCategory.CNV,
+            "copy number": DataCategory.CNV,
+            "copy_number": DataCategory.CNV,
+            "copy number (gene-level)": DataCategory.CNV,
+            "copy_number_gene_level": DataCategory.CNV,
             "mutation": DataCategory.MUTATION,
+            "somatic mutation": DataCategory.MUTATION,
+            "somatic_mutation": DataCategory.MUTATION,
+            "somatic mutation (snps and small indels)": DataCategory.MUTATION,
             "snp": DataCategory.SNP,
+            "atac-seq": DataCategory.GENOMICS,
             "transcriptome": DataCategory.TRANSCRIPTOME,
             "metabolomics": DataCategory.METABOLOMICS,
             "proteomics": DataCategory.PROTEOMICS,
@@ -72,6 +92,9 @@ class XenaCohortBuilder(BaseCohortBuilder):
         """
         Build a single dataset from configuration.
         
+        Supports both old format (name, url, category, filename) and 
+        new format (dataset_id, download, data_type, gene_mapping, raw_data).
+        
         Args:
             dataset_config: Dictionary containing dataset configuration
             cohort_code: Cohort code (e.g., "BRCA")
@@ -79,16 +102,55 @@ class XenaCohortBuilder(BaseCohortBuilder):
         Returns:
             Configured XenaDataset instance
         """
-        category = self._parse_category(dataset_config["category"])
-        
-        return XenaDataset(
-            name=dataset_config["name"],
-            description=dataset_config["description"],
-            category=category,
-            url=dataset_config["url"],
-            filename=dataset_config["filename"],
-            default_subdir=dataset_config.get("default_subdir", f"TCGA-{cohort_code}")
-        )
+        # Check if this is the new format (has dataset_id and download)
+        if "dataset_id" in dataset_config and "download" in dataset_config:
+            # New format
+            dataset_id = dataset_config["dataset_id"]
+            url = dataset_config["download"]
+            
+            # Extract filename from download URL or dataset_id
+            if url.endswith('.gz'):
+                filename = url.split('/')[-1].replace('%2F', '_')
+            else:
+                # Use dataset_id as filename base
+                filename = dataset_id.split('/')[-1]
+                if not filename.endswith('.tsv'):
+                    filename = f"{filename}.tsv"
+            
+            # Parse category from data_type field
+            data_type = dataset_config.get("data_type", "clinical")
+            category = self._parse_category(data_type)
+            
+            # Use dataset_id as name
+            name = dataset_id
+            
+            # Use wrangling or data_type as description
+            description = dataset_config.get("wrangling", data_type)
+            if isinstance(description, str) and len(description) > 200:
+                description = description[:200] + "..."
+            
+            return XenaDataset(
+                name=name,
+                description=description,
+                category=category,
+                url=url,
+                filename=filename,
+                default_subdir=f"TCGA-{cohort_code}",
+                gene_mapping_url=dataset_config.get("gene_mapping"),
+                raw_data_url=dataset_config.get("raw_data")
+            )
+        else:
+            # Old format (backwards compatibility)
+            category = self._parse_category(dataset_config["category"])
+            
+            return XenaDataset(
+                name=dataset_config["name"],
+                description=dataset_config["description"],
+                category=category,
+                url=dataset_config["url"],
+                filename=dataset_config["filename"],
+                default_subdir=dataset_config.get("default_subdir", f"TCGA-{cohort_code}")
+            )
     
     def build_from_file(self, yaml_file: Path) -> Cohort:
         """
@@ -121,7 +183,8 @@ class XenaCohortBuilder(BaseCohortBuilder):
                     datasets=datasets
                 )
             
-            def download(self, output_dir=None, download_all=True, extract=True):
+            def download(self, output_dir=None, download_all=True, extract=True, 
+                       download_mapping=False, download_raw=False):
                 if output_dir is None:
                     output_dir = f"data/xenabrowser/{cohort_info['name']}"
                 
@@ -158,7 +221,9 @@ class XenaCohortBuilder(BaseCohortBuilder):
                     # Download all datasets without individual confirmations
                     for dataset in self.datasets:
                         try:
-                            dataset.download(str(output_path), extract=extract, confirm=False)
+                            dataset.download(str(output_path), extract=extract, confirm=False,
+                                           download_mapping=download_mapping, 
+                                           download_raw=download_raw)
                         except Exception as e:
                             print(f"Error downloading {dataset.name}: {e}")
         

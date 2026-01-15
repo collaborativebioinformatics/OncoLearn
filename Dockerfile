@@ -148,6 +148,9 @@ ENV PATH="/workspace/.venv/bin:${PATH}"
 ENV LLVM_CONFIG=/usr/bin/llvm-config-20
 ENV CMAKE_PREFIX_PATH=/usr/lib/llvm-20
 
+# Force Java to run in headless mode (required for nbia-data-retriever in containers)
+ENV JAVA_TOOL_OPTIONS=-Djava.awt.headless=true
+
 # Install minimal runtime system dependencies
 # Note: Python comes from the venv, R runtime deps are minimal
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
