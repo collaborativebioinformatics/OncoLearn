@@ -1,9 +1,12 @@
-[submodule "NVFlare"]
-	path = submodules/NVFlare
-	url = https://github.com/NVIDIA/NVFlare.git
-[submodule "multimodal_data_fusion"]
+[submodule "submodules/multimodal_data_fusion"]
 	path = submodules/multimodal_data_fusion
 	url = https://github.com/AstraZeneca/multimodal_data_fusion.git
-[submodule "ultralytics"]
+[submodule "submodules/ultralytics"]
 	path = submodules/ultralytics
 	url = https://github.com/ultralytics/ultralytics.git
+[submodule "submodules/biomed-multi-omic"]
+	path = submodules/biomed-multi-omic
+	url = https://github.com/BiomedSciAI/biomed-multi-omic.git
+[submodule "submodules/wiki"]
+	path = submodules/wiki
+	url = https://github.com/collaborativebioinformatics/OncoLearn.wiki.git
