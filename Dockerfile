@@ -74,8 +74,6 @@ RUN mkdir -p /opt/pdc-client \
 # ============================================================================
 FROM python:3.12 AS python-builder
 
-ARG GPU_EXTRA
-
 ENV DEBIAN_FRONTEND=noninteractive
 ENV UV_CACHE_DIR=/workspace/.uv-cache
 ENV UV_PROJECT_ENVIRONMENT=/workspace/.venv
@@ -94,7 +92,7 @@ COPY pyproject.toml uv.lock ./
 COPY src/ ./src/
 
 # Install Python dependencies with cache mount
-RUN uv sync --verbose --extra ${GPU_EXTRA}
+RUN uv sync --verbose
 
 # ============================================================================
 # Stage 5: R Dependencies Builder
@@ -130,8 +128,6 @@ RUN --mount=type=cache,target=/workspace/.renv-cache,sharing=locked \
 # Stage 6: Dev Runtime Image
 # ============================================================================
 FROM buildpack-deps:jammy AS dev
-
-ARG GPU_EXTRA
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -212,6 +208,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 
 # Set Python environment variables
+ENV UV_CACHE_DIR=/workspace/.uv-cache
+ENV UV_PROJECT_ENVIRONMENT=/workspace/.venv
+ENV UV_NO_PROGRESS=0
+ENV UV_HTTP_TIMEOUT=300
 ENV VIRTUAL_ENV=/workspace/.venv
 ENV PATH="/workspace/.venv/bin:${PATH}"
 
@@ -226,6 +226,13 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 
 # Copy only Python virtual environment from python-builder stage
 COPY --from=python-builder /workspace/.venv /workspace/.venv
+
+# Copy dependency files
+COPY pyproject.toml uv.lock ./
+COPY src/ ./src/
+
+# Install UV dependencies
+RUN uv sync --verbose
 
 # Set working directory
 WORKDIR /workspace

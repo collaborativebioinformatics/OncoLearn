@@ -17,9 +17,11 @@ Usage:
 """
 
 from .builder import XenaCohortBuilder
+from .xena_cohort import XenaCohort
 from .xena_dataset import XenaDataset
 
 __all__ = [
     'XenaCohortBuilder',
+    'XenaCohort',
     'XenaDataset',
 ]
