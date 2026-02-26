@@ -29,13 +29,6 @@ class RNABERTEncoder(nn.Module):
         
         # Try to load biomed-multi-omic model
         try:
-            # Add local biomed-multi-omic to path
-            import sys
-            from pathlib import Path
-            biomed_path = Path(__file__).parent.parent.parent / "pre_trained" / "biomed-multi-omic"
-            if biomed_path.exists() and str(biomed_path) not in sys.path:
-                sys.path.insert(0, str(biomed_path))
-            
             # Try to import from biomed-multi-omic or bmfm_targets
             try:
                 # Try bmfm_targets package first
