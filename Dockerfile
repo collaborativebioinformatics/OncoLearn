@@ -87,6 +87,14 @@ ENV PATH="/workspace/.venv/bin:${PATH}"
 # Install uv (build tools already included in python:3.12)
 RUN pip install uv
 
+# Install libcurl for hic-straw compilation (multimodal requirement)
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    libcurl4-openssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /workspace
 
 # Copy dependency files
@@ -159,6 +167,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get install -y --no-install-recommends \
     ca-certificates \
     libgomp1 \
+    libcurl4 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy LLVM runtime from llvm-builder stage (exclude dev files to reduce size)
@@ -222,6 +231,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get install -y --no-install-recommends \
     ca-certificates \
     libgomp1 \
+    libcurl4 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy only Python virtual environment from python-builder stage
