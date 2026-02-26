@@ -8,7 +8,7 @@ from nvflare.job_config.api import FedJob
 from nvflare.job_config.script_runner import ScriptRunner
 
 import torch.nn as nn
-from src.models.gene_encoder import GeneSetMLPEncoder
+from multimodal.models.gene_encoder import GeneSetMLPEncoder
 
 
 def main():
@@ -110,7 +110,7 @@ def main():
 
     # 5) Client training script (Client API)
     #    NOTE: {i} expands to 1..n_clients in ScriptRunner.
-    train_script = "src/train/client_train.py"
+    train_script = "src/multimodal/train/client_train.py"
     # Use absolute paths to avoid path issues
     split_dir_abs = os.path.abspath(args.split_dir)
     data_root_abs = os.path.abspath(args.data_root)

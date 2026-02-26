@@ -17,13 +17,13 @@ from tqdm import tqdm
 
 from data.datamodule import TCGADataModule
 from data.labels import LabelManager
-from models import (
+from multimodal.models import (
     FTTransformerEncoder,
     GatedLateFusionClassifier,
     MRMGHierarchicalImageEncoder,
     RNABERTEncoder,
 )
-from utils import load_config, save_config, set_seed, setup_logging
+from multimodal.utils import load_config, save_config, set_seed, setup_logging
 
 logger = logging.getLogger(__name__)
 

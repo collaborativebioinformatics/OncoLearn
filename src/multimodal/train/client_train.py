@@ -19,14 +19,14 @@ import nvflare.client as flare
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from src.data.cohort import load_clinical_table, load_gene_set_table
-from src.data.datamodule import TCGAV1Dataset, TCGAV2Dataset, collate_fn_v1, collate_fn_v2, TCGADataModule
-from src.data.labels import LabelManager
-from src.models.fusion import GatedLateFusionClassifier
-from src.models.gene_encoder import GeneSetMLPEncoder, RNABERTEncoder
-from src.models.tab_encoder import FTTransformerEncoder
-from src.models.image_encoder import MRMGHierarchicalImageEncoder
-from src.utils import load_config, set_seed
+from data.cohort import load_clinical_table, load_gene_set_table
+from data.datamodule import TCGAV1Dataset, TCGAV2Dataset, collate_fn_v1, collate_fn_v2, TCGADataModule
+from data.labels import LabelManager
+from multimodal.models.fusion import GatedLateFusionClassifier
+from multimodal.models.gene_encoder import GeneSetMLPEncoder, RNABERTEncoder
+from multimodal.models.tab_encoder import FTTransformerEncoder
+from multimodal.models.image_encoder import MRMGHierarchicalImageEncoder
+from multimodal.utils import load_config, set_seed
 
 # Use print instead of logger for direct output
 class SimpleLogger:
