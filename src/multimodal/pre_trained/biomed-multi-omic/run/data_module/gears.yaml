@@ -1,5 +1,0 @@
-defaults:
- - base_seq_labeling
-
-_target_: bmfm_targets.datasets.perturbation.GearsDataModule
-perturbation_column_name: condition
