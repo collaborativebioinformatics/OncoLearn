@@ -16,10 +16,6 @@ dependencies = [
     "umap-learn>=0.5.9.post2",
     "llvmlite>=0.40.0,<0.46.0",
     "transformers>=4.57.3",
-    "pillow>=12.1.0",
-    "diffusers>=0.36.0",
-    "pydicom>=3.0.1",
-    "simpleitk>=2.5.3",
     "scipy>=1.13.3,<1.15.0",
     "pyyaml>=6.0.3",
     "requests>=2.32.5",
@@ -54,7 +50,17 @@ multimodal = [
     "bmfm-targets",
     "torch>=2.9.1",
     "torchvision>=0.24.1",
+    "pytorch-lightning>=2.1.0"
 ]
+image = [
+    "pillow>=12.1.0",
+    "pydicom>=3.0.1",
+    "simpleitk>=2.5.3",
+    "diffusers>=0.36.0"
+]
+
+cli = []
+
 
 [dependency-groups]
 dev = [
@@ -63,6 +69,7 @@ dev = [
     "ipywidgets>=8.1.8",
     "autopep8>=2.3.2",
     "ruff>=0.14.11",
+    "pytest>=8.0.0",
 ]
 
 [tool.uv]

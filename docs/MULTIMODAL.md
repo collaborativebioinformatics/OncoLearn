@@ -1,6 +1,6 @@
-# OncoLearn Multimodal Module — Code Documentation
+# OncoLearn Multimodal Architecture — Code Documentation
 
-This document describes the **multimodal learning framework** under `OncoLearn/src/multimodal`. It integrates genomics (gene expression), clinical (tabular), and **imaging (DICOM)** data for TCGA-BRCA cancer subtyping and staging. The pipeline achieves **around 80% performance** (e.g., accuracy/F1 on validation) for stage and subtype classification when trained with the provided setup.
+This document describes the **multimodal learning framework** under `OncoLearn/src/oncolearn`. It integrates genomics (gene expression), clinical (tabular), and **imaging (DICOM)** data for TCGA-BRCA cancer subtyping and staging. The pipeline achieves **around 80% performance** (e.g., accuracy/F1 on validation) for stage and subtype classification when trained with the provided setup.
 
 ---
 
@@ -136,18 +136,15 @@ For the simpler paired pipeline (`TCGAPairsDataset`): a CSV lists `case_id`, `la
 
 ### Location
 
-`data/` (relative to `src/multimodal`).
+`src/oncolearn/data/modalities/` and `src/oncolearn/data/multimodal.py`.
 
 ### Components
 
-| File | Purpose |
+| File/Modality | Purpose |
 |------|--------|
-| **cohort.py** | Load cohort index, clinical table, gene set table; detect imaging presence; select cohort with imaging. |
-| **labels.py** | **LabelManager:** stage/subtype label discovery and derivation; class weights for stage and subtype. |
-| **dicom_io.py** | DICOM read (with cache), parse `dicom_series` JSON, list series per patient, uniform/random slice sampling. |
-| **transforms.py** | **DICOMToTensor**, **ResizeDICOM**, **DICOMTransform:** normalize, resize 224×224, optional augmentation. |
-| **pairs_dataset.py** | **TCGAPairsDataset:** paired image + precomputed omics (`.npy`) from a split CSV; alternative pipeline. |
-| **datamodule.py** | **TCGADataModule:** train/val/test splits, **TCGAV1Dataset** (gene + clinical + image per patient/series), DataLoaders; collate with image sequence padding. |
+| **tabular** | `TabularDataModule`, dynamically loading API inputs via explicit parser objects (`XenabrowserParser`, etc.) and resolving sequences of numbers. |
+| **image** | `ImageDataModule`, leveraging lazy import guards linking standard PyDicom/PIL objects to load imaging frames. Transforms slices. |
+| **multimodal** | `MultimodalDataModule`, dynamically generating inner/outer dataset intersections of generic instantiated inputs via Builder pattern. |
 
 ### Dataset (imaging-included)
 
@@ -216,29 +213,23 @@ For the simpler paired pipeline (`TCGAPairsDataset`): a CSV lists `case_id`, `la
 ## Project Structure
 
 ```
-multimodal/
-├── data/
-│   ├── cohort.py          # Cohort loading, imaging cohort selection
-│   ├── datamodule.py      # TCGADataModule, TCGAV1Dataset, collate
-│   ├── dicom_io.py        # DICOM read, series listing, sampling
-│   ├── labels.py          # LabelManager (stage, subtype, weights)
-│   ├── pairs_dataset.py   # TCGAPairsDataset (image + omics from CSV)
-│   └── transforms.py      # DICOM transforms and augmentation
-├── src/
-│   ├── models/
-│   │   ├── __init__.py
-│   │   ├── fusion.py              # GatedLateFusionClassifier
-│   │   ├── gene_encoder.py       # RNABERTEncoder
-│   │   ├── tab_encoder.py        # FTTransformerEncoder
-│   │   ├── image_encoder.py      # MRMGHierarchicalImageEncoder
-│   │   ├── vit_block.py          # (commented) Transformer block
-│   │   └── vit_3d_wrapper.py     # (commented) 3D ViT wrapper
-│   ├── train.py           # Training entry point
-│   ├── eval.py            # Evaluation entry point
-│   └── utils.py           # Config, logging, seed
-├── scripts/               # Shell scripts for training / federated
-├── pre_trained/           # biomed-multi-omic configs and assets
-└── MULTIMODAL_DOCUMENTATION.md  # This file
+src/oncolearn/
+├── data/                  # API-first dataset pipelines
+│   ├── multimodal.py      # Join builder
+│   └── modalities/        # Individual feature submodules
+│       ├── image/
+│       │   ├── dataset.py
+│       │   └── loaders/
+│       └── tabular/
+│           ├── dataset.py
+│           └── parsers/
+├── modeling/              # PyTorch Lightning logic
+│   ├── fusion.py          # GatedLateFusionClassifier
+│   ├── gene_encoder.py
+│   ├── tab_encoder.py
+│   ├── image_encoder.py
+│   └── trainer.py
+└── registry/              # Centralized resolution point
 ```
 
 ---
