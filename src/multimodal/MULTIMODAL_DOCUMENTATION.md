@@ -1,27 +1,25 @@
 # OncoLearn Multimodal Module — Code Documentation
 
-This document describes the **multimodal learning framework** under `OncoLearn/src/multimodal`. It integrates genomics (gene expression), clinical (tabular), and imaging (DICOM) data for TCGA-BRCA cancer subtyping and staging. The pipeline achieves **around 80% performance** (e.g., accuracy/F1 on validation) for stage and subtype classification when trained with the provided setup.
+This document describes the **multimodal learning framework** under `OncoLearn/src/multimodal`. It integrates genomics (gene expression), clinical (tabular), and **imaging (DICOM)** data for TCGA-BRCA cancer subtyping and staging. The pipeline achieves **around 80% performance** (e.g., accuracy/F1 on validation) for stage and subtype classification when trained with the provided setup.
 
 ---
 
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Architecture](#architecture)
-3. [Data Module](#data-module)
-4. [Models](#models)
-5. [Training & Evaluation](#training--evaluation)
-6. [Project Structure](#project-structure)
-7. [Performance](#performance)
+2. [Data Preprocessing](#data-preprocessing)
+3. [Architecture](#architecture)
+4. [Data Module](#data-module)
+5. [Models](#models)
+6. [Training & Evaluation](#training--evaluation)
+7. [Project Structure](#project-structure)
+8. [Performance](#performance)
 
 ---
 
 ## Overview
 
-The multimodal module supports two variants:
-
-- **V1 (imaging-present):** Gene expression + clinical tabular + DICOM imaging (MR/MG). Uses sequence-level expansion (multiple series per patient) and a 3-modality gated late-fusion classifier.
-- **V2 (no-imaging):** Gene expression + clinical tabular only. Same fusion design with 2 modalities.
+The multimodal module uses **gene expression**, **clinical tabular**, and **DICOM imaging (MR/MG)** with a 3-modality gated late-fusion classifier. The dataset is expanded at the sequence level: one sample per (patient, series), with a fixed number of DICOM slices uniformly sampled per series.
 
 Tasks:
 
@@ -37,6 +35,79 @@ Design choices:
 
 ---
 
+## Data Preprocessing
+
+This section describes how each data type is loaded, cleaned, and prepared before being fed to the model.
+
+### 1. Input sources and loading
+
+| Source | File format | Loading |
+|-------|-------------|--------|
+| **Cohort index** | `cohort_index.parquet` or `.csv` | Required columns: `patient_id`, `clinical_row_id`. Optional: `dicom_series` (JSON), `imaging_modalities`, `has_imaging` — used to select patients with imaging and to list DICOM series per patient. |
+| **Clinical table** | `clinical_table.parquet` or `.csv` | Indexed by `patient_id` (set as index if provided as column). All columns kept; only **numeric** columns are used at runtime (see below). |
+| **Gene set / expression** | `expression_matrix.parquet` or `.csv` (e.g. `gene_set_table.parquet`) | Indexed by `patient_id`. Rows = patients, columns = genes or gene-set scores. Loaded as-is; values are cast to `float32` when building the batch. No in-code normalization or scaling; any normalization is assumed to be done upstream (e.g. log-transform, z-score) before saving the matrix. |
+
+- **Cohort (imaging-present):** Patients with imaging are those for whom `has_imaging` is set, or `imaging_modalities` contains `"MR"` or `"MG"`, or `dicom_series` is non-empty. Only these patients are used in this pipeline.
+
+### 2. Label preprocessing (stage and subtype)
+
+- **Patient ID:** TCGA sample barcodes are reduced to a 12-character patient ID by taking the first three segments (e.g. `TCGA-XX-XXXX`). Used to join cohort, clinical, gene set, and external label files.
+
+- **Stage (5-way):**
+  - **Column discovery:** The clinical table is scanned for a column whose name (lowercased) contains one of: `ajcc_pathologic_stage`, `pathologic_stage`, `stage`, `clinical_stage`. The first match is used.
+  - **Normalization:** Raw values are mapped to one of: `Stage I`, `Stage II`, `Stage III`, `Stage IV`, `Unknown`. Rules: regex for “stage 1”/“stage i” → Stage I; “stage 2”/“stage ii” → Stage II; similarly for III/IV; empty/NaN or no match → `Unknown`. Class index is assigned via a fixed ordering of these five labels.
+
+- **Subtype (optional):**
+  - **Priority 1 — BRCA labels file:** If `brca_labels_file` (e.g. `BRCA-data-with-integer-labels.csv`) is provided, it is loaded. Required column: `sample_id`; label column is resolved from `Subtype` / `subtype` / `label`. Patient ID is derived from `sample_id` (first 12 characters). One subtype per patient (first occurrence if duplicates). Unique labels define the subtype classes; an extra `Unknown` class is added.
+  - **Priority 2 — PAM50 file:** If `pam50_file` is provided (TSV with `Sample` and `PAM50`), patient ID is derived from `Sample` and mapped to PAM50 subtype. Unique PAM50 values (+ `Unknown`) define the classes.
+  - **Priority 3 — Clinical table:** Search for a column whose name contains `pam50`, `subtype`, `molecular`, or `intrinsic`. The column is accepted only if it has 2–6 unique values and no single class exceeds 90% of samples.
+  - **Priority 4 — Derived from ER/PR/HER2:** Columns containing `er_status`/`estrogen_receptor`, `pr_status`/`progesterone_receptor`, `her2_status`/`her2` are used. “Positive”/“+” and “negative”/“-” are parsed; HR = ER+ or PR+. Subtypes: HR+/HER2-, HR+/HER2+, HR-/HER2+, TNBC (HR-/HER2-); otherwise `Unknown`. If fewer than 10% of patients get a non-Unknown subtype, derivation is discarded.
+  - **Class weights:** For both stage and subtype, inverse-frequency class weights are computed on the **training** patient set: `weight[c] = N / (num_classes * count[c])`, then used in `CrossEntropyLoss`.
+
+### 3. Gene expression (omics)
+
+- **At dataset level:** For each patient, the row corresponding to `patient_id` is taken from the gene set table and converted to a 1D float32 vector. No per-sample normalization or clipping in the dataloader.
+- **Missing:** If a patient in the cohort is not in the gene set table, the dataset raises an error (no imputation).
+- **Pairs dataset (alternative pipeline):** In `TCGAPairsDataset`, gene features are read from precomputed `.npy` files (one per sample); values are cast to `float32`. Again, any normalization is expected to be done before saving the `.npy` files.
+
+### 4. Clinical (tabular) features
+
+- **Selection:** Only **numeric** columns are used. In the datamodule, for each patient the clinical row is converted with `pd.to_numeric(..., errors='coerce')`; non-numeric entries become NaN.
+- **Missing values:** All NaN values are filled with **0** before converting to a float32 tensor.
+- **Variable length:** Patients can have different numbers of numeric columns depending on the table; in practice the clinical table is shared, so the length is the same for all. In **collate**, clinical vectors are padded to the **maximum length in the batch** with zero padding so they can be stacked into a tensor.
+
+### 5. DICOM imaging
+
+- **Reading:** `pydicom.dcmread(path)` loads the DICOM file. Pixel data is cast to `float32`. If the array is 3D (multi-slice), only the **middle slice** (`shape[0] // 2`) is used; if ndim > 3, the array is reshaped and the first 2D slice is taken.
+- **Rescaling:** If the DICOM has `RescaleSlope` and `RescaleIntercept`, pixel values are updated as: `pixel_array = pixel_array * slope + intercept`.
+- **Caching:** A global LRU cache (default size 1000) stores pixel arrays by path.
+- **Series selection:** The cohort row’s `dicom_series` is a JSON mapping study UID → series UID → `{ "modality": "MR"|"MG", "example_paths": [...] }`. For each series, the directory from `example_paths[0]` is resolved and all `*.dcm`/`*.DCM` files are collected, sorted. Preferred modality is **MR**; otherwise other modalities are used.
+- **Sampling slices:** From a series with `n_total` images, `n_dicom_samples` (e.g. 5) indices are chosen uniformly: `int(i * (n_total / n_dicom_samples))` for `i = 0..n_dicom_samples-1`. Only series with at least `n_dicom_samples` images are included when `expand_by_sequences=True`.
+
+### 6. Image (pixel) transforms
+
+Applied per DICOM slice after reading:
+
+1. **To tensor:** NumPy → `torch.float32`. 2D → (1, H, W); 3D → (C, H, W); channels trimmed or duplicated to 3 for pretrained backbones.
+2. **Normalization:** Min–max to **[0, 1]** per image: `(x - min) / (max - min)` when max > min.
+3. **Resize:** Bilinear to **224×224**.
+4. **Augmentation (train only):** `RandomHorizontalFlip(p=0.5)`, `RandomRotation(degrees=5)`.
+
+Output per image: **(3, 224, 224)**. Each sample has **N** such tensors (e.g. N=5) stacked as **(N, 3, 224, 224)** plus modality IDs (0=MR, 1=MG).
+
+### 7. Batch-level preprocessing (collate)
+
+- **Gene:** Stacked into `(B, gene_dim)`; placeholder zeros when modality dropout is applied.
+- **Clinical:** Zero-padded to max length in batch, then stacked into `(B, max_clinical_len)`.
+- **Images:** Each sample has shape `(N_i, 3, 224, 224)`. Batches are padded to the same number of slices `max_N` per sample (zero tensors and zero modality IDs for padding). Result: `(B, max_N, 3, 224, 224)` and `(B, max_N)`.
+- **Modality dropout (train only):** With probability `modality_dropout` (e.g. 0.3), each of gene, clinical, and image can be dropped (placeholders). At least one modality is always kept.
+
+### 8. Pairs dataset (image + omics from CSV)
+
+For the simpler paired pipeline (`TCGAPairsDataset`): a CSV lists `case_id`, `label`, `img_path`, `omics_path`. Image is loaded from `img_path` (file or directory; if directory, one image is chosen at random among `.png`, `.jpg`, etc.), converted to RGB, resized to `img_size` (default 224), and converted to tensor with `ToTensor()` (no extra normalization). Omics are loaded from `.npy` and cast to float32. No DICOM or series logic; no modality dropout in the dataset itself.
+
+---
+
 ## Architecture
 
 ### High-level flow
@@ -44,7 +115,7 @@ Design choices:
 ```
 [Gene features]     → RNABERTEncoder        → z_gene (128-d)
 [Clinical table]   → FTTransformerEncoder  → z_clinical (128-d)
-[DICOM images]     → MRMGHierarchicalImageEncoder → z_image (256-d)   [V1 only]
+[DICOM images]     → MRMGHierarchicalImageEncoder → z_image (256-d)
                           ↓
               GatedLateFusionClassifier
                     (per-modality heads + gate network)
@@ -71,25 +142,17 @@ Design choices:
 
 | File | Purpose |
 |------|--------|
-| **cohort.py** | Load cohort index (parquet/csv), clinical table, gene set table; detect imaging presence; build V1/V2 cohorts via `get_cohort_for_variant`. |
-| **labels.py** | **LabelManager:** stage/subtype label discovery and derivation (stage column discovery, PAM50/BRCA file loading, ER-PR-HER2–based subtype); class weights for stage and subtype. |
-| **dicom_io.py** | DICOM read with optional cache; parse `dicom_series` JSON; list series per patient; uniform/random sampling of slices; batch loading. |
-| **transforms.py** | **DICOMToTensor**, **ResizeDICOM**, **DICOMTransform:** normalize, resize (e.g. 224×224), optional augmentation (flip, rotation). |
-| **pairs_dataset.py** | **TCGAPairsDataset:** paired image (patch path or directory) + precomputed omics vector (`.npy`) from a split CSV; used for simpler pipelines. |
-| **datamodule.py** | **TCGADataModule:** builds train/val/test splits (stratified K-fold or from `test_patients_path`), **TCGAV1Dataset** / **TCGAV2Dataset**, and DataLoaders; collate functions for variable-length image sequences. |
+| **cohort.py** | Load cohort index, clinical table, gene set table; detect imaging presence; select cohort with imaging. |
+| **labels.py** | **LabelManager:** stage/subtype label discovery and derivation; class weights for stage and subtype. |
+| **dicom_io.py** | DICOM read (with cache), parse `dicom_series` JSON, list series per patient, uniform/random slice sampling. |
+| **transforms.py** | **DICOMToTensor**, **ResizeDICOM**, **DICOMTransform:** normalize, resize 224×224, optional augmentation. |
+| **pairs_dataset.py** | **TCGAPairsDataset:** paired image + precomputed omics (`.npy`) from a split CSV; alternative pipeline. |
+| **datamodule.py** | **TCGADataModule:** train/val/test splits, **TCGAV1Dataset** (gene + clinical + image per patient/series), DataLoaders; collate with image sequence padding. |
 
-### V1 dataset (imaging-present)
+### Dataset (imaging-included)
 
-- **TCGAV1Dataset:** One sample per **(patient, series)** when `expand_by_sequences=True` (default). Each sample has:
-  - Gene vector from gene set table (same for all series of the patient).
-  - Clinical numeric vector (same for all series).
-  - A fixed number of DICOM paths per series (e.g. 5), uniformly sampled from that series; loaded and transformed to 3×224×224; optional modality dropout (image/gene/clinical).
-- **collate_fn_v1:** Pads image sequences to the same length per batch; stacks gene/clinical; handles missing modality via placeholders so batch size is consistent.
-
-### V2 dataset (no-imaging)
-
-- **TCGAV2Dataset:** One sample per patient; gene + clinical only; same modality dropout for gene/clinical.
-- **collate_fn_v2:** Stacks gene and clinical; pads clinical to max length in batch.
+- **TCGAV1Dataset:** One sample per **(patient, series)** when `expand_by_sequences=True`. Each sample: gene vector, clinical numeric vector, and N uniformly sampled DICOM slices (e.g. 5) from that series, transformed to (N, 3, 224, 224). Modality dropout (image/gene/clinical) during training.
+- **collate_fn_v1:** Pads image sequences to the same length per batch; stacks gene/clinical; uses placeholders for dropped modalities.
 
 ### Splits
 
@@ -108,23 +171,22 @@ Design choices:
 
 | Model | Input | Output | Description |
 |-------|--------|--------|-------------|
-| **RNABERTEncoder** | (B, P) gene expression | (B, 128) | Wraps IBM biomed.rna.bert.110m (e.g. `ibm-research/biomed.rna.bert.110m.mlm.multitask.v1`). Backbone can be frozen; projection to 128-d. |
+| **RNABERTEncoder** | (B, P) gene expression | (B, 128) | Wraps IBM biomed.rna.bert.110m. Backbone can be frozen; projection to 128-d. |
 | **FTTransformerEncoder** | (B, clinical_dim) | (B, 128) | TabTransformer (continuous-only); backbone frozen; projection to 128-d. |
-| **MRMGHierarchicalImageEncoder** | (B, N, 3, H, W), modality_ids (B, N) | (B, 256) | Loads pretrained checkpoint (ViT or 3D ViT); per-image features → 256-d; **HierarchicalAttentionPooling** with modality embedding (MR=0, MG=1) over N images; output 256-d. Used only in V1. |
+| **MRMGHierarchicalImageEncoder** | (B, N, 3, H, W), modality_ids (B, N) | (B, 256) | Pretrained checkpoint (ViT or 3D ViT); per-image features → 256-d; **HierarchicalAttentionPooling** with modality embedding (MR=0, MG=1) over N images. |
 
 ### Fusion
 
 - **GatedLateFusionClassifier**
-  - **Inputs:** Optional `gene`, `clinical`, `image`, `modality_ids`.
+  - **Inputs:** `gene`, `clinical`, `image`, `modality_ids` (optional modality dropout at dataloader).
   - **Heads:** Per-modality stage (and optionally subtype) heads.
   - **Gate:** MLP on concatenated embeddings → mask missing modalities → softmax → weights.
   - **Output:** `stage_logits`; `subtype_logits` if `num_subtype_classes > 0`.
 
 ### Supporting modules
 
-- **vit_3d_wrapper.py** (commented out): 3D ViT wrapper for 2D slices (pseudo-3D); used when checkpoint is 3D.
-- **vit_block.py** (commented out): Transformer block used by the 3D wrapper.
-- **image_encoder.py** can load 2D ViT (e.g. HuggingFace ViT) or 3D ViT from checkpoint; feature dim is projected to 256 before hierarchical pooling.
+- **image_encoder.py:** Loads 2D ViT (e.g. HuggingFace) or 3D ViT from checkpoint; projects to 256-d before hierarchical pooling.
+- **vit_3d_wrapper.py**, **vit_block.py** (commented): 3D ViT wrapper and transformer block for 3D checkpoints.
 
 ---
 
@@ -132,10 +194,10 @@ Design choices:
 
 ### Training (`src/train.py`)
 
-- **build_model:** Builds RNABERTEncoder, FTTransformerEncoder, optional MRMGHierarchicalImageEncoder (V1), then GatedLateFusionClassifier.
-- **train_epoch:** One epoch with optional AMP; loss = stage_loss + subtype_lambda × subtype_loss; modality dropout applied in the dataloader.
+- **build_model:** Builds RNABERTEncoder, FTTransformerEncoder, MRMGHierarchicalImageEncoder (from checkpoint), then GatedLateFusionClassifier (3 modalities).
+- **train_epoch:** One epoch with optional AMP; loss = stage_loss + subtype_lambda × subtype_loss; modality dropout in the dataloader.
 - **validate:** Computes loss and metrics (accuracy, balanced accuracy, macro F1) for stage (and subtype if present).
-- **main:** Parses variant (v1_imaging / v2_no_imaging), config, data paths, fold; builds TCGADataModule; uses class-weighted CrossEntropy; AdamW + ReduceLROnPlateau; best checkpoint by validation stage F1; early stopping.
+- **main:** Parses config, data paths, fold; builds TCGADataModule (imaging variant); class-weighted CrossEntropy; AdamW + ReduceLROnPlateau; best checkpoint by validation stage F1; early stopping.
 
 ### Evaluation (`src/eval.py`)
 
@@ -156,8 +218,8 @@ Design choices:
 ```
 multimodal/
 ├── data/
-│   ├── cohort.py          # Cohort loading, V1/V2 cohort selection
-│   ├── datamodule.py      # TCGADataModule, TCGAV1/V2Dataset, collate
+│   ├── cohort.py          # Cohort loading, imaging cohort selection
+│   ├── datamodule.py      # TCGADataModule, TCGAV1Dataset, collate
 │   ├── dicom_io.py        # DICOM read, series listing, sampling
 │   ├── labels.py          # LabelManager (stage, subtype, weights)
 │   ├── pairs_dataset.py   # TCGAPairsDataset (image + omics from CSV)
@@ -166,11 +228,11 @@ multimodal/
 │   ├── models/
 │   │   ├── __init__.py
 │   │   ├── fusion.py              # GatedLateFusionClassifier
-│   │   ├── gene_encoder.py        # RNABERTEncoder
-│   │   ├── tab_encoder.py         # FTTransformerEncoder
-│   │   ├── image_encoder.py       # MRMGHierarchicalImageEncoder
-│   │   ├── vit_block.py           # (commented) Transformer block
-│   │   └── vit_3d_wrapper.py      # (commented) 3D ViT wrapper
+│   │   ├── gene_encoder.py       # RNABERTEncoder
+│   │   ├── tab_encoder.py        # FTTransformerEncoder
+│   │   ├── image_encoder.py      # MRMGHierarchicalImageEncoder
+│   │   ├── vit_block.py          # (commented) Transformer block
+│   │   └── vit_3d_wrapper.py     # (commented) 3D ViT wrapper
 │   ├── train.py           # Training entry point
 │   ├── eval.py            # Evaluation entry point
 │   └── utils.py           # Config, logging, seed
@@ -189,7 +251,6 @@ When trained with the default (or similar) configuration on TCGA-BRCA:
 - Exact numbers depend on:
   - Train/val/test split and fold,
   - Use of PAM50 or BRCA subtype labels,
-  - Whether V1 (with imaging) or V2 (gene + clinical only) is used,
   - Hyperparameters (learning rate, batch size, modality dropout, subtype_lambda, etc.).
 
 For reproducible results, use the same config, seed, and data paths as in the experiments that reported ~80% performance.
