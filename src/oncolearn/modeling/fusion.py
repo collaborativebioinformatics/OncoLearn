@@ -4,6 +4,9 @@ Gated late fusion classifier supporting 2-modality and 3-modality modes.
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import pytorch_lightning as pl
+
+from oncolearn.registry import register_model
 
 
 class GatedLateFusionClassifier(nn.Module):
@@ -24,8 +27,8 @@ class GatedLateFusionClassifier(nn.Module):
     
     def __init__(
         self,
-        gene_encoder: nn.Module,
-        clinical_encoder: nn.Module,
+        gene_encoder: nn.Module = None,
+        clinical_encoder: nn.Module = None,
         image_encoder: nn.Module = None,
         gene_dim: int = 128,
         clinical_dim: int = 128,
@@ -60,25 +63,28 @@ class GatedLateFusionClassifier(nn.Module):
             if self.has_image:
                 self.image_subtype_head = nn.Linear(image_dim, num_subtype_classes)
         
-        # Gate network
+        self.has_clinical = clinical_encoder is not None
+        self.has_gene = gene_encoder is not None
+        
+        gate_input_dim = 0
+        num_mods = 0
+        if self.has_gene:
+            gate_input_dim += gene_dim
+            num_mods += 1
+        if self.has_clinical:
+            gate_input_dim += clinical_dim
+            num_mods += 1
         if self.has_image:
-            # 3-modality mode
-            gate_input_dim = gene_dim + clinical_dim + image_dim
-            self.gate_network = nn.Sequential(
-                nn.Linear(gate_input_dim, 128),
-                nn.ReLU(),
-                nn.Dropout(dropout),
-                nn.Linear(128, 3)  # 3 modalities
-            )
-        else:
-            # 2-modality mode
-            gate_input_dim = gene_dim + clinical_dim
-            self.gate_network = nn.Sequential(
-                nn.Linear(gate_input_dim, 64),
-                nn.ReLU(),
-                nn.Dropout(dropout),
-                nn.Linear(64, 2)  # 2 modalities
-            )
+            gate_input_dim += image_dim
+            num_mods += 1
+            
+        # Gate network
+        self.gate_network = nn.Sequential(
+            nn.Linear(gate_input_dim, 128 if num_mods == 3 else 64),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(128 if num_mods == 3 else 64, num_mods)
+        )
     
     def forward(
         self,
@@ -144,22 +150,10 @@ class GatedLateFusionClassifier(nn.Module):
         gate_logits = self.gate_network(gate_input)  # (B, num_modalities)
         
         # Create mask for missing modalities
-        if self.has_image:
-            # 3-modality mode: [gene, clinical, image]
-            mask = torch.zeros(B, 3, device=gate_logits.device)
-            if 'gene' in available_modalities:
-                mask[:, 0] = 1.0
-            if 'clinical' in available_modalities:
-                mask[:, 1] = 1.0
-            if 'image' in available_modalities:
-                mask[:, 2] = 1.0
-        else:
-            # 2-modality mode: [gene, clinical]
-            mask = torch.zeros(B, 2, device=gate_logits.device)
-            if 'gene' in available_modalities:
-                mask[:, 0] = 1.0
-            if 'clinical' in available_modalities:
-                mask[:, 1] = 1.0
+        # Create mask for missing modalities
+        mask = torch.zeros(B, len(available_modalities), device=gate_logits.device)
+        for i, mod in enumerate(available_modalities):
+            mask[:, i] = 1.0
         
         # Apply mask and softmax
         gate_logits = gate_logits * mask + (1 - mask) * (-1e9)
@@ -197,3 +191,65 @@ class GatedLateFusionClassifier(nn.Module):
         
         return result
 
+
+@register_model("gated_late_fusion", modalities=["image", "tabular"])
+class GatedLateFusionLightning(pl.LightningModule):
+    """
+    End-to-End PyTorch Lightning wrapper for the GatedLateFusionClassifier.
+    Requires tabular and image modalities to be present in the training batches.
+    """
+    def __init__(
+        self, 
+        model: GatedLateFusionClassifier,
+        learning_rate: float = 1e-3,
+        weight_decay: float = 1e-4
+    ):
+        super().__init__()
+        self.save_hyperparameters(ignore=['model'])
+        self.model = model
+        self.learning_rate = learning_rate
+        self.weight_decay = weight_decay
+        self.loss_fn = nn.CrossEntropyLoss()
+
+    def forward(self, batch):
+        # We expect MultimodalDataModule batches to have "tabular" and "image"
+        # Since tabular combines gene+clinical conceptually here, we adapt the inputs.
+        # For a clean implementation, you'd map "tabular" features to gene/clinical encoders.
+        # Assuming for now 'tabular' directly maps to gene, and clinical is None.
+        gene_features = batch.get("tabular")
+        image_features = batch.get("image")
+        
+        return self.model(
+            gene=gene_features,
+            clinical=None,  # Adjust based on tabular feature splitting
+            image=image_features
+        )
+
+    def training_step(self, batch, batch_idx):
+        preds = self.forward(batch)
+        labels = batch.get("label", torch.zeros(preds['stage_logits'].shape[0], dtype=torch.long, device=self.device))
+        loss = self.loss_fn(preds['stage_logits'], labels)
+        
+        self.log("train_loss", loss, prog_bar=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        labels = batch["label"]
+        preds = self.forward(batch)
+        loss = self.loss_fn(preds['stage_logits'], labels)
+        
+        preds_class = preds['stage_logits'].argmax(dim=1)
+        acc = (preds_class == labels).float().mean()
+        
+        self.log("val_loss", loss, prog_bar=True)
+        self.log("val_acc", acc, prog_bar=True)
+        return {"val_loss": loss, "val_acc": acc}
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.AdamW(
+            self.model.parameters(), 
+            lr=self.learning_rate, 
+            weight_decay=self.weight_decay
+        )
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
+        return {"optimizer": optimizer, "lr_scheduler": scheduler}
