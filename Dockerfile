@@ -100,9 +100,11 @@ WORKDIR /workspace
 # Copy dependency files
 COPY pyproject.toml uv.lock ./
 COPY src/ ./src/
+# biomed-multi-omic is a local path dependency required by bmfm-targets
+COPY submodules/biomed-multi-omic ./submodules/biomed-multi-omic/
 
 # Install Python dependencies with cache mount
-RUN uv sync --verbose --extra ${GPU_EXTRA}
+RUN uv sync --verbose --extra ${GPU_EXTRA} --extra multimodal --extra image
 
 # ============================================================================
 # Stage 5: R Dependencies Builder
@@ -237,10 +239,14 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 # Copy only Python virtual environment from python-builder stage
 COPY --from=python-builder /workspace/.venv /workspace/.venv
 
+# Copy uv so that `uv run` works inside the container
+COPY --from=python-builder /usr/local/bin/uv /usr/local/bin/uv
+
 # Set working directory
 WORKDIR /workspace
 
 # Copy only essential source code (exclude dev tools, notebooks, docs)
+COPY pyproject.toml uv.lock ./
 COPY src/ ./src/
 COPY configs/ ./configs/
 

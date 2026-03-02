@@ -93,3 +93,9 @@ renv/library/
 
 # Misc
 LICENSE
+
+# Exclude all submodules except biomed-multi-omic (needed for bmfm-targets local dep)
+submodules/agent-skills/
+submodules/multimodal_data_fusion/
+submodules/ultralytics/
+submodules/wiki/
