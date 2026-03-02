@@ -24,6 +24,17 @@ class XenabrowserParser(BaseTabularParser):
             # We rename it to the standard internal key "patient_id" if it exists.
             if 'sample' in df.columns:
                 df = df.rename(columns={'sample': 'patient_id'})
+            elif df.columns[0] == 'Unnamed: 0':
+                df = df.rename(columns={'Unnamed: 0': 'patient_id'})
+                
+            if 'patient_id' in df.columns:
+                df['patient_id'] = df['patient_id'].apply(lambda x: x[:12] if isinstance(x, str) and x.startswith('TCGA') else x)
+                
+            if 'Subtype' in df.columns:
+                from sklearn.preprocessing import LabelEncoder
+                encoder = LabelEncoder()
+                df['label'] = encoder.fit_transform(df['Subtype'].fillna('Unknown'))
+                df = df.drop(columns=['Subtype'])
                 
             return df
         except Exception as e:

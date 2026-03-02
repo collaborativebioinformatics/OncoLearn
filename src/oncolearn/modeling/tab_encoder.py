@@ -4,7 +4,7 @@ FT-Transformer encoder for clinical/tabular data (B1).
 import logging
 import torch
 import torch.nn as nn
-from tab_transformer_pytorch import TabTransformer
+from tab_transformer_pytorch import FTTransformer
 
 logger = logging.getLogger(__name__)
 
@@ -25,22 +25,21 @@ class FTTransformerEncoder(nn.Module):
         self.dim = dim
         self.output_dim = output_dim
 
-        self.tab_transformer = TabTransformer(
-            categories={}, 
+        self.tab_transformer = FTTransformer(
+            categories=(),
             num_continuous=input_dim,
             dim=dim,
             depth=depth,
             heads=num_heads,
             attn_dropout=dropout,
             ff_dropout=dropout,
-            mlp_act=nn.GELU(),
-            mlp_hidden_dims=[dim * 2, dim],
+            dim_out=dim,
         )
-        
+
         # Freeze TabTransformer parameters
         for param in self.tab_transformer.parameters():
             param.requires_grad = False
-        
+
         logger.info(f"TabTransformer encoder frozen with {input_dim} continuous features")
 
         tab_output_dim = dim
@@ -52,10 +51,11 @@ class FTTransformerEncoder(nn.Module):
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
 
-        x_cont = x  # (B, input_dim)
-        
-        with torch.no_grad():  
-            encoded = self.tab_transformer(x_cat=None, x_cont=x_cont)
+        B = x.shape[0]
+        x_categ = torch.zeros(B, 0, dtype=torch.long, device=x.device)
+
+        with torch.no_grad():
+            encoded = self.tab_transformer(x_categ, x)
 
         output = self.output_proj(encoded) 
         

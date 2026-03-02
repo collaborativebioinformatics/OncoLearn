@@ -143,22 +143,45 @@ class GatedLateFusionClassifier(nn.Module):
         if len(set(batch_sizes)) > 1:
             raise ValueError(f"Inconsistent batch sizes in modality embeddings: {dict(zip(available_modalities, batch_sizes))}")
         
-        # Concatenate available embeddings for gate
-        gate_input = torch.cat(modality_embeddings, dim=-1)  # (B, sum(dims))
-        
+        # Concatenate available embeddings for gate (with zeros for missing)
+        ref_device = modality_embeddings[0].device
+        gate_inputs = []
+        if self.has_gene:
+            gate_inputs.append(z_gene if 'gene' in available_modalities else torch.zeros(B, self.gene_dim, device=ref_device))
+        if self.has_clinical:
+            gate_inputs.append(z_clinical if 'clinical' in available_modalities else torch.zeros(B, self.clinical_dim, device=ref_device))
+        if self.has_image:
+            gate_inputs.append(z_image if 'image' in available_modalities else torch.zeros(B, self.image_dim, device=ref_device))
+
+        gate_input = torch.cat(gate_inputs, dim=-1)  # (B, sum(dims))
+
         # Compute gate weights
-        gate_logits = self.gate_network(gate_input)  # (B, num_modalities)
-        
-        # Create mask for missing modalities
-        # Create mask for missing modalities
-        mask = torch.zeros(B, len(available_modalities), device=gate_logits.device)
-        for i, mod in enumerate(available_modalities):
-            mask[:, i] = 1.0
-        
+        gate_logits = self.gate_network(gate_input)  # (B, num_mods)
+
+        # Build mask matching gate output shape; each position corresponds to a configured modality
+        mask = torch.zeros(B, gate_logits.shape[1], device=gate_logits.device)
+        avail_indices = []
+        mod_idx = 0
+        if self.has_gene:
+            if 'gene' in available_modalities:
+                mask[:, mod_idx] = 1.0
+                avail_indices.append(mod_idx)
+            mod_idx += 1
+        if self.has_clinical:
+            if 'clinical' in available_modalities:
+                mask[:, mod_idx] = 1.0
+                avail_indices.append(mod_idx)
+            mod_idx += 1
+        if self.has_image:
+            if 'image' in available_modalities:
+                mask[:, mod_idx] = 1.0
+                avail_indices.append(mod_idx)
+            mod_idx += 1
+
         # Apply mask and softmax
         gate_logits = gate_logits * mask + (1 - mask) * (-1e9)
-        gate_weights = F.softmax(gate_logits, dim=-1)  # (B, num_modalities)
-        
+        gate_weights = F.softmax(gate_logits, dim=-1)  # (B, num_mods)
+
         # Per-modality stage logits
         stage_logits_list = []
         if 'gene' in available_modalities:
@@ -167,10 +190,10 @@ class GatedLateFusionClassifier(nn.Module):
             stage_logits_list.append(self.clinical_stage_head(z_clinical))
         if 'image' in available_modalities:
             stage_logits_list.append(self.image_stage_head(z_image))
-        
-        # Weighted combination
+
+        # Weighted combination using gate weights for available modality positions only
         stage_logits = torch.stack(stage_logits_list, dim=1)  # (B, num_available, num_classes)
-        gate_weights_expanded = gate_weights[:, :len(available_modalities)].unsqueeze(-1)  # (B, num_available, 1)
+        gate_weights_expanded = gate_weights[:, avail_indices].unsqueeze(-1)  # (B, num_available, 1)
         stage_logits = (stage_logits * gate_weights_expanded).sum(dim=1)  # (B, num_classes)
         
         result = {'stage_logits': stage_logits}

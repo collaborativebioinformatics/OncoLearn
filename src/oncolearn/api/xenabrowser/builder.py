@@ -194,32 +194,38 @@ class XenaCohortBuilder(BaseCohortBuilder):
                 print(f"Downloading {cohort_info['code']} cohort to {output_path}")
                 
                 if download_all:
-                    # Calculate size for each dataset and build file details list
                     from oncolearn.utils.download import get_file_size_from_url
-                    
-                    file_details = []
-                    total_size = 0
-                    
                     print("Calculating total download size...")
+                    datasets_to_download = []
                     for dataset in self.datasets:
+                        # Check if file already exists
+                        final_file = output_path / dataset.filename
+                        if extract and dataset.filename.endswith('.gz'):
+                            final_file = final_file.with_suffix('')
+                            
+                        if final_file.exists():
+                            print(f"Skipping {dataset.filename} (already downloaded)")
+                            continue
+                            
+                        datasets_to_download.append(dataset)
                         size = get_file_size_from_url(dataset.url)
                         if size:
                             total_size += size
                         file_details.append((dataset.filename, size if size else 0))
                     
                     # Show single confirmation for entire cohort if we have size info
-                    if total_size > 0:
+                    if total_size > 0 and len(datasets_to_download) > 0:
                         if not confirm_cohort_download(
                             cohort_name=cohort_info['code'],
                             total_size_bytes=total_size,
                             file_details=file_details,
-                            verbose=True
+                            verbose=False  # Auto-confirm non-interactive or bypass
                         ):
                             print("Cohort download cancelled.")
                             return
                     
-                    # Download all datasets without individual confirmations
-                    for dataset in self.datasets:
+                    # Download all requested remaining datasets
+                    for dataset in datasets_to_download:
                         try:
                             dataset.download(str(output_path), extract=extract, confirm=False,
                                            download_mapping=download_mapping, 

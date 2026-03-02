@@ -41,14 +41,14 @@ fi
 
 # Check gene expression dimension (from gene_set_table)
 if [ -f "${DATA_ROOT}/gene_set_table.parquet" ]; then
-    OMICS_DIM=$(python3 << EOF
+    OMICS_DIM=$(uv run python << EOF
 import pandas as pd
 df = pd.read_parquet('${DATA_ROOT}/gene_set_table.parquet')
 print(df.shape[1])
 EOF
 )
 elif [ -f "${DATA_ROOT}/expression_matrix.parquet" ]; then
-    OMICS_DIM=$(python3 << EOF
+    OMICS_DIM=$(uv run python << EOF
 import pandas as pd
 df = pd.read_parquet('${DATA_ROOT}/expression_matrix.parquet')
 print(df.shape[1])
@@ -70,7 +70,7 @@ echo "Split directory: $SPLIT_DIR"
 echo "Data root: $DATA_ROOT"
 echo ""
 
-python3 job.py \
+uv run python src/oncolearn/job.py \
     --n_clients $N_CLIENTS \
     --num_rounds $NUM_ROUNDS \
     --split_dir $SPLIT_DIR \

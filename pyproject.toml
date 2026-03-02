@@ -50,7 +50,8 @@ multimodal = [
     "bmfm-targets",
     "torch>=2.9.1",
     "torchvision>=0.24.1",
-    "pytorch-lightning>=2.1.0"
+    "pytorch-lightning>=2.1.0",
+    "igraph",
 ]
 image = [
     "pillow>=12.1.0",

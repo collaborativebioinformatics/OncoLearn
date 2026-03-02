@@ -18,17 +18,10 @@ mkdir -p ${OUT_DIR}
 
 # Train each fold
 for FOLD in $(seq 0 $((N_FOLDS-1))); do
-    echo "Training fold ${FOLD}..."
-    python3 src/train.py \
-        --variant ${VARIANT} \
-        --config ${CONFIG} \
-        --data_dir ${DATA_DIR} \
-        --out_dir ${OUT_DIR} \
-        --fold ${FOLD} \
-        --n_folds ${N_FOLDS} \
-        --seed ${SEED} \
-        --pam50_file ${PAM50_FILE} \
-        --brca_labels_file ${BRCA_LABELS_FILE}
+    echo "Training execution..."
+    uv run python src/oncolearn/trainer.py \
+        --variant ${VARIANT}
+    break
 done
 
 echo "Training complete for all folds!"
