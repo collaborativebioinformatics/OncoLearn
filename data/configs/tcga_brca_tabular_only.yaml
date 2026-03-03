@@ -33,9 +33,6 @@ training:
   scheduler: cosine
   seed: 42
 
-huggingface:
-  model: ibm/biomed.rna.bert.110m.mlm.multitask.v1
-
 output:
   dir: outputs
   experiment_name: tcga_brca_tabular_only

@@ -3,7 +3,6 @@ import yaml
 from pathlib import Path
 
 from oncolearn.config import (
-    HuggingFaceConfig,
     ModalityConfig,
     ModelConfig,
     OncoLearnConfig,
@@ -69,18 +68,11 @@ def test_output_config_defaults():
     assert cfg.save_every_n_epochs == 5
 
 
-def test_huggingface_config_defaults():
-    cfg = HuggingFaceConfig()
-    assert cfg.model  # non-empty
-    assert cfg.image_checkpoint is None
-
-
 def test_oncolearn_config_optional_sections_get_defaults():
     cfg = OncoLearnConfig(
         model=ModelConfig(name="gated_late_fusion"),
         modalities=[ModalityConfig(name="tabular")],
     )
-    assert cfg.huggingface is None
     assert cfg.join_on == "patient_id"
     assert cfg.join_strategy == "inner"
     assert isinstance(cfg.training, TrainingConfig)
@@ -148,7 +140,6 @@ def test_load_minimal_config(tmp_path):
     assert cfg.model.name == "gated_late_fusion"
     assert len(cfg.modalities) == 1
     assert cfg.modalities[0].name == "tabular"
-    assert cfg.huggingface is None
     assert cfg.training.max_epochs == 50  # default
 
 
@@ -179,10 +170,6 @@ def test_load_full_config(tmp_path):
             "batch_size": 8,
             "seed": 123,
         },
-        "huggingface": {
-            "model": "some-org/some-model",
-            "image_checkpoint": "/data/ckpt.pt",
-        },
         "output": {
             "dir": "my_outputs",
             "experiment_name": "exp_01",
@@ -204,31 +191,9 @@ def test_load_full_config(tmp_path):
     assert cfg.modalities[1].kwargs["n_slices"] == 7
     assert cfg.training.max_epochs == 20
     assert cfg.training.seed == 123
-    assert cfg.huggingface.model == "some-org/some-model"
-    assert cfg.huggingface.image_checkpoint == "/data/ckpt.pt"
     assert cfg.output.dir == "my_outputs"
     assert cfg.output.experiment_name == "exp_01"
     assert cfg.output.save_every_n_epochs == 10
-
-
-def test_load_config_without_huggingface_section(tmp_path):
-    """huggingface is optional — omitting it yields hf=None."""
-    cfg = load_config(_write_yaml(tmp_path / "cfg.yaml", {
-        "model": {"name": "gated_late_fusion"},
-        "modalities": [{"name": "tabular"}],
-    }))
-    assert cfg.huggingface is None
-
-
-def test_load_config_with_huggingface_section(tmp_path):
-    cfg = load_config(_write_yaml(tmp_path / "cfg.yaml", {
-        "model": {"name": "m"},
-        "modalities": [{"name": "tabular"}],
-        "huggingface": {"model": "org/model"},
-    }))
-    assert cfg.huggingface is not None
-    assert cfg.huggingface.model == "org/model"
-    assert cfg.huggingface.image_checkpoint is None  # default
 
 
 def test_load_config_partial_training_override(tmp_path):
@@ -366,7 +331,6 @@ def test_save_config_round_trips(tmp_path):
             ModalityConfig(name="image", kwargs={"n_slices": 7}),
         ],
         training=TrainingConfig(max_epochs=10, seed=7),
-        huggingface=HuggingFaceConfig(model="org/model"),
         output=OutputConfig(dir="out", experiment_name="exp"),
     )
     path = tmp_path / "cfg.yaml"
@@ -383,7 +347,6 @@ def test_save_config_round_trips(tmp_path):
     assert restored.modalities[1].kwargs["n_slices"] == 7
     assert restored.training.max_epochs == 10
     assert restored.training.seed == 7
-    assert restored.huggingface.model == "org/model"
     assert restored.output.dir == "out"
 
 
@@ -401,37 +364,6 @@ def test_save_config_modality_kwargs_inlined_not_nested(tmp_path):
 
     assert raw["modalities"][0]["cohort_code"] == "TCGA-BRCA"
     assert "kwargs" not in raw["modalities"][0]
-
-
-def test_save_config_omits_huggingface_when_none(tmp_path):
-    """'huggingface' key must be absent from the YAML when huggingface=None."""
-    cfg = OncoLearnConfig(
-        model=ModelConfig(name="m"),
-        modalities=[ModalityConfig(name="tabular")],
-    )
-    path = tmp_path / "cfg.yaml"
-    save_config(cfg, path)
-
-    with path.open() as f:
-        raw = yaml.safe_load(f)
-
-    assert "huggingface" not in raw
-
-
-def test_save_config_includes_huggingface_when_set(tmp_path):
-    cfg = OncoLearnConfig(
-        model=ModelConfig(name="m"),
-        modalities=[ModalityConfig(name="tabular")],
-        huggingface=HuggingFaceConfig(model="org/model", image_checkpoint="/ckpt.pt"),
-    )
-    path = tmp_path / "cfg.yaml"
-    save_config(cfg, path)
-
-    with path.open() as f:
-        raw = yaml.safe_load(f)
-
-    assert raw["huggingface"]["model"] == "org/model"
-    assert raw["huggingface"]["image_checkpoint"] == "/ckpt.pt"
 
 
 # ---------------------------------------------------------------------------
@@ -459,13 +391,6 @@ def test_multimodal_example_has_tabular_and_image():
     names = {m.name for m in cfg.modalities}
     assert "tabular" in names
     assert "image" in names
-
-
-def test_example_configs_have_huggingface_section():
-    for filename in ("tcga_brca_tabular_only.yaml", "tcga_brca_multimodal.yaml"):
-        cfg = load_config(DATA_CONFIGS / filename)
-        assert cfg.huggingface is not None
-        assert cfg.huggingface.model
 
 
 def test_example_configs_have_valid_training_params():

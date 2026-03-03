@@ -71,7 +71,8 @@ class MRMGHierarchicalImageEncoder(BaseEncoder):
         config: Full experiment config. Reads ``model.freeze_encoders`` for the
                 backbone freeze flag.
         output_dim: Output embedding dimension.
-        checkpoint_path: Path to pretrained checkpoint file (required).
+        checkpoint_path: Path to pretrained checkpoint file (required). Passed as an
+                         encoder kwarg in the YAML ``model.encoders`` entry.
     """
 
     def __init__(
@@ -82,10 +83,6 @@ class MRMGHierarchicalImageEncoder(BaseEncoder):
         **kwargs,
     ):
         super().__init__(config, output_dim=output_dim, huggingface_models=None, **kwargs)
-
-        # Resolve checkpoint path: kwarg takes priority, then huggingface config.
-        if not checkpoint_path and config.huggingface:
-            checkpoint_path = config.huggingface.image_checkpoint
 
         if not checkpoint_path or not Path(checkpoint_path).exists():
             raise ValueError(

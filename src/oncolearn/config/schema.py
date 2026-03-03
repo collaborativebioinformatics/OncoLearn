@@ -2,29 +2,11 @@
 OncoLearn configuration schema.
 
 Defines the hierarchical dataclass tree that describes a full experiment:
-model → modalities → training → huggingface → output.
+model → modalities → training → output.
 """
 
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
-
-
-@dataclass
-class HuggingFaceConfig:
-    """Pre-trained model settings.
-
-    Required whenever the experiment uses an HF-backed encoder, e.g.
-    RNA BERT (``model``) or an image foundation-model checkpoint
-    (``image_checkpoint``).
-
-    Attributes:
-        model: HuggingFace model ID for the RNA BERT encoder.
-        image_checkpoint: Local path to an image foundation-model checkpoint,
-            or ``null`` to use random initialization.
-    """
-
-    model: str = "ibm/biomed.rna.bert.110m.mlm.multitask.v1"
-    image_checkpoint: Optional[str] = None
 
 
 @dataclass
@@ -117,8 +99,6 @@ class OncoLearnConfig:
 
     Optional sections:
         training: Training hyperparameters (all fields have defaults).
-        huggingface: Pre-trained model settings. Required when using RNA BERT or an
-                     image foundation-model checkpoint.
         output: Output directory and checkpointing.
         join_on: Patient-ID field used to align multi-modal records (default: ``"patient_id"``).
         join_strategy: How to join modalities. Only ``"inner"`` is currently supported.
@@ -127,7 +107,6 @@ class OncoLearnConfig:
     model: ModelConfig
     modalities: List[ModalityConfig]
     training: TrainingConfig = field(default_factory=TrainingConfig)
-    huggingface: Optional[HuggingFaceConfig] = None
     output: OutputConfig = field(default_factory=OutputConfig)
     join_on: str = "patient_id"
     join_strategy: str = "inner"

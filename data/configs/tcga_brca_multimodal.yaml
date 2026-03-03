@@ -1,7 +1,7 @@
 # OncoLearn experiment config: TCGA-BRCA multimodal (tabular + imaging)
 #
 # Requires image data downloaded via TCIA and tabular data via Xenabrowser.
-# Set huggingface.image_checkpoint to a local FM-BCMRI / ViT checkpoint path.
+# Set model.encoders[image].checkpoint_path to a local FM-BCMRI / ViT checkpoint path.
 
 model:
   name: gated_late_fusion
@@ -39,10 +39,6 @@ training:
   subtype_lambda: 0.3
   scheduler: cosine
   seed: 42
-
-huggingface:
-  model: ibm/biomed.rna.bert.110m.mlm.multitask.v1
-  image_checkpoint: null  # set to local checkpoint path to enable image FM
 
 output:
   dir: outputs

@@ -12,7 +12,6 @@ import yaml
 
 from .schema import (
     EncoderConfig,
-    HuggingFaceConfig,
     ModalityConfig,
     ModelConfig,
     OncoLearnConfig,
@@ -64,9 +63,6 @@ def load_config(path: Union[str, Path]) -> OncoLearnConfig:
         training:
           max_epochs: 50
           learning_rate: 0.0001
-
-        huggingface:
-          model: ibm/biomed.rna.bert.110m.mlm.multitask.v1
 
     Args:
         path: Path to the ``.yaml`` config file.
@@ -134,16 +130,10 @@ def load_config(path: Union[str, Path]) -> OncoLearnConfig:
     # --- output (optional) ---
     output_cfg = _dataclass_from_dict(OutputConfig, raw.get("output", {}))
 
-    # --- huggingface (optional) ---
-    hf_cfg: HuggingFaceConfig | None = None
-    if "huggingface" in raw:
-        hf_cfg = _dataclass_from_dict(HuggingFaceConfig, raw["huggingface"])
-
     config = OncoLearnConfig(
         model=model_cfg,
         modalities=modality_cfgs,
         training=training_cfg,
-        huggingface=hf_cfg,
         output=output_cfg,
         join_on=raw.get("join_on", "patient_id"),
         join_strategy=raw.get("join_strategy", "inner"),
@@ -183,9 +173,6 @@ def save_config(config: OncoLearnConfig, path: Union[str, Path]) -> None:
 
     raw["training"] = dataclasses.asdict(config.training)
     raw["output"] = dataclasses.asdict(config.output)
-
-    if config.huggingface is not None:
-        raw["huggingface"] = dataclasses.asdict(config.huggingface)
 
     raw["join_on"] = config.join_on
     raw["join_strategy"] = config.join_strategy

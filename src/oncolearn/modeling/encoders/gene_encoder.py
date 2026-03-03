@@ -27,11 +27,10 @@ class RNABERTEncoder(BaseEncoder):
     Overrides ``_load_huggingface_model`` to use bmfm_targets instead of AutoModel.
 
     Args:
-        config: Full experiment config. Reads ``huggingface.model`` for the HuggingFace
-                model ID and ``model.freeze_encoders`` for the backbone freeze flag.
+        config: Full experiment config. Reads ``model.freeze_encoders`` for the backbone
+                freeze flag.
         output_dim: Embedding dimension of the projection head.
-        huggingface_models: HuggingFace model IDs to load. Defaults to the model name
-                from ``config.huggingface.model`` or the IBM RNA BERT default.
+        huggingface_models: HuggingFace model IDs to load. Defaults to the IBM RNA BERT model.
         device: Optional device string passed to the backbone loader.
     """
 
@@ -44,9 +43,7 @@ class RNABERTEncoder(BaseEncoder):
         **kwargs,
     ):
         if huggingface_models is None:
-            hf = config.huggingface
-            model_name = hf.model if hf else "ibm/biomed.rna.bert.110m.mlm.multitask.v1"
-            huggingface_models = [model_name]
+            huggingface_models = ["ibm/biomed.rna.bert.110m.mlm.multitask.v1"]
 
         # _load_huggingface_model override is resolved before super().__init__ runs,
         # so hf_enc1 will be loaded via bmfm_targets.

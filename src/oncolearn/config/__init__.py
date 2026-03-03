@@ -11,7 +11,6 @@ Canonical usage::
 
 from .schema import (
     EncoderConfig,
-    HuggingFaceConfig,
     ModalityConfig,
     ModelConfig,
     OncoLearnConfig,
@@ -26,7 +25,6 @@ __all__ = [
     "EncoderConfig",
     "ModalityConfig",
     "TrainingConfig",
-    "HuggingFaceConfig",
     "OutputConfig",
     "load_config",
     "save_config",
