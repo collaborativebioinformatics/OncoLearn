@@ -1,0 +1,53 @@
+# OncoLearn experiment config: TCGA-BRCA multimodal (tabular + imaging)
+#
+# Requires image data downloaded via TCIA and tabular data via Xenabrowser.
+# Set huggingface.image_checkpoint to a local FM-BCMRI / ViT checkpoint path.
+
+model:
+  name: gated_late_fusion
+  num_stage_classes: 5
+  num_subtype_classes: 0
+  freeze_encoders: true
+  dropout: 0.2
+  encoders:
+    - name: gene       # RNABERTEncoder — receives miRNA tabular features
+      output_dim: 128
+    - name: image      # MRMGHierarchicalImageEncoder — requires checkpoint_path
+      output_dim: 256
+      checkpoint_path: null  # set to a local FM-BCMRI / ViT checkpoint path
+
+modalities:
+  - name: tabular
+    cohort_code: TCGA-BRCA
+    features_files:
+      - TCGA-BRCA.mirna.tsv
+      - pam50.tsv
+  - name: image
+    tcia_cohort_name: BRCA
+    data_dir: data/tcia
+    n_slices: 5
+
+training:
+  max_epochs: 50
+  learning_rate: 0.0001
+  weight_decay: 0.00001
+  batch_size: 8
+  num_workers: 4
+  accelerator: auto
+  devices: 1
+  early_stopping_patience: 10
+  subtype_lambda: 0.3
+  scheduler: cosine
+  seed: 42
+
+huggingface:
+  model: ibm/biomed.rna.bert.110m.mlm.multitask.v1
+  image_checkpoint: null  # set to local checkpoint path to enable image FM
+
+output:
+  dir: outputs
+  experiment_name: tcga_brca_multimodal
+  save_every_n_epochs: 5
+
+join_on: patient_id
+join_strategy: inner

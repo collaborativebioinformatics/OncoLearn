@@ -1,0 +1,45 @@
+# OncoLearn experiment config: TCGA-BRCA tabular-only (miRNA + PAM50)
+#
+# Uses only the tabular modality (miRNA expression + PAM50 subtype labels).
+# No imaging data or image checkpoint required.
+
+model:
+  name: gated_late_fusion
+  num_stage_classes: 5
+  num_subtype_classes: 0
+  freeze_encoders: true
+  dropout: 0.2
+  encoders:
+    - name: gene       # RNABERTEncoder — receives miRNA tabular features
+      output_dim: 128
+
+modalities:
+  - name: tabular
+    cohort_code: TCGA-BRCA
+    features_files:
+      - TCGA-BRCA.mirna.tsv
+      - pam50.tsv
+
+training:
+  max_epochs: 50
+  learning_rate: 0.0001
+  weight_decay: 0.00001
+  batch_size: 16
+  num_workers: 4
+  accelerator: auto
+  devices: 1
+  early_stopping_patience: 10
+  subtype_lambda: 0.3
+  scheduler: cosine
+  seed: 42
+
+huggingface:
+  model: ibm/biomed.rna.bert.110m.mlm.multitask.v1
+
+output:
+  dir: outputs
+  experiment_name: tcga_brca_tabular_only
+  save_every_n_epochs: 5
+
+join_on: patient_id
+join_strategy: inner

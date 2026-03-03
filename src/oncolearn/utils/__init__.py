@@ -2,8 +2,6 @@
 Utilities module.
 """
 
-from .config import Config, load_config, save_config
-
 # Conditionally import torch-dependent modules
 try:
     from .data_loader import MedicalImageDataset, create_data_loaders
@@ -12,13 +10,6 @@ try:
     _TORCH_AVAILABLE = True
 except ImportError:
     _TORCH_AVAILABLE = False
-
-# Always available
-__all__ = [
-    'Config',
-    'load_config',
-    'save_config',
-]
 
 # Add torch-dependent exports if available
 if _TORCH_AVAILABLE:

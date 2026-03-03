@@ -1,13 +1,5 @@
-"""Model modules for TCGA-BRCA training."""
-from .fusion import GatedLateFusionClassifier
-from .gene_encoder import RNABERTEncoder
-from .image_encoder import MRMGHierarchicalImageEncoder
-from .tab_encoder import FTTransformerEncoder
+"""Model modules for OncoLearn."""
+from . import encoders  # triggers @register_encoder decorators
+from . import models    # triggers @register_model decorators
 
-__all__ = [
-    'RNABERTEncoder',
-    'FTTransformerEncoder',
-    'MRMGHierarchicalImageEncoder',
-    'GatedLateFusionClassifier',
-]
-
+__all__ = []

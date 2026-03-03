@@ -10,7 +10,7 @@ import torch.nn as nn
 import nvflare.client as flare
 
 from oncolearn.trainer import OncoTrainer
-from oncolearn.modeling.gene_encoder import GeneSetMLPEncoder, RNABERTEncoder
+from oncolearn.modeling.encoders import RNABERTEncoder
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)

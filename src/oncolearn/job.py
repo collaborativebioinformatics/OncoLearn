@@ -8,7 +8,7 @@ from nvflare.job_config.api import FedJob
 from nvflare.job_config.script_runner import ScriptRunner
 
 import torch.nn as nn
-from oncolearn.modeling.gene_encoder import GeneSetMLPEncoder
+from oncolearn.modeling.encoders import RNABERTEncoder
 
 
 def main():
