@@ -39,7 +39,14 @@ class RNABERTEncoder(nn.Module):
             
             register_configs_and_models()
 
-            config_path = hf_hub_download(repo_id=model_name, filename="config.json")
+            # Prefer local cache to avoid a remote round-trip when already downloaded.
+            def _hub_download(repo_id, filename):
+                try:
+                    return hf_hub_download(repo_id=repo_id, filename=filename, local_files_only=True)
+                except Exception:
+                    return hf_hub_download(repo_id=repo_id, filename=filename)
+
+            config_path = _hub_download(model_name, "config.json")
             with open(config_path, 'r') as f:
                 config_dict = json.load(f)
 
@@ -51,7 +58,17 @@ class RNABERTEncoder(nn.Module):
             scbert_config = SCBertConfig.from_dict(config_dict)
             self.rna_model = get_base_model_from_config(scbert_config)
 
-            weights_path = download_ckpt_from_huggingface(model_name)
+            # Use local cache when available to skip the remote "Fetching" round-trip.
+            try:
+                from huggingface_hub import snapshot_download
+                from pathlib import Path as _Path
+                _local = snapshot_download(
+                    model_name, ignore_patterns=["*.git*", "*.md*"], local_files_only=True
+                )
+                _ckpts = list(_Path(_local).glob("*.ckpt"))
+                weights_path = str(_ckpts[0]) if _ckpts else download_ckpt_from_huggingface(model_name)
+            except Exception:
+                weights_path = download_ckpt_from_huggingface(model_name)
             state_dict = prepare_model_dict_from_checkpoint(weights_path)
             self.rna_model.load_state_dict(state_dict, strict=False)
             
@@ -74,13 +91,26 @@ class RNABERTEncoder(nn.Module):
             hidden_size = 768
         
         self.hidden_size = hidden_size
-        
+
+        # Detect model type to pick the right forward strategy.
+        # SCBertConfig has no vocab_size and uses field-based tokenization which
+        # requires a non-empty 'fields' list.  Since we inject fields=[] (the
+        # pretrained config carries no field definitions), we must use the
+        # inputs_embeds path: project each gene's scalar value → hidden_size and
+        # pass as pre-computed embeddings so SCEmbeddingsLayer returns them as-is.
+        _config = getattr(self.rna_model, 'config', None)
+        _model_type = getattr(_config, 'model_type', '').lower() if _config else ''
+        self._use_embeds_projection = (_model_type == 'scbert')
+        if self._use_embeds_projection:
+            # Projects a scalar expression value per gene → hidden_size vector.
+            self._input_proj = nn.Linear(1, self.hidden_size)
+
         # Freeze backbone if requested
         if freeze_backbone:
             for param in self.rna_model.parameters():
                 param.requires_grad = False
             logger.info("RNA BERT backbone frozen")
-        
+
         # Projection layer to desired output dimension
         self.projection = nn.Sequential(
             nn.Linear(hidden_size, output_dim),
@@ -102,16 +132,21 @@ class RNABERTEncoder(nn.Module):
                 # biomed-multi-omic API
                 embeddings = self.rna_model.encode(x)
             elif hasattr(self.rna_model, 'forward'):
-                if hasattr(self.rna_model, 'config') and hasattr(self.rna_model.config, 'vocab_size'):
-                    # Model expects tokenized input — convert gene expression to token IDs
-                    B, P = x.shape
-                    input_ids = (x * 1000).long().clamp(0, self.rna_model.config.vocab_size - 1)
-                    outputs = self.rna_model(input_ids=input_ids)
+                if self._use_embeds_projection:
+                    # SCBert: project each gene's scalar expression value to hidden_size
+                    # and pass as inputs_embeds.  SCEmbeddingsLayer returns inputs_embeds
+                    # directly when provided, bypassing the field-based tokenization that
+                    # requires a non-empty 'fields' list in the config.
+                    # x: (B, P) → (B, P, 1) → (B, P, hidden_size)
+                    inputs_embeds = self._input_proj(x.unsqueeze(-1))
+                    outputs = self.rna_model(inputs_embeds=inputs_embeds)
                 else:
                     outputs = self.rna_model(x)
 
-                if hasattr(outputs, 'last_hidden_state'):
-                    embeddings = outputs.last_hidden_state.mean(dim=1)
+                if hasattr(outputs, 'pooler_output') and outputs.pooler_output is not None:
+                    embeddings = outputs.pooler_output  # (B, hidden_size)
+                elif hasattr(outputs, 'last_hidden_state'):
+                    embeddings = outputs.last_hidden_state.mean(dim=1)  # (B, hidden_size)
                 elif hasattr(outputs, 'pooler_output'):
                     embeddings = outputs.pooler_output
                 elif hasattr(outputs, 'hidden_states'):
@@ -126,7 +161,8 @@ class RNABERTEncoder(nn.Module):
                 if len(embeddings.shape) > 2:
                     embeddings = embeddings.mean(dim=1)
         except Exception as e:
-            logger.warning(f"RNA BERT forward failed: {e}. Using fallback projection.")
+            import traceback
+            logger.warning(f"RNA BERT forward failed: {e}.\n{traceback.format_exc()}\nUsing fallback projection.")
             if not hasattr(self, 'fallback_proj'):
                 self.fallback_proj = nn.Linear(x.shape[1], self.hidden_size).to(x.device)
             embeddings = self.fallback_proj(x)

@@ -9,7 +9,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.cuda.amp import GradScaler, autocast
+from torch.amp import GradScaler, autocast
 from tqdm import tqdm
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score, confusion_matrix
 
@@ -95,7 +95,8 @@ def train_epoch(
     subtype_lambda: float = 0.3,
     device: torch.device = None,
     use_amp: bool = False,
-    scaler: GradScaler = None
+    scaler: GradScaler = None,
+    device_type: str = 'cpu',
 ) -> Dict[str, float]:
     """Train for one epoch."""
     model.train()
@@ -136,7 +137,7 @@ def train_epoch(
         
         optimizer.zero_grad()
         
-        with autocast(enabled=use_amp):
+        with autocast(device_type=device_type, enabled=use_amp):
             outputs = model(gene=gene, clinical=clinical, image=image, modality_ids=modality_ids)
             
             stage_logits = outputs['stage_logits']
@@ -296,21 +297,24 @@ class OncoTrainer:
         
         # Determine class weighting (basic uniform initialization, ideally extracted from datamodule)
         criterion_stage = nn.CrossEntropyLoss().to(self.device)
-        
+
         optimizer = optim.AdamW(self.model.parameters(), lr=1e-3, weight_decay=1e-4)
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=5)
-        scaler = GradScaler()
-        
+        device_type = self.device.type
+        use_amp = device_type == 'cuda'
+        scaler = GradScaler(device_type) if use_amp else None
+
         best_f1 = 0.0
         patience_counter = 0
         max_patience = 10
-        
+
         for epoch in range(self.max_epochs):
             print(f"Epoch {epoch+1}/{self.max_epochs}")
             train_metrics = train_epoch(
                 self.model, train_loader, optimizer,
                 criterion_stage, None, 0.3,
-                self.device, use_amp=True, scaler=scaler
+                self.device, use_amp=use_amp, scaler=scaler,
+                device_type=device_type,
             )
             
             val_metrics = validate(
