@@ -6,17 +6,10 @@ readme = "README.md"
 requires-python = ">=3.12,<3.14"
 
 dependencies = [
-    "hdbscan>=0.8.41",
-    "matplotlib>=3.10.8",
     "pandas>=2.3.3",
     "plotly>=6.5.1",
-    "scikit-learn>=1.7.2",
     "seaborn>=0.13.2",
     "tqdm>=4.67.1",
-    "umap-learn>=0.5.9.post2",
-    "llvmlite>=0.40.0,<0.46.0",
-    "transformers>=4.57.3",
-    "scipy>=1.13.3,<1.15.0",
     "pyyaml>=6.0.3",
     "requests>=2.32.5",
 ]
@@ -44,6 +37,22 @@ rocm = [
     "torchvision>=0.24.1",
     "pytorch-triton-rocm",
 ]
+eda = [
+    "matplotlib>=3.10.8",
+    "scikit-learn>=1.7.2",
+    "hdbscan>=0.8.41",
+    "umap-learn>=0.5.9.post2",
+    "scipy>=1.13.3,<1.15.0",
+    "llvmlite>=0.40.0,<0.46.0",
+]
+cli = []
+# Image processing dependencies
+image = [
+    "pillow>=12.1.0",
+    "pydicom>=3.0.1",
+    "simpleitk>=2.5.3",
+    "diffusers>=0.36.0"
+]
 multimodal = [
     "nvflare",
     "tab-transformer-pytorch",
@@ -51,17 +60,14 @@ multimodal = [
     "torch>=2.9.1",
     "torchvision>=0.24.1",
     "pytorch-lightning>=2.1.0",
+    "transformers>=4.57.3",
     "igraph",
-]
-image = [
+    # Image processing dependencies
     "pillow>=12.1.0",
     "pydicom>=3.0.1",
     "simpleitk>=2.5.3",
     "diffusers>=0.36.0"
 ]
-
-cli = []
-
 
 [dependency-groups]
 dev = [
