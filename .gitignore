@@ -2,23 +2,6 @@
 .hf-cache
 .uv-cache
 
-data/*
-# Xena Browser
-!data/xenabrowser/
-data/xenabrowser/*
-!data/xenabrowser/configs/
-# TCAI
-!data/tcia/
-data/tcia/*
-!data/tcia/configs/
-# CPTAC
-!data/cptac/
-data/cptac/*
-!data/cptac/configs/
-!data/cptac/manifests/
-
-!data/BRCA-data-top1000.tsv
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

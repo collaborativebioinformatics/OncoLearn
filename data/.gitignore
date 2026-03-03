@@ -1,0 +1,9 @@
+# CPTAC
+cptac
+!cptac/manifests
+# TCAI
+tcia
+!tcia/configs
+# Xena Browser
+xenabrowser
+!xenabrowser/configs
