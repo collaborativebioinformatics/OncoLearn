@@ -196,6 +196,8 @@ class XenaCohortBuilder(BaseCohortBuilder):
                 if download_all:
                     from oncolearn.utils.download import get_file_size_from_url
                     print("Calculating total download size...")
+                    total_size = 0
+                    file_details = []
                     datasets_to_download = []
                     for dataset in self.datasets:
                         # Check if file already exists

@@ -88,7 +88,7 @@ class TabularDataModule(pl.LightningDataModule):
     """
     def __init__(
         self,
-        cohort_code: str = "BRCA",
+        cohort_code: str = "TCGA-BRCA",
         batch_size: int = 16,
         num_workers: int = 4,
         data_dir: str = "data/xenabrowser",
@@ -97,6 +97,11 @@ class TabularDataModule(pl.LightningDataModule):
         label_column: Optional[str] = None,
         features_files: Optional[List[str]] = None
     ):
+        # Default to miRNA + PAM50 label for TCGA-BRCA.
+        # miRNA (1881 features) is within sequence-length limits for the gene encoder.
+        if features_files is None and cohort_code == "TCGA-BRCA":
+            features_files = ["TCGA-BRCA.mirna.tsv", "pam50.tsv"]
+            
         super().__init__()
         self.name = "tabular"
         self.cohort_code = cohort_code
@@ -114,12 +119,15 @@ class TabularDataModule(pl.LightningDataModule):
 
     def prepare_data(self):
         """
-        Download required Xenabrowser cohort matrices.
+        Download required Xenabrowser cohort matrices, skipping if data already exists.
         """
+        cohort_dir = self.data_dir / self.cohort_code
+        if cohort_dir.exists() and any(cohort_dir.rglob("*.tsv")):
+            print(f"Tabular data already present in {cohort_dir}, skipping download.")
+            return
         try:
             self.cohort_api = self.builder.build_cohort(self.cohort_code)
-            # This downloads all requested matrices defined in the YAML file automatically
-            self.cohort_api.download(output_dir=str(self.data_dir / self.cohort_code), download_all=True)
+            self.cohort_api.download(output_dir=str(cohort_dir), download_all=True)
         except Exception as e:
             print(f"Error preparing tabular data API: {e}")
 
