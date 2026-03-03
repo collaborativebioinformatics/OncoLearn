@@ -1,4 +1,6 @@
 .DS_Store
+.hf-cache
+.uv-cache
 
 data/*
 # Xena Browser
