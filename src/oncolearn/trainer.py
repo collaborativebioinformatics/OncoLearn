@@ -23,6 +23,7 @@ from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 
 from oncolearn.config import OncoLearnConfig, load_config
 from oncolearn.registry import get_model, get_modality
+import oncolearn.modeling  # noqa: F401 — triggers @register_model / @register_encoder decorators
 from oncolearn.data.multimodal import MultimodalDataModule
 
 logger = logging.getLogger(__name__)
@@ -220,24 +221,18 @@ def main() -> None:
     parser.add_argument("--batch_size", type=int, default=16)
     args = parser.parse_args()
 
-    if args.config:
-        config = load_config(args.config)
-    else:
-        from oncolearn.config import ModelConfig, ModalityConfig, TrainingConfig
-        modalities = [
-            ModalityConfig(
-                name="tabular",
-                kwargs={"cohort_code": "TCGA-BRCA", "features_files": ["TCGA-BRCA.mirna.tsv", "pam50.tsv"]},
-            )
-        ]
-        if args.variant == "v1_imaging":
-            modalities.append(ModalityConfig(name="image", kwargs={}))
+    _VARIANT_CONFIGS = {
+        "v1_imaging":    "data/configs/tcga_brca_multimodal.yaml",
+        "v2_no_imaging": "data/configs/tcga_brca_tabular_only.yaml",
+    }
 
-        config = OncoLearnConfig(
-            model=ModelConfig(name="gated_late_fusion"),
-            modalities=modalities,
-            training=TrainingConfig(max_epochs=args.epochs, batch_size=args.batch_size),
-        )
+    config_path = args.config or _VARIANT_CONFIGS[args.variant]
+    config = load_config(config_path)
+
+    # CLI overrides
+    if not args.config:
+        config.training.max_epochs = args.epochs
+        config.training.batch_size = args.batch_size
 
     trainer = OncoTrainer(config)
     trainer.train()

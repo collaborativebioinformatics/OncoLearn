@@ -171,17 +171,22 @@ class TabularDataModule(pl.LightningDataModule):
             self.master_df = pd.merge(self.master_df, df, on="patient_id", how="inner")
             
         print(f"Merged tabular representation has {len(self.master_df)} patients.")
-        
+
+        # Auto-detect label column if not explicitly set
+        label_col = self.label_column
+        if label_col is None and "label" in self.master_df.columns:
+            label_col = "label"
+
         # Split conceptually via dataframe shuffle instead of PyTorch Subset
         total_size = len(self.master_df)
         train_size = int(self.train_split * total_size)
-        
+
         shuffled_df = self.master_df.sample(frac=1, random_state=self.seed).reset_index(drop=True)
         train_df = shuffled_df.iloc[:train_size]
         val_df = shuffled_df.iloc[train_size:]
-        
-        self.train_dataset = TabularDataset(train_df, label_col=self.label_column)
-        self.val_dataset = TabularDataset(val_df, label_col=self.label_column)
+
+        self.train_dataset = TabularDataset(train_df, label_col=label_col)
+        self.val_dataset = TabularDataset(val_df, label_col=label_col)
         self.test_dataset = self.val_dataset
 
     def train_dataloader(self):

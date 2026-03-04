@@ -26,7 +26,7 @@ services:
       args:
         GPU_EXTRA: cu130
       target: dev
-    container_name: cancer-biomarker-dev-nvidia
+    container_name: oncolearn-dev-nvidia
     deploy:
       resources:
         reservations:
@@ -44,7 +44,7 @@ services:
       args:
         GPU_EXTRA: rocm
       target: dev
-    container_name: cancer-biomarker-dev-amd
+    container_name: oncolearn-dev-amd
     devices:
       - /dev/kfd
       - /dev/dri
@@ -60,7 +60,7 @@ services:
       args:
         GPU_EXTRA: rocm
       target: dev
-    container_name: cancer-biomarker-dev-amd-wsl
+    container_name: oncolearn-dev-amd-wsl
     volumes:
       - .:/workspace
       - uv-cache:/root/.cache/uv
@@ -84,7 +84,7 @@ services:
       args:
         GPU_EXTRA: cpu
       target: dev
-    container_name: cancer-biomarker-dev-cpu
+    container_name: oncolearn-dev-cpu
 
   # Production PyTorch environment (NVIDIA GPU - Optimized Size)
   pytorch-prod-nvidia:
@@ -95,12 +95,9 @@ services:
       args:
         GPU_EXTRA: cu130
       target: pytorch-prod
-    container_name: cancer-biomarker-pytorch-prod-nvidia
+    container_name: oncolearn-pytorch-prod-nvidia
     volumes:
-      - ./configs:/workspace/configs:ro
       - ./data:/workspace/data:ro
-      - ./models:/workspace/models
-      - ./outputs:/workspace/outputs
     deploy:
       resources:
         reservations:
@@ -110,7 +107,7 @@ services:
               capabilities: [gpu]
 
   # Production PyTorch environment (AMD GPU - Optimized Size)
-  pytorch-prod-amd:
+  pytorch-prod-amd-wsl:
     env_file: .docker.env
     profiles: ["prod-amd"]
     build:
@@ -118,19 +115,25 @@ services:
       args:
         GPU_EXTRA: rocm
       target: pytorch-prod
-    container_name: cancer-biomarker-pytorch-prod-amd
+    container_name: oncolearn-pytorch-prod-amd
+    mem_limit: 14g        # cap below WSL limit so OOM kills container, not WSL
+    memswap_limit: 16g    # allow some swap headroom during model loading
     volumes:
-      - ./configs:/workspace/configs:ro
       - ./data:/workspace/data:ro
+      - ./configs:/workspace/configs:ro
       - ./models:/workspace/models
       - ./outputs:/workspace/outputs
+      - ./.hf-cache:/root/.cache/huggingface
+      - ./src:/workspace/src  # live code — changes apply without rebuild
+      - /usr/lib/wsl:/usr/lib/wsl:ro  # WSL GPU libraries
+    environment:
+      - LD_LIBRARY_PATH=/usr/lib/wsl/lib
     devices:
-      - /dev/kfd
-      - /dev/dri
+      - /dev/dxg  # WSL2 DirectX Graphics device for GPU passthrough
     group_add:
       - video
 
-  # Production PyTorch environment (CPU only - Optimized Size)
+  # Production PyTorch environment (CPU only)
   pytorch-prod-cpu:
     env_file: .docker.env
     profiles: ["prod-cpu"]
@@ -139,12 +142,9 @@ services:
       args:
         GPU_EXTRA: cpu
       target: pytorch-prod
-    container_name: cancer-biomarker-pytorch-prod-cpu
+    container_name: oncolearn-pytorch-prod-cpu
     volumes:
-      - ./configs:/workspace/configs:ro
       - ./data:/workspace/data:ro
-      - ./models:/workspace/models
-      - ./outputs:/workspace/outputs
     
 volumes:
   uv-cache:

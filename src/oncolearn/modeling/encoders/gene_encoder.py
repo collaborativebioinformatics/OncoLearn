@@ -40,14 +40,18 @@ class RNABERTEncoder(BaseEncoder):
         output_dim: int = 128,
         huggingface_models: list[str] | None = None,
         device: str = None,
+        max_seq_len: int = 512,
         **kwargs,
     ):
         if huggingface_models is None:
-            huggingface_models = ["ibm/biomed.rna.bert.110m.mlm.multitask.v1"]
+            huggingface_models = ["ibm-research/biomed.rna.bert.110m.mlm.multitask.v1"]
 
         # _load_huggingface_model override is resolved before super().__init__ runs,
         # so hf_enc1 will be loaded via bmfm_targets.
         super().__init__(config, output_dim=output_dim, huggingface_models=huggingface_models, **kwargs)
+
+        # If loading failed, hf_enc1 is nn.Identity — mark for pure-linear fallback in forward.
+        self._rna_bert_unavailable = isinstance(self.hf_enc1, nn.Identity)
 
         rna_model = self.hf_enc1
 
@@ -70,6 +74,12 @@ class RNABERTEncoder(BaseEncoder):
         self._use_embeds_projection = _model_type == "scbert"
         if self._use_embeds_projection:
             self._input_proj = nn.Linear(1, self.hidden_size)
+
+        # Truncate input to top-N features before passing to SCBert.
+        # SCBert attention is O(n²) — 1881 tokens × 12 layers × 12 heads exceeds RAM.
+        # We keep the top max_seq_len features by absolute magnitude (highest-expressed
+        # miRNAs carry the most signal).
+        self.max_seq_len = max_seq_len
 
         self.projection = nn.Sequential(
             nn.Linear(hidden_size, output_dim),
@@ -125,10 +135,11 @@ class RNABERTEncoder(BaseEncoder):
             logger.info(f"Loaded RNA BERT model from HuggingFace via bmfm_targets: {model_name}")
             return model
         except Exception as e:
-            logger.error(f"Failed to load RNA BERT model. {e}")
-            raise RuntimeError(
-                f"Cannot load RNA BERT model: {e}. Ensure biomed-multi-omic is correctly installed."
+            logger.warning(
+                f"Failed to load RNA BERT model ({e}). "
+                "Falling back to linear projection — training will continue without pre-trained weights."
             )
+            return nn.Identity()  # forward() fallback_proj handles the actual projection
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -138,13 +149,27 @@ class RNABERTEncoder(BaseEncoder):
         Returns:
             (B, output_dim) gene embedding
         """
+        # Fast path: RNA BERT unavailable at load time — use linear projection directly.
+        if self._rna_bert_unavailable:
+            if not hasattr(self, "fallback_proj"):
+                self.fallback_proj = nn.Linear(x.shape[1], self.hidden_size).to(x.device)
+            embeddings = self.fallback_proj(x)
+            return self.projection(embeddings)
+
         rna_model = self.hf_enc1
         try:
             if hasattr(rna_model, "encode"):
                 embeddings = rna_model.encode(x)
             else:
                 if self._use_embeds_projection:
-                    inputs_embeds = self._input_proj(x.unsqueeze(-1))
+                    # Truncate to top-max_seq_len features by magnitude to keep
+                    # attention memory O(max_seq_len²) instead of O(n_features²).
+                    if x.shape[1] > self.max_seq_len:
+                        topk_idx = x.abs().topk(self.max_seq_len, dim=1).indices
+                        x_trunc = x.gather(1, topk_idx)
+                    else:
+                        x_trunc = x
+                    inputs_embeds = self._input_proj(x_trunc.unsqueeze(-1))
                     outputs = rna_model(inputs_embeds=inputs_embeds)
                 else:
                     outputs = rna_model(x)

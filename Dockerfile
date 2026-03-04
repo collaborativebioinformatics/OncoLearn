@@ -206,13 +206,9 @@ WORKDIR /workspace
 COPY src/ ./src/
 COPY scripts/ ./scripts/
 COPY .Rprofile renv.lock ./
-    
-# Keep container running for VSCode Dev Containers
-# VSCode's Jupyter extension uses ipykernel directly (already in dev dependencies)
-CMD ["sleep", "infinity"]
 
 # ============================================================================
-# Stage 7: Production PyTorch Runtime (Optimized for Small Size)
+# Stage 7: Production PyTorch Runtime 
 # ============================================================================
 FROM python:3.12-slim AS pytorch-prod
 
@@ -248,7 +244,3 @@ WORKDIR /workspace
 # Copy only essential source code (exclude dev tools, notebooks, docs)
 COPY pyproject.toml uv.lock ./
 COPY src/ ./src/
-COPY configs/ ./configs/
-
-# Default command for training/inference
-CMD ["python", "-m", "oncolearn.train"]

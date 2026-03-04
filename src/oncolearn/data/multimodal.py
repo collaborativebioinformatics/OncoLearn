@@ -5,6 +5,7 @@ import pandas as pd
 import pytorch_lightning as pl
 
 from oncolearn.registry.modalities import get_modality
+import oncolearn.data.modalities  # noqa: F401 — triggers @register_modality decorators
 
 
 class MultimodalDataset(Dataset):

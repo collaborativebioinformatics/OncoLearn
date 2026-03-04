@@ -46,8 +46,10 @@ class XenabrowserParser(BaseTabularParser):
             )
             if label_src:
                 from sklearn.preprocessing import LabelEncoder
+                # Drop rows with missing or unknown labels — they have no valid supervision signal.
+                df = df[df[label_src].notna() & (df[label_src] != 'Unknown')].copy()
                 encoder = LabelEncoder()
-                df['label'] = encoder.fit_transform(df[label_src].fillna('Unknown'))
+                df['label'] = encoder.fit_transform(df[label_src])
                 df = df.drop(columns=[label_src])
 
             return df
