@@ -1,6 +1,6 @@
-# Multi-stage build for OncoLearn
+# syntax=docker/dockerfile:1.7
+# Development environment for OncoLearn (Python + R + LLVM + data tools)
 
-# Build argument for GPU-specific PyTorch extras (must be before FROM to be global)
 ARG GPU_EXTRA=cpu
 
 # ============================================================================
@@ -25,7 +25,6 @@ FROM buildpack-deps:jammy-curl AS nbia-builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install dependencies that NBIA needs
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update \
@@ -42,7 +41,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     libsm6 \
     xdg-utils
 
-# Install NBIA Data Retriever
 RUN mkdir -p /usr/share/desktop-directories /usr/share/applications \
     && wget -q https://github.com/CBIIT/NBIA-TCIA/releases/download/DR-4_4_3-TCIA-20240916-1/nbia-data-retriever_4.4.3-1_amd64.deb -O /tmp/nbia-data-retriever.deb \
     && dpkg -i /tmp/nbia-data-retriever.deb \
@@ -71,8 +69,10 @@ RUN mkdir -p /opt/pdc-client \
 
 # ============================================================================
 # Stage 4: Python Dependencies Builder
+# Base: python:3.12-slim + only the build tools required to compile native extensions.
+# python:3.12 (full) is ~1 GB; slim + build-essential is ~200 MB.
 # ============================================================================
-FROM python:3.12 AS python-builder
+FROM python:3.12-slim AS python-builder
 
 ARG GPU_EXTRA
 
@@ -83,28 +83,40 @@ ENV UV_NO_PROGRESS=0
 ENV UV_HTTP_TIMEOUT=300
 ENV VIRTUAL_ENV=/workspace/.venv
 ENV PATH="/workspace/.venv/bin:${PATH}"
+# bmfm-targets uses setuptools_scm; without a git repo in Docker it hangs trying hg
+ENV SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0
 
-# Install uv (build tools already included in python:3.12)
-RUN pip install uv
-
-# Install libcurl for hic-straw compilation (multimodal requirement)
+# Minimal build toolchain:
+#   build-essential — gcc/g++/make for native extensions (pysam, hic-straw, etc.)
+#   libcurl4-openssl-dev — hic-straw links against libcurl at compile time
+#   git — uv needs git to fetch pinned git-URL deps (e.g. focal-loss-torch)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && \
     apt-get install -y --no-install-recommends \
-    libcurl4-openssl-dev \
+        build-essential \
+        libcurl4-openssl-dev \
+        git \
     && rm -rf /var/lib/apt/lists/*
+
+RUN pip install uv --no-cache-dir
 
 WORKDIR /workspace
 
-# Copy dependency files
 COPY pyproject.toml uv.lock ./
-COPY src/ ./src/
 # biomed-multi-omic is a local path dependency required by bmfm-targets
 COPY submodules/biomed-multi-omic ./submodules/biomed-multi-omic/
 
-# Install Python dependencies with cache mount
-RUN uv sync --verbose --extra ${GPU_EXTRA} --extra multimodal --extra image
+# Install all third-party deps first (--no-install-project skips oncolearn itself).
+# This layer stays cached as long as pyproject.toml/uv.lock/submodule don't change,
+# even when src/ is edited frequently.
+RUN --mount=type=cache,target=/workspace/.uv-cache,sharing=locked \
+    uv sync --no-dev --extra ${GPU_EXTRA} --extra multimodal --no-install-project
+
+# Install oncolearn editable (cheap; only re-runs when src/ changes)
+COPY src/ ./src/
+RUN --mount=type=cache,target=/workspace/.uv-cache,sharing=locked \
+    uv sync --no-dev --extra ${GPU_EXTRA} --extra multimodal
 
 # ============================================================================
 # Stage 5: R Dependencies Builder
@@ -114,7 +126,6 @@ FROM r-base:latest AS r-builder
 ENV DEBIAN_FRONTEND=noninteractive
 ENV RENV_PATHS_CACHE=/workspace/.renv-cache
 
-# Install build dependencies for R packages with cache mount
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && \
@@ -125,11 +136,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 
 WORKDIR /workspace
 
-# Copy R dependency files
 COPY .Rprofile renv.lock ./
 COPY renv/ ./renv/
 
-# Install R dependencies with cache mount and parallel compilation
 RUN --mount=type=cache,target=/workspace/.renv-cache,sharing=locked \
     R -e "options(Ncpus=parallel::detectCores()); \
           if (!requireNamespace('renv', quietly = TRUE)) install.packages('renv', repos='https://cloud.r-project.org/'); \
@@ -138,41 +147,55 @@ RUN --mount=type=cache,target=/workspace/.renv-cache,sharing=locked \
 
 # ============================================================================
 # Stage 6: Dev Runtime Image
+# Base: ubuntu:22.04 (Jammy slim, ~77 MB) instead of buildpack-deps:jammy (~500 MB).
+# buildpack-deps includes compilers/build tools which are not needed at runtime —
+# all compilation happens in the builder stages above.
 # ============================================================================
-FROM buildpack-deps:jammy AS dev
+FROM ubuntu:22.04 AS dev
 
 ARG GPU_EXTRA
 
-# Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 
-# Set uv and Python environment variables
 ENV UV_CACHE_DIR=/workspace/.uv-cache
 ENV UV_PROJECT_ENVIRONMENT=/workspace/.venv
 ENV UV_NO_PROGRESS=0
 ENV VIRTUAL_ENV=/workspace/.venv
 ENV PATH="/workspace/.venv/bin:${PATH}"
 
-# Set LLVM environment variables
 ENV LLVM_CONFIG=/usr/bin/llvm-config-20
 ENV CMAKE_PREFIX_PATH=/usr/lib/llvm-20
 
 # Force Java to run in headless mode (required for nbia-data-retriever in containers)
 ENV JAVA_TOOL_OPTIONS=-Djava.awt.headless=true
 
-# Install minimal runtime system dependencies
-# Note: Python comes from the venv, R runtime deps are minimal
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && \
     apt-get install -y --no-install-recommends \
-    ca-certificates \
-    libgomp1 \
-    libcurl4 \
+        # TLS and core utilities
+        ca-certificates \
+        git \
+        curl \
+        # PyTorch / Python package runtime
+        libgomp1 \
+        libcurl4 \
+        # R runtime (Fortran, BLAS/LAPACK, readline, regex, ICU)
+        libgfortran5 \
+        libblas3 \
+        liblapack3 \
+        libreadline8 \
+        libpcre2-8-0 \
+        libbz2-1.0 \
+        liblzma5 \
+        libzstd1 \
+        libicu70 \
+        # NBIA Data Retriever requires a JRE
+        default-jre-headless \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy LLVM runtime from llvm-builder stage (exclude dev files to reduce size)
+# Copy LLVM runtime from llvm-builder stage (exclude dev headers to reduce size)
 COPY --from=llvm-builder /usr/lib/llvm-20/lib/*.so* /usr/lib/llvm-20/lib/
 COPY --from=llvm-builder /usr/lib/llvm-20/bin/llvm-config /usr/lib/llvm-20/bin/
 COPY --from=llvm-builder /usr/bin/llvm-config-20 /usr/bin/
@@ -186,8 +209,9 @@ RUN mkdir -p /usr/share/desktop-directories \
 COPY --from=pdc-builder /opt/pdc-client /opt/pdc-client
 RUN ln -sf /opt/pdc-client/pdc-client /usr/local/bin/pdc_client
 
-# Copy Python virtual environment from python-builder stage
+# Copy Python virtual environment and uv from python-builder stage
 COPY --from=python-builder /workspace/.venv /workspace/.venv
+COPY --from=python-builder /usr/local/bin/uv /usr/local/bin/uv
 
 # Copy R installation and libraries from r-builder stage
 COPY --from=r-builder /usr/lib/R /usr/lib/R
@@ -196,51 +220,8 @@ COPY --from=r-builder /usr/bin/R /usr/bin/R
 COPY --from=r-builder /usr/bin/Rscript /usr/bin/Rscript
 COPY --from=r-builder /workspace/renv /workspace/renv
 
-# Copy uv from python-builder (faster than downloading)
-COPY --from=python-builder /usr/local/bin/uv /usr/local/bin/uv
-
-# Set working directory
 WORKDIR /workspace
 
-# Copy source code and configs
 COPY src/ ./src/
 COPY scripts/ ./scripts/
 COPY .Rprofile renv.lock ./
-
-# ============================================================================
-# Stage 7: Production PyTorch Runtime 
-# ============================================================================
-FROM python:3.12-slim AS pytorch-prod
-
-ARG GPU_EXTRA
-
-# Prevent interactive prompts during package installation
-ENV DEBIAN_FRONTEND=noninteractive
-ENV PYTHONUNBUFFERED=1
-
-# Set Python environment variables
-ENV VIRTUAL_ENV=/workspace/.venv
-ENV PATH="/workspace/.venv/bin:${PATH}"
-
-# Install only essential runtime dependencies for PyTorch
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-    ca-certificates \
-    libgomp1 \
-    libcurl4 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy only Python virtual environment from python-builder stage
-COPY --from=python-builder /workspace/.venv /workspace/.venv
-
-# Copy uv so that `uv run` works inside the container
-COPY --from=python-builder /usr/local/bin/uv /usr/local/bin/uv
-
-# Set working directory
-WORKDIR /workspace
-
-# Copy only essential source code (exclude dev tools, notebooks, docs)
-COPY pyproject.toml uv.lock ./
-COPY src/ ./src/
