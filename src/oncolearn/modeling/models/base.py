@@ -31,10 +31,25 @@ class BaseOncoClassifier(pl.LightningModule):
         self.learning_rate = config.training.learning_rate
         self.weight_decay = config.training.weight_decay
         self.loss_fn = nn.CrossEntropyLoss()
+        self._use_class_weights = config.training.use_class_weights
 
     # ------------------------------------------------------------------
     # Lightning hooks
     # ------------------------------------------------------------------
+
+    def on_fit_start(self):
+        dm = self.trainer.datamodule
+        if (
+            self._use_class_weights
+            and hasattr(dm, "class_weights")
+            and dm.class_weights is not None
+        ):
+            w = dm.class_weights.to(self.device)
+            self.loss_fn = nn.CrossEntropyLoss(weight=w)
+            import logging
+            logging.getLogger(__name__).info(
+                "Class weights applied to loss: %s", w.tolist()
+            )
 
     def training_step(self, batch, batch_idx):
         preds = self(batch)

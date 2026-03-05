@@ -137,6 +137,7 @@ def load_config(path: Union[str, Path]) -> OncoLearnConfig:
         output=output_cfg,
         join_on=raw.get("join_on", "patient_id"),
         join_strategy=raw.get("join_strategy", "inner"),
+        splits_dir=raw.get("splits_dir", None),
     )
 
     _validate(config)
@@ -176,6 +177,8 @@ def save_config(config: OncoLearnConfig, path: Union[str, Path]) -> None:
 
     raw["join_on"] = config.join_on
     raw["join_strategy"] = config.join_strategy
+    if config.splits_dir is not None:
+        raw["splits_dir"] = config.splits_dir
 
     with path.open("w") as f:
         yaml.dump(raw, f, default_flow_style=False, sort_keys=False)

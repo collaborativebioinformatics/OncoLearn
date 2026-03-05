@@ -4,6 +4,7 @@ Gated late fusion module: dynamically builds encoders from config.
 from __future__ import annotations
 
 import logging
+import random
 from typing import TYPE_CHECKING
 
 import torch
@@ -69,6 +70,7 @@ class GatedLateFusionModule(nn.Module):
         self.num_subtype_classes = config.model.num_subtype_classes
         self.has_subtype = self.num_subtype_classes > 0
         dropout = config.model.dropout
+        self.modality_dropout_prob = config.model.modality_dropout_prob
 
         # Per-encoder classification heads
         self.stage_heads = nn.ModuleDict(
@@ -123,6 +125,15 @@ class GatedLateFusionModule(nn.Module):
                 ``'stage_logits'``: (B, num_stage_classes)
                 ``'subtype_logits'``: (B, num_subtype_classes) — only if configured.
         """
+        # Stochastic modality dropout (training only) — at least one modality is always kept
+        if self.training and self.modality_dropout_prob > 0:
+            available = [n for n in self._encoder_names if inputs.get(n) is not None]
+            if available:
+                keep = {n for n in available if random.random() >= self.modality_dropout_prob}
+                if not keep:
+                    keep = {random.choice(available)}
+                inputs = {k: v for k, v in inputs.items() if k in keep}
+
         embeddings: dict[str, torch.Tensor] = {}
         B = None
 

@@ -53,6 +53,8 @@ class ModelConfig:
                   the encoder name (registry key), its output dimension, and any
                   encoder-specific kwargs (e.g. ``checkpoint_path`` for the image encoder).
         freeze_encoders: Whether to freeze all pre-trained encoder backbones.
+        modality_dropout_prob: Per-modality drop probability during training (0 = disabled).
+                               At least one modality is always retained.
     """
 
     name: str
@@ -61,6 +63,7 @@ class ModelConfig:
     num_subtype_classes: int = 0
     freeze_encoders: bool = True
     dropout: float = 0.2
+    modality_dropout_prob: float = 0.0
 
 
 @dataclass
@@ -78,6 +81,7 @@ class TrainingConfig:
     subtype_lambda: float = 0.3
     scheduler: str = "cosine"
     seed: int = 42
+    use_class_weights: bool = True
 
 
 @dataclass
@@ -110,3 +114,4 @@ class OncoLearnConfig:
     output: OutputConfig = field(default_factory=OutputConfig)
     join_on: str = "patient_id"
     join_strategy: str = "inner"
+    splits_dir: Optional[str] = None

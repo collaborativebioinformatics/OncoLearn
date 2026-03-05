@@ -178,7 +178,8 @@ class ImageDataModule(pl.LightningDataModule):
 
         # Create base dataset
         full_dataset = ImageDataset(self.patient_to_files, self.patient_ids, transform=None, n_slices=5)
-        
+        self._full_dataset = full_dataset
+
         if len(full_dataset) == 0:
             self.train_dataset, self.val_dataset, self.test_dataset = [], [], []
             return
@@ -204,6 +205,16 @@ class ImageDataModule(pl.LightningDataModule):
             n_slices=5
         )
         self.test_dataset = self.val_dataset
+
+    @property
+    def full_dataset(self) -> "ImageDataset":
+        """Full dataset (all patients, no split) — available after setup()."""
+        return self._full_dataset
+
+    def setup_full(self, stage=None):
+        """Ensure setup() has been called so full_dataset is available."""
+        if not hasattr(self, "_full_dataset"):
+            self.setup(stage=stage)
 
     def _extract_patient_id(self, img_path: Path) -> str:
         """Helper to rip the patient ID out of the TCGA/TCIA formatted path."""

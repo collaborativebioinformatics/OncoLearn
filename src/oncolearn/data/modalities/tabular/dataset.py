@@ -185,9 +185,20 @@ class TabularDataModule(pl.LightningDataModule):
         train_df = shuffled_df.iloc[:train_size]
         val_df = shuffled_df.iloc[train_size:]
 
+        self._full_dataset = TabularDataset(self.master_df, label_col=label_col)
         self.train_dataset = TabularDataset(train_df, label_col=label_col)
         self.val_dataset = TabularDataset(val_df, label_col=label_col)
         self.test_dataset = self.val_dataset
+
+    @property
+    def full_dataset(self) -> "TabularDataset":
+        """Full dataset (all patients, no split) — available after setup()."""
+        return self._full_dataset
+
+    def setup_full(self, stage=None):
+        """Ensure setup() has been called so full_dataset is available."""
+        if not hasattr(self, "_full_dataset"):
+            self.setup(stage=stage)
 
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers)

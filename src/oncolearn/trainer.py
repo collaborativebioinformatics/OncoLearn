@@ -105,6 +105,8 @@ class OncoTrainer:
             strategy=self.config.join_strategy,
             batch_size=t.batch_size,
             num_workers=t.num_workers,
+            splits_dir=self.config.splits_dir,
+            num_classes=self.config.model.num_stage_classes,
         )
 
     def _build_model(self) -> pl.LightningModule:
@@ -195,47 +197,17 @@ class OncoTrainer:
 # ---------------------------------------------------------------------------
 
 def main() -> None:
-    """Entry point.
+    """Entry point for ``python -m oncolearn.trainer``.
 
-    Config-driven (recommended)::
+    Delegates to :func:`oncolearn.cli.train.main` for the full argument set.
+
+    Examples::
 
         python -m oncolearn.trainer --config data/configs/tcga_brca_tabular_only.yaml
-
-    Quick shorthand (no config file)::
-
         python -m oncolearn.trainer --variant v2_no_imaging --epochs 10 --batch_size 8
     """
-    import argparse
-
-    parser = argparse.ArgumentParser(description="OncoLearn trainer")
-    parser.add_argument(
-        "--config", type=str, default=None,
-        help="Path to an OncoLearn YAML config (data/configs/*.yaml).",
-    )
-    parser.add_argument(
-        "--variant", type=str, default="v2_no_imaging",
-        choices=["v1_imaging", "v2_no_imaging"],
-        help="Quick shorthand used when --config is not provided.",
-    )
-    parser.add_argument("--epochs", type=int, default=10)
-    parser.add_argument("--batch_size", type=int, default=16)
-    args = parser.parse_args()
-
-    _VARIANT_CONFIGS = {
-        "v1_imaging":    "data/configs/tcga_brca_multimodal.yaml",
-        "v2_no_imaging": "data/configs/tcga_brca_tabular_only.yaml",
-    }
-
-    config_path = args.config or _VARIANT_CONFIGS[args.variant]
-    config = load_config(config_path)
-
-    # CLI overrides
-    if not args.config:
-        config.training.max_epochs = args.epochs
-        config.training.batch_size = args.batch_size
-
-    trainer = OncoTrainer(config)
-    trainer.train()
+    from oncolearn.cli.train import main as cli_main
+    cli_main()
 
 
 if __name__ == "__main__":

@@ -1,0 +1,105 @@
+"""
+Preprocessing utilities for OncoLearn datasets.
+
+Provides stratified K-fold split generation that saves patient ID files
+compatible with the ``splits_dir`` config option.
+"""
+
+from __future__ import annotations
+
+from collections import Counter
+from pathlib import Path
+from typing import List
+
+from oncolearn.data.split_utils import write_id_file
+
+
+def generate_kfold_splits(
+    patient_ids: List[str],
+    labels: List[int],
+    output_dir: Path,
+    n_splits: int = 5,
+    val_fraction: float = 0.1,
+    seed: int = 42,
+) -> List[Path]:
+    """Generate stratified K-fold splits and save them to disk.
+
+    For each fold *N*:
+
+    * **test** — the held-out fold
+    * **val** — *val_fraction* of the training fold (stratified)
+    * **train** — the remainder of the training fold
+
+    Files are written to ``output_dir/fold_N/{train,test,validation}.txt``,
+    one patient_id per line.
+
+    Args:
+        patient_ids: List of patient identifiers (same length as *labels*).
+        labels: Integer class label for each patient.
+        output_dir: Root directory under which ``fold_0/``, ``fold_1/``, … are created.
+        n_splits: Number of folds (default 5).
+        val_fraction: Fraction of the training set to reserve for validation (default 0.1).
+        seed: Random seed for reproducibility (default 42).
+
+    Returns:
+        List of ``Path`` objects, one per fold directory.
+    """
+    try:
+        from sklearn.model_selection import StratifiedKFold, train_test_split
+    except ImportError as exc:
+        raise ImportError(
+            "scikit-learn is required for split generation: pip install scikit-learn"
+        ) from exc
+
+    output_dir = Path(output_dir)
+    skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
+
+    ids_arr = list(patient_ids)
+    lbls_arr = list(labels)
+
+    fold_dirs: List[Path] = []
+
+    for fold_idx, (train_val_indices, test_indices) in enumerate(
+        skf.split(ids_arr, lbls_arr)
+    ):
+        fold_dir = output_dir / f"fold_{fold_idx}"
+        fold_dir.mkdir(parents=True, exist_ok=True)
+
+        test_ids = [ids_arr[i] for i in test_indices]
+        train_val_ids = [ids_arr[i] for i in train_val_indices]
+        train_val_labels = [lbls_arr[i] for i in train_val_indices]
+
+        # Stratified val split from the train+val portion
+        if val_fraction > 0 and len(set(train_val_labels)) > 1:
+            train_ids, val_ids, _, _ = train_test_split(
+                train_val_ids,
+                train_val_labels,
+                test_size=val_fraction,
+                random_state=seed,
+                stratify=train_val_labels,
+            )
+        else:
+            # Fallback: non-stratified split (single-class or val_fraction=0)
+            n_val = max(1, int(len(train_val_ids) * val_fraction))
+            val_ids = train_val_ids[:n_val]
+            train_ids = train_val_ids[n_val:]
+
+        write_id_file(fold_dir / "train.txt", train_ids)
+        write_id_file(fold_dir / "test.txt", test_ids)
+        write_id_file(fold_dir / "validation.txt", val_ids)
+
+        # Per-fold summary
+        train_counts = Counter(lbls_arr[ids_arr.index(pid)] for pid in train_ids)
+        val_counts = Counter(lbls_arr[ids_arr.index(pid)] for pid in val_ids)
+        test_counts = Counter(lbls_arr[ids_arr.index(pid)] for pid in test_ids)
+
+        print(
+            f"  fold_{fold_idx}: "
+            f"train={len(train_ids)} {dict(sorted(train_counts.items()))}  "
+            f"val={len(val_ids)} {dict(sorted(val_counts.items()))}  "
+            f"test={len(test_ids)} {dict(sorted(test_counts.items()))}"
+        )
+
+        fold_dirs.append(fold_dir)
+
+    return fold_dirs

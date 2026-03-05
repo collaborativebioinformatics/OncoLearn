@@ -32,6 +32,9 @@ def main():
     from . import preprocess
     preprocess.register_subcommand(subparsers)
 
+    from . import train
+    train.register_subcommand(subparsers)
+
     # Parse arguments
     args = parser.parse_args()
 

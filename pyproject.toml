@@ -6,9 +6,6 @@ readme = "README.md"
 requires-python = ">=3.12,<3.14"
 
 dependencies = [
-    "pandas>=2.3.3",
-    "plotly>=6.5.1",
-    "seaborn>=0.13.2",
     "tqdm>=4.67.1",
     "pyyaml>=6.0.3",
     "requests>=2.32.5",
@@ -44,6 +41,8 @@ eda = [
     "umap-learn>=0.5.9.post2",
     "scipy>=1.13.3,<1.15.0",
     "llvmlite>=0.40.0,<0.46.0",
+    "plotly>=6.5.1",
+    "seaborn>=0.13.2",
 ]
 cli = []
 # Image processing dependencies
@@ -54,7 +53,7 @@ image = [
     "diffusers>=0.36.0"
 ]
 multimodal = [
-    "nvflare",
+    # "nvflare",
     "tab-transformer-pytorch",
     "bmfm-targets",
     "torch>=2.9.1",

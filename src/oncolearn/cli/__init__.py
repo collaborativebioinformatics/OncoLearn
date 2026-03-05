@@ -1,6 +1,6 @@
 """CLI utilities for OncoLearn."""
 
-from . import download
+from . import download, preprocess, train
 from .cli import main
 
-__all__ = ["main", "download"]
+__all__ = ["main", "download", "preprocess", "train"]
