@@ -112,6 +112,7 @@ class GeneDataModule(pl.LightningDataModule):
         except Exception as e:
             print(f"Warning: {e}")
             self.train_dataset = self.val_dataset = self.test_dataset = []
+            self._full_dataset = None
             return
 
         label_col = self.label_column

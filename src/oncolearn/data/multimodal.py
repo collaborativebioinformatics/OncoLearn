@@ -187,7 +187,11 @@ class MultimodalDataModule(pl.LightningDataModule):
                 dm.setup_full(stage=stage)
 
             splits = _load_split_ids(self.splits_dir)
-            full_datasets = {name: dm.full_dataset for name, dm in self.datamodules.items()}
+            full_datasets = {
+                name: dm.full_dataset
+                for name, dm in self.datamodules.items()
+                if dm.full_dataset is not None
+            }
 
             if stage == "fit" or stage is None:
                 self.train_dataset = MultimodalDataset(
