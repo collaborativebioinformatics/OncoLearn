@@ -4,7 +4,7 @@ Generic dataset implementation that can be configured from YAML files.
 
 from typing import Optional
 
-from oncolearn.utils.download import download_and_extract_gzip
+from oncolearn.cli.utils.download import download_and_extract_gzip
 
 from ..dataset import DataCategory, Dataset
 

@@ -19,6 +19,9 @@ from typing import Dict, Optional
 import numpy as np
 import torch
 import pytorch_lightning as pl
+
+# Utilize Tensor Cores on supported GPUs (trades negligible precision for performance)
+torch.set_float32_matmul_precision("high")
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 
 from oncolearn.config import OncoLearnConfig, load_config
@@ -112,7 +115,7 @@ class OncoTrainer:
     def _build_model(self) -> pl.LightningModule:
         """Look up the registered model class and instantiate it with the config."""
         model_cls = get_model(self.config.model.name)
-        return model_cls(self.config, device=self.device)
+        return model_cls(self.config)
 
     # ------------------------------------------------------------------
     # Public API
@@ -155,6 +158,7 @@ class OncoTrainer:
             devices=t.devices,
             default_root_dir=str(output_dir),
             callbacks=callbacks,
+            log_every_n_steps=1,
         )
 
         logger.info(

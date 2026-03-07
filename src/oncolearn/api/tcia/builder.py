@@ -7,8 +7,6 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-from oncolearn.utils.download import confirm_cohort_download
-
 from ..cohort import Cohort
 from ..cohort_builder import CohortBuilder as BaseCohortBuilder
 from ..dataset import DataCategory
@@ -185,7 +183,7 @@ class TCIACohortBuilder(BaseCohortBuilder):
 
                 if download_all:
                     # Calculate size for each dataset and build file details list
-                    from oncolearn.utils.download import get_file_size_from_url
+                    from oncolearn.cli.utils.download import get_file_size_from_url
 
                     file_details = []
                     total_size = 0
@@ -202,6 +200,7 @@ class TCIACohortBuilder(BaseCohortBuilder):
 
                     # Show single confirmation for entire cohort if we have size info
                     if total_size > 0 and confirm:
+                        from oncolearn.cli.utils.download import confirm_cohort_download  # noqa: PLC0415
                         if not confirm_cohort_download(
                             cohort_name=cohort_info['code'],
                             total_size_bytes=total_size,

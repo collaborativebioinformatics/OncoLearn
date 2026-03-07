@@ -7,8 +7,6 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-from oncolearn.utils.download import confirm_cohort_download
-
 from ..cohort import Cohort
 from ..cohort_builder import CohortBuilder as BaseCohortBuilder
 from ..dataset import DataCategory
@@ -194,7 +192,7 @@ class XenaCohortBuilder(BaseCohortBuilder):
                 print(f"Downloading {cohort_info['code']} cohort to {output_path}")
                 
                 if download_all:
-                    from oncolearn.utils.download import get_file_size_from_url
+                    from oncolearn.cli.utils.download import get_file_size_from_url
                     print("Calculating total download size...")
                     total_size = 0
                     file_details = []
@@ -217,6 +215,7 @@ class XenaCohortBuilder(BaseCohortBuilder):
                     
                     # Show single confirmation for entire cohort if we have size info
                     if total_size > 0 and len(datasets_to_download) > 0:
+                        from oncolearn.cli.utils.download import confirm_cohort_download  # noqa: PLC0415
                         if not confirm_cohort_download(
                             cohort_name=cohort_info['code'],
                             total_size_bytes=total_size,

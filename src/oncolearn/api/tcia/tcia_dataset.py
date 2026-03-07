@@ -5,7 +5,7 @@ TCIA dataset implementation for downloading imaging data manifests.
 from pathlib import Path
 from typing import Optional
 
-from oncolearn.utils.download import download_file, run_external_command
+from oncolearn.cli.utils.download import download_file, run_external_command
 
 from ..dataset import DataCategory, Dataset
 

@@ -34,31 +34,26 @@ class GatedLateFusionModule(nn.Module):
 
     Args:
         config: Full experiment config.  ``config.model.encoders`` specifies which
-                encoders to build and their output dimensions.
-        device: Optional device for encoder construction (passed to encoders that
-                need it, e.g. RNA BERT).
+                encoders to build; each encoder resolves its own parameters via
+                its registered config class.
     """
 
-    def __init__(self, config: "OncoLearnConfig", device: torch.device = None) -> None:
+    def __init__(self, config: "OncoLearnConfig") -> None:
         super().__init__()
 
         from oncolearn.registry import get_encoder
 
-        device_str = str(device) if device else None
-
-        # Build encoders from config
+        # Build encoders from config — each encoder reads its own params via
+        # resolve_encoder_config, so only the OncoLearnConfig is needed.
         self.encoders = nn.ModuleDict()
         self.encoder_dims: dict[str, int] = {}
         self._encoder_names: list[str] = []
 
         for enc_cfg in config.model.encoders:
             enc_cls = get_encoder(enc_cfg.name)
-            kwargs = dict(enc_cfg.kwargs)
-            if enc_cfg.name == "gene" and device_str:
-                kwargs["device"] = device_str
-            encoder = enc_cls(config, output_dim=enc_cfg.output_dim, **kwargs)
+            encoder = enc_cls(config)
             self.encoders[enc_cfg.name] = encoder
-            self.encoder_dims[enc_cfg.name] = enc_cfg.output_dim
+            self.encoder_dims[enc_cfg.name] = encoder.output_dim
             self._encoder_names.append(enc_cfg.name)
 
         if not self._encoder_names:

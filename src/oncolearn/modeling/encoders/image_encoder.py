@@ -5,20 +5,36 @@ Loads a pretrained checkpoint and uses it as a frozen feature extractor.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from oncolearn.registry import register_encoder
+from oncolearn.registry import register_config, register_encoder
 from .base import BaseEncoder
 
 if TYPE_CHECKING:
     from oncolearn.config import OncoLearnConfig
 
 logger = logging.getLogger(__name__)
+
+
+@register_config("image")
+@dataclass
+class MRMGHierarchicalImageEncoderConfig:
+    """Configuration for the FM-BCMRI hierarchical image encoder."""
+
+    output_dim: int = 256
+    checkpoint_path: Optional[str] = None
+    # Internal dim used by feature_proj (backbone → pool) and attention pooling.
+    backbone_feature_dim: int = 256
+    # Fallback cube size (px) for 3D ViT when pos_embed is absent in the checkpoint.
+    vit_3d_default_target_size: int = 48
+    # Input channels fed to the 3D ViT (FM-BCMRI expects single-channel grayscale).
+    vit_3d_in_channels: int = 1
 
 
 class HierarchicalAttentionPooling(nn.Module):
@@ -68,45 +84,58 @@ class MRMGHierarchicalImageEncoder(BaseEncoder):
     - Output: patient embedding in R^{output_dim}
 
     Args:
-        config: Full experiment config. Reads ``model.freeze_encoders`` for the
-                backbone freeze flag.
-        output_dim: Output embedding dimension.
-        checkpoint_path: Path to pretrained checkpoint file (required). Passed as an
-                         encoder kwarg in the YAML ``model.encoders`` entry.
+        config: Full experiment config.  Encoder-specific parameters are read via
+                :func:`~oncolearn.registry.resolve_encoder_config` which merges
+                :class:`MRMGHierarchicalImageEncoderConfig` defaults with any YAML
+                overrides (e.g. ``checkpoint_path``).
     """
 
-    def __init__(
-        self,
-        config: "OncoLearnConfig",
-        output_dim: int = 256,
-        checkpoint_path: str = None,
-        **kwargs,
-    ):
-        super().__init__(config, output_dim=output_dim, huggingface_models=None, **kwargs)
+    def __init__(self, config: "OncoLearnConfig") -> None:
+        from oncolearn.registry import resolve_encoder_config
 
-        if not checkpoint_path or not Path(checkpoint_path).exists():
+        enc_cfg: MRMGHierarchicalImageEncoderConfig = resolve_encoder_config(
+            type(self), "image", config
+        )
+
+        super().__init__(config, output_dim=enc_cfg.output_dim, huggingface_models=None)
+
+        if not enc_cfg.checkpoint_path or not Path(enc_cfg.checkpoint_path).exists():
             raise ValueError(
                 f"A valid checkpoint_path must be provided for the image encoder. "
-                f"Given: {checkpoint_path}"
+                f"Given: {enc_cfg.checkpoint_path}"
             )
 
-        logger.info(f"Loading image encoder from checkpoint: {checkpoint_path}")
-        self.backbone, backbone_dim = self._load_from_checkpoint(checkpoint_path)
+        logger.info(f"Loading image encoder from checkpoint: {enc_cfg.checkpoint_path}")
+        self._3d_vit_target_size = None
+        self.backbone, backbone_dim = self._load_from_checkpoint(
+            enc_cfg.checkpoint_path,
+            vit_3d_default_target_size=enc_cfg.vit_3d_default_target_size,
+            vit_3d_in_channels=enc_cfg.vit_3d_in_channels,
+        )
         self.is_vit = (
             hasattr(self.backbone, "patch_embed")
             or hasattr(self.backbone, "blocks")
             or hasattr(self.backbone, "transformer")
         )
 
-        self.feature_proj = nn.Linear(backbone_dim, 256)
+        feat_dim = enc_cfg.backbone_feature_dim
+        self.feature_proj = nn.Linear(backbone_dim, feat_dim)
 
         self.attention_pool = HierarchicalAttentionPooling(
-            input_dim=256,
-            hidden_dim=256,
-            output_dim=output_dim,
+            input_dim=feat_dim,
+            hidden_dim=feat_dim,
+            output_dim=enc_cfg.output_dim,
         )
 
-    def _load_from_checkpoint(self, checkpoint_path: str):
+        # Stored for use in forward()
+        self._backbone_feature_dim = feat_dim
+
+    def _load_from_checkpoint(
+        self,
+        checkpoint_path: str,
+        vit_3d_default_target_size: int = 48,
+        vit_3d_in_channels: int = 1,
+    ):
         checkpoint = torch.load(checkpoint_path, map_location="cpu")
 
         state_dict = None
@@ -164,10 +193,24 @@ class MRMGHierarchicalImageEncoder(BaseEncoder):
         )
 
         if is_3d:
-            logger.info("Detected 3D ViT model. Creating 3D ViT wrapper.")
-            from oncolearn.modeling.modules.vit_3d_wrapper import ViT3DWrapper
-            backbone = ViT3DWrapper(backbone_dict, self.freeze_encoders)
-            return backbone, 768
+            logger.info("Detected 3D ViT model. Loading via vit_3d module.")
+            from oncolearn.modeling.modules.vit_3d import vit_3d_base_patchsize8
+
+            # Infer the spatial cube size from the positional embedding.
+            # FM-BCMRI uses patch_size=8, so img_size = grid_edge * 8.
+            # pos_embed shape: (1, num_patches + 1, embed_dim) — subtract 1 for CLS.
+            target_size = vit_3d_default_target_size
+            if "pos_embed" in backbone_dict:
+                num_patches = backbone_dict["pos_embed"].shape[1] - 1
+                grid = round(num_patches ** (1 / 3))
+                target_size = grid * 8
+
+            model = vit_3d_base_patchsize8(img_size=target_size, in_chans=vit_3d_in_channels)
+            model.load_state_dict(backbone_dict, strict=False)
+            if self.freeze_encoders:
+                self._freeze(model)
+            self._3d_vit_target_size = target_size
+            return model, 768
 
         if is_vit:
             logger.info("Detected 2D ViT model.")
@@ -221,11 +264,11 @@ class MRMGHierarchicalImageEncoder(BaseEncoder):
 
                 return vit_model.encoder, vit_cfg.hidden_size
 
-            except ImportError:
-                logger.warning("transformers not available. Falling back to ViT3DWrapper.")
-                from oncolearn.modeling.modules.vit_3d_wrapper import ViT3DWrapper
-                backbone = ViT3DWrapper(backbone_dict, self.freeze_encoders)
-                return backbone, 768
+            except ImportError as e:
+                raise ImportError(
+                    "The 'transformers' package is required to load 2D ViT checkpoints. "
+                    "Install it with: pip install transformers"
+                ) from e
 
         raise NotImplementedError(
             f"Could not identify model architecture from checkpoint. "
@@ -242,6 +285,29 @@ class MRMGHierarchicalImageEncoder(BaseEncoder):
             (B, output_dim) patient-level embedding
         """
         B, N, C, H, W = images.shape
+
+        if modality_ids is None:
+            modality_ids = torch.zeros(B, N, dtype=torch.long, device=images.device)
+
+        if self._3d_vit_target_size is not None:
+            # FM-BCMRI 3D ViT path: treat N slices as the depth dimension.
+            # Convert to single-channel grayscale and stack into a 3D volume.
+            gray = images.mean(dim=2, keepdim=True) if C != 1 else images  # (B, N, 1, H, W)
+            # Rearrange to (B, 1, H, W, N) — FM-BCMRI PatchEmbed3D expects (B, C, H, W, D)
+            vol = gray.permute(0, 2, 3, 4, 1)  # (B, 1, H, W, N)
+            # F.interpolate requires (B, C, D, H, W); permute depth to dim-2 temporarily
+            vol_dhw = vol.permute(0, 1, 4, 2, 3)  # (B, 1, N, H, W)
+            ts = self._3d_vit_target_size
+            vol_dhw = F.interpolate(vol_dhw, size=(ts, ts, ts), mode="trilinear", align_corners=False)
+            # Back to FM-BCMRI format (B, C, H, W, D)
+            vol_fmbcmri = vol_dhw.permute(0, 1, 3, 4, 2)  # (B, 1, ts, ts, ts)
+            # CLS token from forward_features: (B, seq_len, 768) → take index 0
+            features = self.backbone.forward_features(vol_fmbcmri)[:, 0]  # (B, 768)
+            features = self.feature_proj(features)                          # (B, 256)
+            # Wrap as a single-token sequence for the attention pool
+            features = features.unsqueeze(1)                                # (B, 1, 256)
+            return self.attention_pool(features, modality_ids[:, :1])
+
         images_flat = images.view(B * N, C, H, W)
 
         if self.is_vit:
@@ -252,13 +318,13 @@ class MRMGHierarchicalImageEncoder(BaseEncoder):
             if len(features.shape) > 2:
                 features = F.adaptive_avg_pool2d(features, 1).squeeze(-1).squeeze(-1)
 
-        features = self.feature_proj(features)      # (B*N, 256)
-        features = features.view(B, N, 256)
+        features = self.feature_proj(features)                                   # (B*N, feat_dim)
+        features = features.view(B, N, self._backbone_feature_dim)
         return self.attention_pool(features, modality_ids)
 
     def forward_single_image(self, image: torch.Tensor, modality_id: int = 0) -> torch.Tensor:
         """Forward pass for a single image (inference convenience method)."""
-        B, C, H, W = image.shape
+        B = image.shape[0]
 
         if self.is_vit:
             features = self.backbone(image)

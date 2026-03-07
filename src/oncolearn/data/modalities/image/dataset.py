@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Tuple
@@ -10,6 +11,8 @@ from torchvision import transforms
 from oncolearn.registry.modalities import register_modality
 from oncolearn.api.tcia.tcia_dataset import TCIADataset
 from oncolearn.data.modalities.image.loaders import DEFAULT_LOADERS
+
+logger = logging.getLogger(__name__)
 
 
 class ImageDataset(Dataset):
@@ -92,12 +95,14 @@ class ImageDataModule(pl.LightningDataModule):
         self,
         tcia_manifest_url: Optional[str] = None,
         tcia_cohort_name: str = "BRCA",
-        image_size: Tuple[int, int] = (512, 512),
+        image_size: Tuple[int, int] = (224, 224),
         batch_size: int = 16,
         num_workers: int = 4,
         data_dir: str = "data/tcia",
         train_split: float = 0.8,
-        seed: int = 42
+        seed: int = 42,
+        n_slices: int = 5,
+        prefer_mr: bool = True,
     ):
         super().__init__()
         self.name = "image"
@@ -109,7 +114,9 @@ class ImageDataModule(pl.LightningDataModule):
         self.data_dir = Path(data_dir)
         self.train_split = train_split
         self.seed = seed
-        
+        self.n_slices = n_slices
+        self.prefer_mr = prefer_mr
+
         self.api_dataset = None
         if self.tcia_manifest_url:
             self.api_dataset = TCIADataset(
@@ -160,24 +167,28 @@ class ImageDataModule(pl.LightningDataModule):
                         file_count += 1
                         break
                         
+        # Prefer MR series over MG when both are present for a patient
+        if self.prefer_mr:
+            self.patient_to_files = self._filter_mr_preferred(self.patient_to_files)
+
         self.patient_ids = list(self.patient_to_files.keys())
         print(f"ImageDataModule mapped {file_count} valid image files across {len(self.patient_ids)} patients.")
-        
-        # Set transforms (original config normalize rules, resize, etc)
+
+        # Transforms matching the original pipeline: resize to 224×224,
+        # flip + ±5° rotation for training augmentation, ToTensor for both.
         train_transform = transforms.Compose([
             transforms.Resize(self.image_size),
-            transforms.RandomHorizontalFlip(),
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomRotation(degrees=5),
             transforms.ToTensor(),
-            # Normalization typically happens via DICOM min-max to 0-1, but can apply ImageNet if pretrained backbones used
-            # We omit ImageNet normalize if the user specificies min-max in dataloader, however keeping it consistent handles PIL loader correctly.
         ])
         eval_transform = transforms.Compose([
             transforms.Resize(self.image_size),
             transforms.ToTensor(),
         ])
 
-        # Create base dataset
-        full_dataset = ImageDataset(self.patient_to_files, self.patient_ids, transform=None, n_slices=5)
+        # Create base dataset (use eval_transform so slices are resized consistently)
+        full_dataset = ImageDataset(self.patient_to_files, self.patient_ids, transform=eval_transform, n_slices=self.n_slices)
         self._full_dataset = full_dataset
 
         if len(full_dataset) == 0:
@@ -188,21 +199,21 @@ class ImageDataModule(pl.LightningDataModule):
         total_size = len(full_dataset)
         train_size = int(self.train_split * total_size)
         val_size = total_size - train_size
-        
+
         generator = torch.Generator().manual_seed(self.seed)
         train_ds, val_ds = torch.utils.data.random_split(full_dataset, [train_size, val_size], generator=generator)
-        
+
         self.train_dataset = ImageDataset(
             self.patient_to_files,
             [self.patient_ids[i] for i in train_ds.indices],
             transform=train_transform,
-            n_slices=5
+            n_slices=self.n_slices
         )
         self.val_dataset = ImageDataset(
             self.patient_to_files,
             [self.patient_ids[i] for i in val_ds.indices],
             transform=eval_transform,
-            n_slices=5
+            n_slices=self.n_slices
         )
         self.test_dataset = self.val_dataset
 
@@ -215,6 +226,57 @@ class ImageDataModule(pl.LightningDataModule):
         """Ensure setup() has been called so full_dataset is available."""
         if not hasattr(self, "_full_dataset"):
             self.setup(stage=stage)
+
+    def _filter_mr_preferred(
+        self, patient_to_files: Dict[str, List[Path]]
+    ) -> Dict[str, List[Path]]:
+        """
+        For each patient, keep only MR-modality files when MR series are present.
+        Falls back to all files when MR cannot be determined (e.g. non-DICOM).
+
+        Reads one DICOM header per series directory (stop_before_pixels=True) to
+        determine the Modality tag cheaply, matching the original pipeline's
+        preference for MR over MG.
+        """
+        try:
+            import pydicom
+        except ImportError:
+            return patient_to_files
+
+        filtered: Dict[str, List[Path]] = {}
+        for pid, files in patient_to_files.items():
+            # Group files by their parent directory (= series)
+            dir_to_files: Dict[Path, List[Path]] = {}
+            for f in files:
+                dir_to_files.setdefault(f.parent, []).append(f)
+
+            # Read one header per series directory to get the Modality tag
+            dir_modality: Dict[Path, Optional[str]] = {}
+            for series_dir, series_files in dir_to_files.items():
+                try:
+                    ds = pydicom.dcmread(
+                        str(series_files[0]), stop_before_pixels=True
+                    )
+                    dir_modality[series_dir] = getattr(ds, "Modality", None)
+                except Exception:
+                    dir_modality[series_dir] = None
+
+            # If any MR series found, keep only MR files
+            mr_dirs = {d for d, m in dir_modality.items() if m == "MR"}
+            if mr_dirs:
+                filtered[pid] = [f for f in files if f.parent in mr_dirs]
+            else:
+                filtered[pid] = files
+
+        mr_filtered = sum(
+            1 for pid in filtered
+            if len(filtered[pid]) < len(patient_to_files[pid])
+        )
+        if mr_filtered:
+            logger.info(
+                "MR preference filter: removed MG files for %d patients.", mr_filtered
+            )
+        return filtered
 
     def _extract_patient_id(self, img_path: Path) -> str:
         """Helper to rip the patient ID out of the TCGA/TCIA formatted path."""

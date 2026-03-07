@@ -58,7 +58,7 @@ class BaseOncoClassifier(pl.LightningModule):
             torch.zeros(preds["stage_logits"].shape[0], dtype=torch.long, device=self.device),
         )
         loss = self.loss_fn(preds["stage_logits"], labels)
-        self.log("train_loss", loss, prog_bar=True)
+        self.log("train_loss", loss, prog_bar=True, batch_size=labels.shape[0])
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -66,8 +66,8 @@ class BaseOncoClassifier(pl.LightningModule):
         preds = self(batch)
         loss = self.loss_fn(preds["stage_logits"], labels)
         acc = (preds["stage_logits"].argmax(dim=1) == labels).float().mean()
-        self.log("val_loss", loss, prog_bar=True)
-        self.log("val_acc", acc, prog_bar=True)
+        self.log("val_loss", loss, prog_bar=True, batch_size=labels.shape[0])
+        self.log("val_acc", acc, prog_bar=True, batch_size=labels.shape[0])
         return {"val_loss": loss, "val_acc": acc}
 
     def test_step(self, batch, batch_idx):

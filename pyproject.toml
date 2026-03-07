@@ -60,6 +60,7 @@ multimodal = [
     "torchvision>=0.24.1",
     "pytorch-lightning>=2.1.0",
     "transformers>=4.57.3",
+    "timm>=0.9.10",
     "igraph",
     # Image processing dependencies
     "pillow>=12.1.0",

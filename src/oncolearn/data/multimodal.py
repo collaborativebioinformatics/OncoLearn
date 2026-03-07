@@ -8,7 +8,7 @@ import pytorch_lightning as pl
 
 from oncolearn.registry.modalities import get_modality
 import oncolearn.data.modalities  # noqa: F401 — triggers @register_modality decorators
-from oncolearn.data.split_utils import read_id_file
+from oncolearn.cli.utils.splits import read_id_file
 
 
 def _load_split_ids(splits_dir: str) -> Dict[str, Optional[Set[str]]]:

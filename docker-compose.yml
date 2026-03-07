@@ -147,6 +147,7 @@ services:
       - /opt/rocm/lib:/opt/rocm/lib:ro  # ROCm runtime libs (libroctx64, etc.)
     environment:
       - LD_LIBRARY_PATH=/opt/rocm/lib:/usr/lib/wsl/lib
+      - TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL=1
     devices:
       - /dev/dxg  # WSL2 DirectX Graphics device for GPU passthrough
     group_add:

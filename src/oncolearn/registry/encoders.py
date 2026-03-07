@@ -2,6 +2,10 @@ from typing import Dict, Type, Any
 
 _ENCODERS: Dict[str, Type[Any]] = {}
 
+# Reverse mapping: encoder class → registry name (populated by register_encoder).
+# Used by resolve_encoder_config to walk the MRO and find ancestor configs.
+_CLASS_TO_NAME: Dict[type, str] = {}
+
 
 def register_encoder(name: str):
     """Decorator to register an encoder class by name.
@@ -15,6 +19,7 @@ def register_encoder(name: str):
                 f"Encoder '{name}' is already registered! Cannot register {cls.__name__}."
             )
         _ENCODERS[name] = cls
+        _CLASS_TO_NAME[cls] = name
         return cls
 
     return wrapper

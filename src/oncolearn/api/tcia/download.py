@@ -7,7 +7,7 @@ using the TCIACohortBuilder.
 
 from typing import Dict
 
-from oncolearn.api.tcia import TCIACohortBuilder
+from oncolearn.api.tcia.builder import TCIACohortBuilder
 
 
 def get_available_cohorts() -> list[str]:

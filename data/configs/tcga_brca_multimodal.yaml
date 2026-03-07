@@ -1,31 +1,40 @@
-# OncoLearn experiment config: TCGA-BRCA multimodal (tabular + imaging)
+# OncoLearn experiment config: TCGA-BRCA multimodal (tabular + clinical + imaging)
 #
-# Requires image data downloaded via TCIA and tabular data via Xenabrowser.
+# Requires image data downloaded via TCIA and tabular/clinical data via Xenabrowser.
 # Set model.encoders[image].checkpoint_path to a local FM-BCMRI / ViT checkpoint path.
 
 model:
   name: gated_late_fusion
-  num_stage_classes: 5
+  num_stage_classes: 4   # Stage I / II / III / IV (Unknown dropped at parse time)
   num_subtype_classes: 0
   freeze_encoders: true
   dropout: 0.2
+  modality_dropout_prob: 0.0
   encoders:
     - name: gene       # RNABERTEncoder — receives miRNA tabular features
       output_dim: 128
-    - name: image      # MRMGHierarchicalImageEncoder — requires checkpoint_path
+    - name: clinical   # ClinicalMLPEncoder — receives numeric clinical features
+      output_dim: 64   # input_dim inferred from first batch via nn.LazyLinear
+    - name: image      # MRMGHierarchicalImageEncoder — FM-BCMRI checkpoint
       output_dim: 256
-      checkpoint_path: null  # set to a local FM-BCMRI / ViT checkpoint path
+      checkpoint_path: /workspace/models/breast_MR_checkpoint.pth.tar
 
 modalities:
-  - name: tabular
+  - name: gene
     cohort_code: TCGA-BRCA
     features_files:
       - TCGA-BRCA.mirna.tsv
       - pam50.tsv
+  - name: clinical
+    cohort_code: TCGA-BRCA
+    data_dir: data/xenabrowser
+    clinical_file: TCGA-BRCA.clinical.tsv
+    stage_col: ajcc_pathologic_stage.diagnoses
   - name: image
     tcia_cohort_name: BRCA
     data_dir: data/tcia
     n_slices: 5
+    prefer_mr: false
 
 training:
   max_epochs: 50
@@ -39,6 +48,7 @@ training:
   subtype_lambda: 0.3
   scheduler: cosine
   seed: 42
+  use_class_weights: true
 
 output:
   dir: outputs
@@ -47,3 +57,4 @@ output:
 
 join_on: patient_id
 join_strategy: inner
+splits_dir: data/configs/BRCA/kfold/fold_0

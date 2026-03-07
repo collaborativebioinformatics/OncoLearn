@@ -1,17 +1,48 @@
 """
-Preprocessing utilities for OncoLearn datasets.
+Utilities for reading/writing patient-ID split files and generating K-fold splits.
 
-Provides stratified K-fold split generation that saves patient ID files
-compatible with the ``splits_dir`` config option.
+Split files contain one patient_id per line, e.g.::
+
+    TCGA-A1-A0SD
+    TCGA-A2-A0CM
+    ...
 """
 
 from __future__ import annotations
 
 from collections import Counter
 from pathlib import Path
-from typing import List
+from typing import Iterable, List, Optional, Set
 
-from oncolearn.data.split_utils import write_id_file
+
+def read_id_file(path: Path) -> Optional[Set[str]]:
+    """Read one patient_id per line from *path*.
+
+    Returns:
+        Set of patient IDs, or ``None`` if the file does not exist.
+    """
+    path = Path(path)
+    if not path.exists():
+        return None
+    ids = set()
+    with path.open("r") as f:
+        for line in f:
+            pid = line.strip()
+            if pid:
+                ids.add(pid)
+    return ids
+
+
+def write_id_file(path: Path, ids: Iterable[str]) -> None:
+    """Write patient IDs one per line to *path*, sorted for reproducibility.
+
+    Parent directories are created as needed.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w") as f:
+        for pid in sorted(ids):
+            f.write(pid + "\n")
 
 
 def generate_kfold_splits(
@@ -70,16 +101,20 @@ def generate_kfold_splits(
         train_val_labels = [lbls_arr[i] for i in train_val_indices]
 
         # Stratified val split from the train+val portion
-        if val_fraction > 0 and len(set(train_val_labels)) > 1:
-            train_ids, val_ids, _, _ = train_test_split(
-                train_val_ids,
-                train_val_labels,
-                test_size=val_fraction,
-                random_state=seed,
-                stratify=train_val_labels,
-            )
-        else:
-            # Fallback: non-stratified split (single-class or val_fraction=0)
+        _use_stratified = val_fraction > 0 and len(set(train_val_labels)) > 1
+        if _use_stratified:
+            try:
+                train_ids, val_ids, _, _ = train_test_split(
+                    train_val_ids,
+                    train_val_labels,
+                    test_size=val_fraction,
+                    random_state=seed,
+                    stratify=train_val_labels,
+                )
+            except ValueError:
+                _use_stratified = False  # fall through to non-stratified below
+        if not _use_stratified:
+            # Fallback: non-stratified split (single-class, rare class, or val_fraction=0)
             n_val = max(1, int(len(train_val_ids) * val_fraction))
             val_ids = train_val_ids[:n_val]
             train_ids = train_val_ids[n_val:]
@@ -88,7 +123,6 @@ def generate_kfold_splits(
         write_id_file(fold_dir / "test.txt", test_ids)
         write_id_file(fold_dir / "validation.txt", val_ids)
 
-        # Per-fold summary
         train_counts = Counter(lbls_arr[ids_arr.index(pid)] for pid in train_ids)
         val_counts = Counter(lbls_arr[ids_arr.index(pid)] for pid in val_ids)
         test_counts = Counter(lbls_arr[ids_arr.index(pid)] for pid in test_ids)

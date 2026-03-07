@@ -1,13 +1,17 @@
-from typing import Dict, Type, Any, Optional
+from typing import Dict, List, Optional, Type, Any
 
 # Global dictionary to store available models
 _MODELS: Dict[str, Type[Any]] = {}
 
+# Reverse mapping: model class → registry name (populated by register_model).
+# Used by resolve_model_config to walk the MRO and find ancestor configs.
+_CLASS_TO_NAME: Dict[type, str] = {}
 
-def register_model(name: str, modalities: Optional[list[str]] = None):
+
+def register_model(name: str, modalities: Optional[List[str]] = None):
     """
     Decorator to register an end-to-end model (e.g. PyTorch LightningModule).
-    
+
     Args:
         name: Unique string name for the model (e.g., "dl_two").
         modalities: Optional list of modalities this model expects (e.g., ["image", "tabular"]).
@@ -16,12 +20,13 @@ def register_model(name: str, modalities: Optional[list[str]] = None):
     def wrapper(cls: Type[Any]) -> Type[Any]:
         if name in _MODELS:
             raise ValueError(f"Model '{name}' is already registered! Cannot register {cls.__name__}.")
-        
+
         # Attach expected modalities to the class for runtime checks
         cls.expected_modalities = modalities or []
         _MODELS[name] = cls
+        _CLASS_TO_NAME[cls] = name
         return cls
-        
+
     return wrapper
 
 

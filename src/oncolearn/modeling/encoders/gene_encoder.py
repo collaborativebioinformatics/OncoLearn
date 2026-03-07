@@ -4,18 +4,31 @@ Gene expression encoder: RNA BERT (IBM biomed-multi-omic).
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, List, Optional
 
 import torch
 import torch.nn as nn
 
-from oncolearn.registry import register_encoder
+from oncolearn.registry import register_config, register_encoder
 from .base import BaseEncoder
 
 if TYPE_CHECKING:
     from oncolearn.config import OncoLearnConfig
 
 logger = logging.getLogger(__name__)
+
+
+@register_config("gene")
+@dataclass
+class RNABERTEncoderConfig:
+    """Configuration for the RNA BERT gene expression encoder."""
+
+    output_dim: int = 128
+    huggingface_models: Optional[List[str]] = None
+    device: Optional[str] = None
+    max_seq_len: int = 512
+    projection_dropout: float = 0.1
 
 
 @register_encoder("gene")
@@ -27,30 +40,32 @@ class RNABERTEncoder(BaseEncoder):
     Overrides ``_load_huggingface_model`` to use bmfm_targets instead of AutoModel.
 
     Args:
-        config: Full experiment config. Reads ``model.freeze_encoders`` for the backbone
-                freeze flag.
-        output_dim: Embedding dimension of the projection head.
-        huggingface_models: HuggingFace model IDs to load. Defaults to the IBM RNA BERT model.
-        device: Optional device string passed to the backbone loader.
+        config: Full experiment config.  Encoder-specific parameters are read via
+                :func:`~oncolearn.registry.resolve_encoder_config` which merges
+                :class:`RNABERTEncoderConfig` defaults with any YAML overrides.
     """
 
-    def __init__(
-        self,
-        config: "OncoLearnConfig",
-        output_dim: int = 128,
-        huggingface_models: list[str] | None = None,
-        device: str = None,
-        max_seq_len: int = 512,
-        **kwargs,
-    ):
-        if huggingface_models is None:
-            huggingface_models = ["ibm-research/biomed.rna.bert.110m.mlm.multitask.v1"]
+    def __init__(self, config: "OncoLearnConfig") -> None:
+        from oncolearn.registry import resolve_encoder_config
+
+        enc_cfg: RNABERTEncoderConfig = resolve_encoder_config(
+            type(self), "gene", config
+        )
+
+        if enc_cfg.huggingface_models is None:
+            enc_cfg.huggingface_models = [
+                "ibm-research/biomed.rna.bert.110m.mlm.multitask.v1"
+            ]
 
         # _load_huggingface_model override is resolved before super().__init__ runs,
         # so hf_enc1 will be loaded via bmfm_targets.
-        super().__init__(config, output_dim=output_dim, huggingface_models=huggingface_models, **kwargs)
+        super().__init__(
+            config,
+            output_dim=enc_cfg.output_dim,
+            huggingface_models=enc_cfg.huggingface_models,
+        )
 
-        # If loading failed, hf_enc1 is nn.Identity — mark for pure-linear fallback in forward.
+        # If loading failed, hf_enc1 is nn.Identity — mark for pure-linear fallback.
         self._rna_bert_unavailable = isinstance(self.hf_enc1, nn.Identity)
 
         rna_model = self.hf_enc1
@@ -79,13 +94,13 @@ class RNABERTEncoder(BaseEncoder):
         # SCBert attention is O(n²) — 1881 tokens × 12 layers × 12 heads exceeds RAM.
         # We keep the top max_seq_len features by absolute magnitude (highest-expressed
         # miRNAs carry the most signal).
-        self.max_seq_len = max_seq_len
+        self.max_seq_len = enc_cfg.max_seq_len
 
         self.projection = nn.Sequential(
-            nn.Linear(hidden_size, output_dim),
-            nn.LayerNorm(output_dim),
+            nn.Linear(hidden_size, enc_cfg.output_dim),
+            nn.LayerNorm(enc_cfg.output_dim),
             nn.GELU(),
-            nn.Dropout(0.1),
+            nn.Dropout(enc_cfg.projection_dropout),
         )
 
     def _load_huggingface_model(self, model_name: str) -> nn.Module:

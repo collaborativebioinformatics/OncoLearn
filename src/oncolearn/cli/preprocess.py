@@ -207,7 +207,8 @@ def _execute_kfold(args):
 
     from oncolearn.config import load_config
     from oncolearn.registry import get_modality
-    from oncolearn.data.preprocessing import generate_kfold_splits
+    from oncolearn.cli.utils.splits import generate_kfold_splits
+    import oncolearn.data.modalities  # noqa: F401 — triggers @register_modality decorators
 
     if not args.config:
         print("ERROR: --config is required with --kfold")
@@ -216,15 +217,16 @@ def _execute_kfold(args):
     try:
         config = load_config(args.config)
 
-        # Find first tabular modality
+        # Find first modality that carries labels (gene or tabular)
+        labeled_modality_names = ("gene", "tabular")
         tabular_cfg = next(
-            (m for m in config.modalities if m.name == "tabular"), None
+            (m for m in config.modalities if m.name in labeled_modality_names), None
         )
         if tabular_cfg is None:
-            print("ERROR: No 'tabular' modality found in config.")
+            print("ERROR: No labeled tabular modality ('gene') found in config.")
             sys.exit(1)
 
-        dm_cls = get_modality("tabular")
+        dm_cls = get_modality(tabular_cfg.name)
         dm = dm_cls(**tabular_cfg.kwargs)
 
         print("Preparing tabular data...")
