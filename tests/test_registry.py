@@ -1,62 +1,188 @@
+"""Tests for the multi-name registry (Unit 1)."""
+
 import pytest
-from oncolearn.registry.models import register_model, get_model, get_all_models, _MODELS
-from oncolearn.registry.modalities import register_modality, get_modality, get_all_modalities, _MODALITIES
+
+from oncolearn.registry.encoders import register_encoder, get_encoder, get_all_encoders
+from oncolearn.registry.modalities import register_modality, get_modality, get_all_modalities
+from oncolearn.registry.models import register_model, get_model, get_all_models
 
 
-@pytest.fixture(autouse=True)
-def clean_registries():
-    """Clear registries before each test to ensure isolation."""
-    _MODELS.clear()
-    _MODALITIES.clear()
-    yield
+# ---------------------------------------------------------------------------
+# Encoder registry
+# ---------------------------------------------------------------------------
+
+def test_register_encoder_short_name():
+    @register_encoder("test_enc")
+    class MyEncoder:
+        pass
+
+    assert get_encoder("test_enc") is MyEncoder
 
 
-def test_register_model_success():
+def test_register_encoder_dotted_name():
+    @register_encoder("test_enc2", "oncolearn.encoder.test.MyEncoder2")
+    class MyEncoder2:
+        pass
+
+    assert get_encoder("test_enc2") is MyEncoder2
+    assert get_encoder("oncolearn.encoder.test.MyEncoder2") is MyEncoder2
+
+
+def test_register_encoder_both_names_same_class():
+    @register_encoder("short_e", "long.dotted.e")
+    class E:
+        pass
+
+    assert get_encoder("short_e") is E
+    assert get_encoder("long.dotted.e") is E
+
+
+def test_register_encoder_duplicate_different_class_raises():
+    @register_encoder("conflict_enc")
+    class A:
+        pass
+
+    with pytest.raises(ValueError, match="already registered"):
+        @register_encoder("conflict_enc")
+        class B:
+            pass
+
+
+def test_register_encoder_same_class_idempotent():
+    @register_encoder("idem_enc")
+    class C:
+        pass
+
+    # Re-registering the same class under the same name should not raise.
+    register_encoder("idem_enc")(C)
+    assert get_encoder("idem_enc") is C
+
+
+def test_get_unknown_encoder_raises():
+    with pytest.raises(KeyError, match="not found in registry"):
+        get_encoder("nonexistent_encoder_xyz")
+
+
+# ---------------------------------------------------------------------------
+# Modality registry
+# ---------------------------------------------------------------------------
+
+def test_register_modality_short_name():
+    @register_modality("test_mod")
+    class MyMod:
+        pass
+
+    assert get_modality("test_mod") is MyMod
+
+
+def test_register_modality_dotted_name():
+    @register_modality("test_mod3", "oncolearn.modality.test.MyMod3")
+    class MyMod3:
+        pass
+
+    assert get_modality("test_mod3") is MyMod3
+    assert get_modality("oncolearn.modality.test.MyMod3") is MyMod3
+
+
+def test_register_modality_duplicate_different_class_raises():
+    @register_modality("conflict_mod")
+    class D:
+        pass
+
+    with pytest.raises(ValueError, match="already registered"):
+        @register_modality("conflict_mod")
+        class E:
+            pass
+
+
+def test_get_unknown_modality_raises():
+    with pytest.raises(KeyError, match="not found in registry"):
+        get_modality("nonexistent_modality_xyz")
+
+
+# ---------------------------------------------------------------------------
+# Model registry
+# ---------------------------------------------------------------------------
+
+def test_register_model_short_name():
     @register_model("test_model", modalities=["image"])
     class TestModel:
         pass
-        
-    assert "test_model" in get_all_models()
-    assert get_model("test_model") == TestModel
+
+    assert get_model("test_model") is TestModel
     assert TestModel.expected_modalities == ["image"]
 
 
-def test_register_model_duplicate_throws_error():
-    @register_model("test_model")
-    class TestModel1:
+def test_register_model_dotted_name():
+    @register_model("test_model4", "oncolearn.model.test.TestModel4", modalities=["gene"])
+    class TestModel4:
         pass
-        
-    with pytest.raises(ValueError, match="is already registered"):
-        @register_model("test_model")
-        class TestModel2:
+
+    assert get_model("test_model4") is TestModel4
+    assert get_model("oncolearn.model.test.TestModel4") is TestModel4
+
+
+def test_register_model_duplicate_different_class_raises():
+    @register_model("conflict_model")
+    class F:
+        pass
+
+    with pytest.raises(ValueError, match="already registered"):
+        @register_model("conflict_model")
+        class G:
             pass
 
 
-def test_get_unknown_model_throws_error():
+def test_get_unknown_model_raises():
     with pytest.raises(KeyError, match="not found in registry"):
-        get_model("unknown_model")
+        get_model("nonexistent_model_xyz")
 
 
-def test_register_modality_success():
-    @register_modality("test_modality")
-    class TestModality:
-        pass
-        
-    assert "test_modality" in get_all_modalities()
-    assert get_modality("test_modality") == TestModality
+# ---------------------------------------------------------------------------
+# Real application dotted names (loaded via oncolearn.modeling import)
+# ---------------------------------------------------------------------------
+
+def test_real_dotted_encoder_names():
+    """Dotted names registered by the application resolve to the same class."""
+    import oncolearn.modeling  # noqa: F401 — triggers registration
+
+    from oncolearn.registry.encoders import get_encoder
+    gene_short = get_encoder("gene")
+    gene_long = get_encoder("oncolearn.encoder.multimodal.RNABERTEncoder")
+    assert gene_short is gene_long
+
+    clinical_short = get_encoder("clinical")
+    clinical_long = get_encoder("oncolearn.encoder.multimodal.ClinicalMLPEncoder")
+    assert clinical_short is clinical_long
+
+    image_short = get_encoder("image")
+    image_long = get_encoder("oncolearn.encoder.multimodal.FMBCMRIEncoder")
+    assert image_short is image_long
 
 
-def test_register_modality_duplicate_throws_error():
-    @register_modality("test_modality")
-    class TestModality1:
-        pass
-        
-    with pytest.raises(ValueError, match="is already registered"):
-        @register_modality("test_modality")
-        class TestModality2:
-            pass
+def test_real_dotted_modality_names():
+    """Dotted names registered by the application resolve to the same class."""
+    import oncolearn.data.modalities  # noqa: F401 — triggers registration
+
+    from oncolearn.registry.modalities import get_modality
+    gene_short = get_modality("gene")
+    gene_long = get_modality("oncolearn.modality.gene")
+    assert gene_short is gene_long
+
+    clinical_short = get_modality("clinical")
+    clinical_long = get_modality("oncolearn.modality.clinical")
+    assert clinical_short is clinical_long
+
+    image_short = get_modality("image")
+    image_long = get_modality("oncolearn.modality.image")
+    assert image_short is image_long
 
 
-def test_get_unknown_modality_throws_error():
-    with pytest.raises(KeyError, match="not found in registry"):
-        get_modality("unknown_modality")
+def test_real_dotted_model_names():
+    """Dotted names registered by the application resolve to the same class."""
+    import oncolearn.modeling  # noqa: F401
+
+    from oncolearn.registry.models import get_model
+    short = get_model("gated_late_fusion")
+    long = get_model("oncolearn.model.multimodal.gated_late_fusion")
+    assert short is long

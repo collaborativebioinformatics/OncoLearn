@@ -1,81 +1,67 @@
+"""
+End-to-end multimodal pipeline smoke test.
+
+Requires real local data (TCIA + Xenabrowser downloads) so is always skipped
+in automated test runs.  Run manually when data is available.
+"""
 import os
 import pytest
-import torch
 import pytorch_lightning as pl
-from oncolearn.data.modalities.tabular import TabularDataModule
-from oncolearn.data.modalities.image import ImageDataModule
+
+from oncolearn.data.modalities.tabular.gene import GeneDataModule
+from oncolearn.data.modalities.image.dataset import ImageDataModule
 from oncolearn.data.multimodal import MultimodalDataModule
-from oncolearn.modeling.fusion import GatedLateFusionClassifier, GatedLateFusionLightning
+from oncolearn.config import load_config
 
-pytest.importorskip("pydicom")
 
-@pytest.mark.skipif(not os.path.exists("data/xenabrowser/TCGA-BRCA") or not os.path.exists("data/tcia/TCGA-BRCA"), reason="Requires local Multimodal data")
+@pytest.mark.skipif(
+    not os.path.exists("data/xenabrowser/TCGA-BRCA")
+    or not os.path.exists("data/tcia/TCGA-BRCA")
+    # Checkpoint is mounted at /workspace/models inside Docker; skip on host.
+    or not os.path.exists("/workspace/models/breast_MR_checkpoint.pth.tar"),
+    reason="Requires local multimodal data (TCIA + Xenabrowser) and FM-BCMRI checkpoint at /workspace/models/",
+)
 def test_multimodal_e2e():
-    # 1. Instantiate Modalities explicitly to avoid registry magic failures in simple tests
-    # (Though we could use registry strings here directly if we wanted)
-    dm_tabular = TabularDataModule(
-        cohort_code="TCGA-BRCA", 
-        data_dir="data/xenabrowser",
+    cfg = load_config("data/configs/tcga_brca_multimodal.yaml")
+
+    dm_gene = GeneDataModule(
+        cohort_code="TCGA-BRCA",
+        base_directory="data/xenabrowser",
+        files=["TCGA-BRCA.mirna.tsv", "pam50.tsv"],
         batch_size=2,
         num_workers=0,
-        label_column=None,
-        train_split=1.0,
-        features_files=["TCGA-BRCA.clinical.tsv"]
+        batch_key="oncolearn.modality.gene",
     )
-    
+    dm_gene.name = "oncolearn.modality.gene"
+
     dm_image = ImageDataModule(
-        tcia_manifest_url=None,
         tcia_cohort_name="BRCA",
-        image_size=(224, 224),
+        base_directory="data/tcia",
         batch_size=2,
         num_workers=0,
-        train_split=1.0,
-        data_dir="data/tcia"
+        batch_key="oncolearn.modality.image",
     )
-    
-    # 2. Build the Multimodal pipeline merging on patient_id
+    dm_image.name = "oncolearn.modality.image"
+
     mm_data = MultimodalDataModule(
-        modalities=[dm_tabular, dm_image],
+        modalities=[dm_gene, dm_image],
         join_on="patient_id",
-        strategy="inner"
+        strategy="inner",
+        batch_size=2,
+        num_workers=0,
     )
-    
     mm_data.setup()
-    
+
     if len(mm_data.train_dataset) == 0:
-        pytest.skip("No intersecting multimodal data loaded. Check if the TCIA and Xenabrowser IDs overlap in your local subset.")
-        
-    batch_0 = mm_data.train_dataset[0]
-    input_dim_tabular = batch_0["tabular"].shape[0]
-    
-    # 3. Instantiate dummy encoders explicitly
-    # In a full run, we would map the Registry strings
-    gene_encoder = torch.nn.Sequential(
-        torch.nn.Linear(input_dim_tabular, 128),
-        torch.nn.ReLU()
-    )
-    
-    # Dummy 3D ViT for image (Pool N frames, then embed)
-    class DummyImageEncoder(torch.nn.Module):
-        def forward(self, x_seq, ids):
-            B, N, C, H, W = x_seq.shape
-            # Return static embedding (B, 256)
-            return torch.zeros((B, 256), device=x_seq.device)
-            
-    img_encoder = DummyImageEncoder()
-    
-    fusion_model = GatedLateFusionClassifier(
-        gene_encoder=gene_encoder,
-        clinical_encoder=None,
-        image_encoder=img_encoder,
-        gene_dim=128,
-        image_dim=256,
-        num_stage_classes=2,
-        num_subtype_classes=0
-    )
-    
-    pl_model = GatedLateFusionLightning(model=fusion_model)
-    
+        pytest.skip(
+            "No intersecting multimodal patients found. "
+            "Check that TCIA and Xenabrowser IDs overlap in your local data."
+        )
+
+    from oncolearn.registry import get_model
+    import oncolearn.modeling  # noqa: F401
+    model_cls = get_model(cfg.model.name)
+    model = model_cls(cfg)
+
     trainer = pl.Trainer(fast_dev_run=True, enable_checkpointing=False, logger=False)
-    
-    trainer.fit(pl_model, datamodule=mm_data)
+    trainer.fit(model, datamodule=mm_data)

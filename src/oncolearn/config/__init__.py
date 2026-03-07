@@ -10,6 +10,7 @@ Canonical usage::
 """
 
 from .schema import (
+    DataConfig,
     EncoderConfig,
     ModalityConfig,
     ModelConfig,
@@ -22,6 +23,7 @@ from .loader import load_config, save_config
 __all__ = [
     "OncoLearnConfig",
     "ModelConfig",
+    "DataConfig",
     "EncoderConfig",
     "ModalityConfig",
     "TrainingConfig",

@@ -31,7 +31,7 @@ class RNABERTEncoderConfig:
     projection_dropout: float = 0.1
 
 
-@register_encoder("gene")
+@register_encoder("gene", "oncolearn.encoder.multimodal.RNABERTEncoder")
 class RNABERTEncoder(BaseEncoder):
     """
     RNA BERT encoder using IBM Research's biomed.rna.bert.110m.mlm.multitask.v1 model.

@@ -7,19 +7,26 @@ _ENCODERS: Dict[str, Type[Any]] = {}
 _CLASS_TO_NAME: Dict[type, str] = {}
 
 
-def register_encoder(name: str):
-    """Decorator to register an encoder class by name.
+def register_encoder(*names: str):
+    """Decorator to register an encoder class under one or more names.
 
     Args:
-        name: Unique string name for the encoder (e.g., ``"gene"``, ``"image"``).
+        names: One or more string names for the encoder.  The first name is
+               stored as the canonical name in ``_CLASS_TO_NAME``.
+               Re-registering the *same* class under the same name is a no-op;
+               re-registering a *different* class under an existing name raises
+               ``ValueError``.
     """
     def wrapper(cls: Type[Any]) -> Type[Any]:
-        if name in _ENCODERS:
-            raise ValueError(
-                f"Encoder '{name}' is already registered! Cannot register {cls.__name__}."
-            )
-        _ENCODERS[name] = cls
-        _CLASS_TO_NAME[cls] = name
+        for name in names:
+            if name in _ENCODERS and _ENCODERS[name] is not cls:
+                raise ValueError(
+                    f"Encoder '{name}' is already registered with a different class "
+                    f"({_ENCODERS[name].__name__}). Cannot also register {cls.__name__}."
+                )
+            _ENCODERS[name] = cls
+        if cls not in _CLASS_TO_NAME:
+            _CLASS_TO_NAME[cls] = names[0]
         return cls
 
     return wrapper

@@ -33,7 +33,7 @@ class FTTransformerEncoderConfig:
     dropout: float = 0.2
 
 
-@register_encoder("clinical")
+@register_encoder("clinical", "oncolearn.encoder.multimodal.ClinicalMLPEncoder")
 class FTTransformerEncoder(BaseEncoder):
     """
     FTTransformer encoder for continuous tabular / clinical features.

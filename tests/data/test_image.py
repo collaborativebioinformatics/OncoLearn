@@ -111,7 +111,7 @@ def test_dicom_loader_missing_pydicom(monkeypatch):
 
     monkeypatch.setattr(builtins, "__import__", mock_import)
 
-    with pytest.raises(ImportError, match="pydicom and SimpleITK required"):
+    with pytest.raises(ImportError, match="pydicom"):
         DicomLoader.load(Path("fake.dcm"))
 
 

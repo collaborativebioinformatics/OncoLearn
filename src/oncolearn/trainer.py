@@ -95,20 +95,31 @@ class OncoTrainer:
     def _build_datamodule(self) -> MultimodalDataModule:
         """Instantiate each registered modality DataModule with its config kwargs."""
         dm_instances = []
-        for mod_cfg in self.config.modalities:
+        data_cfg = self.config.data
+        for mod_cfg in data_cfg.modalities:
             dm_cls = get_modality(mod_cfg.name)
-            dm = dm_cls(**mod_cfg.kwargs)
+            # Build kwargs: data-level defaults then per-modality overrides.
+            dm_kwargs: dict = {
+                "base_directory": data_cfg.base_directory,
+                "cohort_code": data_cfg.cohort_code,
+            }
+            dm_kwargs.update(mod_cfg.kwargs)
+            if mod_cfg.files is not None:
+                dm_kwargs["files"] = mod_cfg.files
+            dm = dm_cls(batch_key=mod_cfg.name, **dm_kwargs)
             dm.name = mod_cfg.name  # required by MultimodalDataModule
             dm_instances.append(dm)
 
+        # Use the first modality's join settings (typically all the same).
+        first = data_cfg.modalities[0]
         t = self.config.training
         return MultimodalDataModule(
             modalities=dm_instances,
-            join_on=self.config.join_on,
-            strategy=self.config.join_strategy,
+            join_on=first.join_on,
+            strategy=first.join_strategy,
             batch_size=t.batch_size,
             num_workers=t.num_workers,
-            splits_dir=self.config.splits_dir,
+            splits_dir=data_cfg.splits_dir,
             num_classes=self.config.model.num_stage_classes,
         )
 
@@ -164,7 +175,7 @@ class OncoTrainer:
         logger.info(
             "Training | model=%s | modalities=%s | device=%s | epochs=%d",
             self.config.model.name,
-            [m.name for m in self.config.modalities],
+            [m.name for m in self.config.data.modalities],
             self.device,
             t.max_epochs,
         )

@@ -4,44 +4,42 @@ from typing import Dict, List, Optional, Type, Any
 _MODELS: Dict[str, Type[Any]] = {}
 
 # Reverse mapping: model class → registry name (populated by register_model).
-# Used by resolve_model_config to walk the MRO and find ancestor configs.
 _CLASS_TO_NAME: Dict[type, str] = {}
 
 
-def register_model(name: str, modalities: Optional[List[str]] = None):
-    """
-    Decorator to register an end-to-end model (e.g. PyTorch LightningModule).
+def register_model(*names: str, modalities: Optional[List[str]] = None):
+    """Decorator to register an end-to-end model under one or more names.
 
     Args:
-        name: Unique string name for the model (e.g., "dl_two").
-        modalities: Optional list of modalities this model expects (e.g., ["image", "tabular"]).
-            This is used for reference and validation when building the Trainer pipeline.
+        names: One or more string names for the model.  The first name is
+               stored as the canonical name in ``_CLASS_TO_NAME``.
+               Re-registering the *same* class under the same name is a no-op;
+               re-registering a *different* class under an existing name raises
+               ``ValueError``.
+        modalities: Optional list of modalities this model expects.
     """
     def wrapper(cls: Type[Any]) -> Type[Any]:
-        if name in _MODELS:
-            raise ValueError(f"Model '{name}' is already registered! Cannot register {cls.__name__}.")
+        for name in names:
+            if name in _MODELS and _MODELS[name] is not cls:
+                raise ValueError(
+                    f"Model '{name}' is already registered with a different class "
+                    f"({_MODELS[name].__name__}). Cannot also register {cls.__name__}."
+                )
+            _MODELS[name] = cls
 
-        # Attach expected modalities to the class for runtime checks
         cls.expected_modalities = modalities or []
-        _MODELS[name] = cls
-        _CLASS_TO_NAME[cls] = name
+        if cls not in _CLASS_TO_NAME:
+            _CLASS_TO_NAME[cls] = names[0]
         return cls
 
     return wrapper
 
 
 def get_model(name: str) -> Type[Any]:
-    """
-    Retrieve a registered model class by its string name.
-    
-    Args:
-        name: The string name used during @register_model
-        
-    Returns:
-        The class object of the matching model.
-        
+    """Retrieve a registered model class by its string name.
+
     Raises:
-        KeyError if the model is not found in the registry.
+        KeyError: If *name* is not found in the registry.
     """
     if name not in _MODELS:
         raise KeyError(

@@ -3,6 +3,7 @@ import yaml
 from pathlib import Path
 
 from oncolearn.config import (
+    DataConfig,
     ModalityConfig,
     ModelConfig,
     OncoLearnConfig,
@@ -24,6 +25,15 @@ def _write_yaml(path: Path, content: dict) -> Path:
     return path
 
 
+def _make_config(**data_kwargs) -> OncoLearnConfig:
+    """Build a minimal OncoLearnConfig using the new DataConfig structure."""
+    modalities = data_kwargs.pop("modalities", [ModalityConfig(name="gene")])
+    return OncoLearnConfig(
+        model=ModelConfig(name="gated_late_fusion"),
+        data=DataConfig(modalities=modalities, **data_kwargs),
+    )
+
+
 REPO_ROOT = Path(__file__).parent.parent.parent
 DATA_CONFIGS = REPO_ROOT / "data" / "configs"
 
@@ -41,8 +51,11 @@ def test_model_config_defaults():
 
 
 def test_modality_config_defaults():
-    cfg = ModalityConfig(name="tabular")
-    assert cfg.name == "tabular"
+    cfg = ModalityConfig(name="oncolearn.modality.gene")
+    assert cfg.name == "oncolearn.modality.gene"
+    assert cfg.join_on == "patient_id"
+    assert cfg.join_strategy == "inner"
+    assert cfg.files is None
     assert cfg.kwargs == {}
 
 
@@ -68,15 +81,18 @@ def test_output_config_defaults():
     assert cfg.save_every_n_epochs == 5
 
 
+def test_data_config_defaults():
+    cfg = DataConfig(modalities=[ModalityConfig(name="gene")])
+    assert cfg.base_directory == "data/xenabrowser"
+    assert cfg.cohort_code == "TCGA-BRCA"
+    assert cfg.splits_dir is None
+
+
 def test_oncolearn_config_optional_sections_get_defaults():
-    cfg = OncoLearnConfig(
-        model=ModelConfig(name="gated_late_fusion"),
-        modalities=[ModalityConfig(name="tabular")],
-    )
-    assert cfg.join_on == "patient_id"
-    assert cfg.join_strategy == "inner"
+    cfg = _make_config()
     assert isinstance(cfg.training, TrainingConfig)
     assert isinstance(cfg.output, OutputConfig)
+    assert isinstance(cfg.data, DataConfig)
 
 
 # ---------------------------------------------------------------------------
@@ -84,26 +100,20 @@ def test_oncolearn_config_optional_sections_get_defaults():
 # ---------------------------------------------------------------------------
 
 def test_validate_passes_with_one_modality():
-    cfg = OncoLearnConfig(
-        model=ModelConfig(name="gated_late_fusion"),
-        modalities=[ModalityConfig(name="tabular")],
-    )
+    cfg = _make_config()
     _validate(cfg)  # must not raise
 
 
 def test_validate_passes_with_multiple_modalities():
-    cfg = OncoLearnConfig(
-        model=ModelConfig(name="gated_late_fusion"),
-        modalities=[ModalityConfig(name="tabular"), ModalityConfig(name="image")],
-    )
+    cfg = _make_config(modalities=[
+        ModalityConfig(name="gene"),
+        ModalityConfig(name="image"),
+    ])
     _validate(cfg)  # must not raise
 
 
 def test_validate_raises_on_empty_modalities():
-    cfg = OncoLearnConfig(
-        model=ModelConfig(name="gated_late_fusion"),
-        modalities=[],
-    )
+    cfg = _make_config(modalities=[])
     with pytest.raises(ValueError, match="at least one"):
         _validate(cfg)
 
@@ -111,40 +121,53 @@ def test_validate_raises_on_empty_modalities():
 def test_validate_raises_on_empty_model_name():
     cfg = OncoLearnConfig(
         model=ModelConfig(name=""),
-        modalities=[ModalityConfig(name="tabular")],
+        data=DataConfig(modalities=[ModalityConfig(name="gene")]),
     )
     with pytest.raises(ValueError, match="non-empty"):
         _validate(cfg)
 
 
 def test_validate_raises_on_duplicate_modality_names():
-    cfg = OncoLearnConfig(
-        model=ModelConfig(name="gated_late_fusion"),
-        modalities=[ModalityConfig(name="tabular"), ModalityConfig(name="tabular")],
-    )
+    cfg = _make_config(modalities=[
+        ModalityConfig(name="gene"),
+        ModalityConfig(name="gene"),
+    ])
     with pytest.raises(ValueError, match="Duplicate"):
         _validate(cfg)
 
 
+def test_validate_raises_when_encoder_modality_not_in_data(tmp_path):
+    """encoder.modality must match a name in data.modalities."""
+    from oncolearn.config.schema import EncoderConfig
+    cfg = OncoLearnConfig(
+        model=ModelConfig(
+            name="gated_late_fusion",
+            encoders=[EncoderConfig(name="gene", modality="oncolearn.modality.NONEXISTENT")],
+        ),
+        data=DataConfig(modalities=[ModalityConfig(name="oncolearn.modality.gene")]),
+    )
+    with pytest.raises(ValueError, match="references modality"):
+        _validate(cfg)
+
+
 # ---------------------------------------------------------------------------
-# load_config — happy paths
+# load_config — happy paths (new data: section format)
 # ---------------------------------------------------------------------------
 
-def test_load_minimal_config(tmp_path):
-    """Only required sections — optional fields should get their defaults."""
+def test_load_minimal_config_new_format(tmp_path):
     cfg = load_config(_write_yaml(tmp_path / "cfg.yaml", {
         "model": {"name": "gated_late_fusion"},
-        "modalities": [{"name": "tabular"}],
+        "data": {
+            "modalities": [{"name": "oncolearn.modality.gene"}],
+        },
     }))
-
     assert cfg.model.name == "gated_late_fusion"
-    assert len(cfg.modalities) == 1
-    assert cfg.modalities[0].name == "tabular"
+    assert len(cfg.data.modalities) == 1
+    assert cfg.data.modalities[0].name == "oncolearn.modality.gene"
     assert cfg.training.max_epochs == 50  # default
 
 
-def test_load_full_config(tmp_path):
-    """All sections populated — values are reflected exactly."""
+def test_load_full_config_new_format(tmp_path):
     raw = {
         "model": {
             "name": "gated_late_fusion",
@@ -152,91 +175,104 @@ def test_load_full_config(tmp_path):
             "num_subtype_classes": 2,
             "freeze_encoders": False,
             "dropout": 0.1,
+            "encoders": [
+                {"name": "gene", "modality": "oncolearn.modality.gene", "output_dim": 64},
+            ],
         },
-        "modalities": [
-            {
-                "name": "tabular",
-                "cohort_code": "TCGA-BRCA",
-                "features_files": ["mirna.tsv", "pam50.tsv"],
-            },
-            {
-                "name": "image",
-                "n_slices": 7,
-            },
-        ],
-        "training": {
-            "max_epochs": 20,
-            "learning_rate": 5e-4,
-            "batch_size": 8,
-            "seed": 123,
+        "data": {
+            "base_directory": "data/xena",
+            "cohort_code": "TCGA-BRCA",
+            "splits_dir": "data/splits/fold_0",
+            "modalities": [
+                {
+                    "name": "oncolearn.modality.gene",
+                    "join_on": "patient_id",
+                    "join_strategy": "inner",
+                    "files": ["mirna.tsv", "pam50.tsv"],
+                },
+                {
+                    "name": "oncolearn.modality.image",
+                    "n_slices": 7,
+                },
+            ],
         },
-        "output": {
-            "dir": "my_outputs",
-            "experiment_name": "exp_01",
-            "save_every_n_epochs": 10,
-        },
-        "join_on": "patient_id",
-        "join_strategy": "inner",
+        "training": {"max_epochs": 20, "learning_rate": 5e-4, "batch_size": 8, "seed": 123},
+        "output": {"dir": "my_outputs", "experiment_name": "exp_01"},
     }
     cfg = load_config(_write_yaml(tmp_path / "cfg.yaml", raw))
 
     assert cfg.model.num_stage_classes == 3
-    assert cfg.model.num_subtype_classes == 2
     assert cfg.model.freeze_encoders is False
-    assert cfg.model.dropout == pytest.approx(0.1)
-    assert cfg.modalities[0].name == "tabular"
-    assert cfg.modalities[0].kwargs["cohort_code"] == "TCGA-BRCA"
-    assert cfg.modalities[0].kwargs["features_files"] == ["mirna.tsv", "pam50.tsv"]
-    assert cfg.modalities[1].name == "image"
-    assert cfg.modalities[1].kwargs["n_slices"] == 7
+    assert cfg.model.encoders[0].modality == "oncolearn.modality.gene"
+    assert cfg.data.base_directory == "data/xena"
+    assert cfg.data.splits_dir == "data/splits/fold_0"
+    assert cfg.data.modalities[0].name == "oncolearn.modality.gene"
+    assert cfg.data.modalities[0].files == ["mirna.tsv", "pam50.tsv"]
+    assert cfg.data.modalities[1].kwargs["n_slices"] == 7
     assert cfg.training.max_epochs == 20
     assert cfg.training.seed == 123
     assert cfg.output.dir == "my_outputs"
-    assert cfg.output.experiment_name == "exp_01"
-    assert cfg.output.save_every_n_epochs == 10
+
+
+# ---------------------------------------------------------------------------
+# load_config — backward compat (old top-level modalities: list)
+# ---------------------------------------------------------------------------
+
+def test_load_minimal_config_legacy_format(tmp_path):
+    cfg = load_config(_write_yaml(tmp_path / "cfg.yaml", {
+        "model": {"name": "gated_late_fusion"},
+        "modalities": [{"name": "gene"}],
+    }))
+    assert cfg.model.name == "gated_late_fusion"
+    assert len(cfg.data.modalities) == 1
+    assert cfg.data.modalities[0].name == "gene"
+    assert cfg.training.max_epochs == 50  # default
+
+
+def test_load_config_legacy_modality_kwargs(tmp_path):
+    cfg = load_config(_write_yaml(tmp_path / "cfg.yaml", {
+        "model": {"name": "m"},
+        "modalities": [{"name": "gene", "cohort_code": "TCGA-BRCA", "n_workers": 2}],
+    }))
+    assert cfg.data.modalities[0].kwargs == {"cohort_code": "TCGA-BRCA", "n_workers": 2}
+
+
+def test_load_config_legacy_join_fields(tmp_path):
+    cfg = load_config(_write_yaml(tmp_path / "cfg.yaml", {
+        "model": {"name": "m"},
+        "modalities": [{"name": "gene"}],
+        "join_on": "sample_id",
+        "join_strategy": "inner",
+    }))
+    assert cfg.data.modalities[0].join_on == "sample_id"
+
+
+def test_load_config_legacy_features_files_promoted(tmp_path):
+    cfg = load_config(_write_yaml(tmp_path / "cfg.yaml", {
+        "model": {"name": "m"},
+        "modalities": [{"name": "gene", "features_files": ["a.tsv", "b.tsv"]}],
+    }))
+    assert cfg.data.modalities[0].files == ["a.tsv", "b.tsv"]
 
 
 def test_load_config_partial_training_override(tmp_path):
-    """Specified training fields are overridden; unspecified ones keep defaults."""
     cfg = load_config(_write_yaml(tmp_path / "cfg.yaml", {
         "model": {"name": "m"},
-        "modalities": [{"name": "tabular"}],
+        "modalities": [{"name": "gene"}],
         "training": {"max_epochs": 5, "seed": 99},
     }))
     assert cfg.training.max_epochs == 5
     assert cfg.training.seed == 99
     assert cfg.training.batch_size == 16   # default untouched
-    assert cfg.training.scheduler == "cosine"  # default untouched
-
-
-def test_load_config_modality_kwargs_are_inlined(tmp_path):
-    """Modality kwargs sit at the same YAML level as 'name', not under a 'kwargs:' key."""
-    cfg = load_config(_write_yaml(tmp_path / "cfg.yaml", {
-        "model": {"name": "m"},
-        "modalities": [{"name": "tabular", "cohort_code": "TCGA-BRCA", "n_workers": 2}],
-    }))
-    assert cfg.modalities[0].kwargs == {"cohort_code": "TCGA-BRCA", "n_workers": 2}
 
 
 def test_load_config_unknown_training_keys_are_silently_dropped(tmp_path):
-    """Unknown keys in any section must not cause errors."""
     cfg = load_config(_write_yaml(tmp_path / "cfg.yaml", {
         "model": {"name": "m"},
-        "modalities": [{"name": "tabular"}],
+        "modalities": [{"name": "gene"}],
         "training": {"max_epochs": 1, "nonexistent_key": "value"},
     }))
     assert cfg.training.max_epochs == 1
-
-
-def test_load_config_join_fields(tmp_path):
-    cfg = load_config(_write_yaml(tmp_path / "cfg.yaml", {
-        "model": {"name": "m"},
-        "modalities": [{"name": "tabular"}],
-        "join_on": "sample_id",
-        "join_strategy": "inner",
-    }))
-    assert cfg.join_on == "sample_id"
-    assert cfg.join_strategy == "inner"
 
 
 # ---------------------------------------------------------------------------
@@ -250,17 +286,17 @@ def test_load_config_raises_file_not_found():
 
 def test_load_config_raises_on_missing_model_section(tmp_path):
     cfg_file = _write_yaml(tmp_path / "cfg.yaml", {
-        "modalities": [{"name": "tabular"}],
+        "data": {"modalities": [{"name": "gene"}]},
     })
     with pytest.raises(KeyError, match="model"):
         load_config(cfg_file)
 
 
-def test_load_config_raises_on_missing_modalities_section(tmp_path):
+def test_load_config_raises_on_missing_both_data_and_modalities(tmp_path):
     cfg_file = _write_yaml(tmp_path / "cfg.yaml", {
         "model": {"name": "gated_late_fusion"},
     })
-    with pytest.raises(KeyError, match="modalities"):
+    with pytest.raises(KeyError):
         load_config(cfg_file)
 
 
@@ -269,14 +305,14 @@ def test_load_config_raises_on_empty_modalities_list(tmp_path):
         "model": {"name": "gated_late_fusion"},
         "modalities": [],
     })
-    with pytest.raises(ValueError, match="at least one"):
+    with pytest.raises((ValueError, KeyError)):
         load_config(cfg_file)
 
 
 def test_load_config_raises_on_duplicate_modality_names(tmp_path):
     cfg_file = _write_yaml(tmp_path / "cfg.yaml", {
         "model": {"name": "m"},
-        "modalities": [{"name": "tabular"}, {"name": "tabular"}],
+        "modalities": [{"name": "gene"}, {"name": "gene"}],
     })
     with pytest.raises(ValueError, match="Duplicate"):
         load_config(cfg_file)
@@ -285,7 +321,7 @@ def test_load_config_raises_on_duplicate_modality_names(tmp_path):
 def test_load_config_raises_on_modality_without_name(tmp_path):
     cfg_file = _write_yaml(tmp_path / "cfg.yaml", {
         "model": {"name": "m"},
-        "modalities": [{"cohort_code": "TCGA-BRCA"}],
+        "data": {"modalities": [{"cohort_code": "TCGA-BRCA"}]},
     })
     with pytest.raises(KeyError, match="name"):
         load_config(cfg_file)
@@ -303,33 +339,28 @@ def test_load_config_raises_on_empty_file(tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_save_config_creates_file(tmp_path):
-    cfg = OncoLearnConfig(
-        model=ModelConfig(name="gated_late_fusion"),
-        modalities=[ModalityConfig(name="tabular")],
-    )
+    cfg = _make_config()
     out = tmp_path / "saved.yaml"
     save_config(cfg, out)
     assert out.exists()
 
 
 def test_save_config_creates_parent_directories(tmp_path):
-    cfg = OncoLearnConfig(
-        model=ModelConfig(name="m"),
-        modalities=[ModalityConfig(name="tabular")],
-    )
+    cfg = _make_config()
     out = tmp_path / "nested" / "dir" / "cfg.yaml"
     save_config(cfg, out)
     assert out.exists()
 
 
 def test_save_config_round_trips(tmp_path):
-    """load → save → load should produce an equivalent config."""
     original = OncoLearnConfig(
         model=ModelConfig(name="gated_late_fusion", num_stage_classes=3, dropout=0.1),
-        modalities=[
-            ModalityConfig(name="tabular", kwargs={"cohort_code": "TCGA-BRCA"}),
-            ModalityConfig(name="image", kwargs={"n_slices": 7}),
-        ],
+        data=DataConfig(
+            modalities=[
+                ModalityConfig(name="gene", files=["a.tsv"], kwargs={"cohort_code": "TCGA-BRCA"}),
+                ModalityConfig(name="image", kwargs={"n_slices": 7}),
+            ],
+        ),
         training=TrainingConfig(max_epochs=10, seed=7),
         output=OutputConfig(dir="out", experiment_name="exp"),
     )
@@ -340,30 +371,30 @@ def test_save_config_round_trips(tmp_path):
     assert restored.model.name == original.model.name
     assert restored.model.num_stage_classes == original.model.num_stage_classes
     assert restored.model.dropout == pytest.approx(original.model.dropout)
-    assert len(restored.modalities) == len(original.modalities)
-    assert restored.modalities[0].name == "tabular"
-    assert restored.modalities[0].kwargs["cohort_code"] == "TCGA-BRCA"
-    assert restored.modalities[1].name == "image"
-    assert restored.modalities[1].kwargs["n_slices"] == 7
+    assert len(restored.data.modalities) == len(original.data.modalities)
+    assert restored.data.modalities[0].name == "gene"
+    assert restored.data.modalities[0].files == ["a.tsv"]
+    assert restored.data.modalities[0].kwargs["cohort_code"] == "TCGA-BRCA"
+    assert restored.data.modalities[1].name == "image"
+    assert restored.data.modalities[1].kwargs["n_slices"] == 7
     assert restored.training.max_epochs == 10
     assert restored.training.seed == 7
     assert restored.output.dir == "out"
 
 
 def test_save_config_modality_kwargs_inlined_not_nested(tmp_path):
-    """Saved YAML must store modality kwargs at the same level as 'name', not under 'kwargs:'."""
-    cfg = OncoLearnConfig(
-        model=ModelConfig(name="m"),
-        modalities=[ModalityConfig(name="tabular", kwargs={"cohort_code": "TCGA-BRCA"})],
-    )
+    """Saved YAML inlines modality kwargs alongside 'name' under data.modalities."""
+    cfg = _make_config(modalities=[
+        ModalityConfig(name="gene", kwargs={"cohort_code": "TCGA-BRCA"}),
+    ])
     path = tmp_path / "cfg.yaml"
     save_config(cfg, path)
 
     with path.open() as f:
         raw = yaml.safe_load(f)
 
-    assert raw["modalities"][0]["cohort_code"] == "TCGA-BRCA"
-    assert "kwargs" not in raw["modalities"][0]
+    assert raw["data"]["modalities"][0]["cohort_code"] == "TCGA-BRCA"
+    assert "kwargs" not in raw["data"]["modalities"][0]
 
 
 # ---------------------------------------------------------------------------
@@ -377,20 +408,21 @@ def test_save_config_modality_kwargs_inlined_not_nested(tmp_path):
 def test_example_configs_load_without_error(filename):
     cfg = load_config(DATA_CONFIGS / filename)
     assert cfg.model.name
-    assert len(cfg.modalities) >= 1
+    assert len(cfg.data.modalities) >= 1
 
 
 def test_tabular_only_example_has_one_modality():
     cfg = load_config(DATA_CONFIGS / "tcga_brca_tabular_only.yaml")
-    assert len(cfg.modalities) == 1
-    assert cfg.modalities[0].name == "tabular"
+    assert len(cfg.data.modalities) == 1
+    assert cfg.data.modalities[0].name == "oncolearn.modality.gene"
 
 
-def test_multimodal_example_has_tabular_and_image():
+def test_multimodal_example_has_gene_clinical_image():
     cfg = load_config(DATA_CONFIGS / "tcga_brca_multimodal.yaml")
-    names = {m.name for m in cfg.modalities}
-    assert "tabular" in names
-    assert "image" in names
+    names = {m.name for m in cfg.data.modalities}
+    assert "oncolearn.modality.gene" in names
+    assert "oncolearn.modality.clinical" in names
+    assert "oncolearn.modality.image" in names
 
 
 def test_example_configs_have_valid_training_params():

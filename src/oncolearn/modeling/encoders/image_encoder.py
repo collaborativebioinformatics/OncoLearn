@@ -72,7 +72,7 @@ class HierarchicalAttentionPooling(nn.Module):
         return self.output_proj(x)                         # (B, output_dim)
 
 
-@register_encoder("image")
+@register_encoder("image", "oncolearn.encoder.multimodal.FMBCMRIEncoder")
 class MRMGHierarchicalImageEncoder(BaseEncoder):
     """
     Pretrained image encoder from checkpoint with hierarchical attention pooling.

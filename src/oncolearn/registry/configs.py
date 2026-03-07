@@ -113,7 +113,7 @@ def resolve_encoder_config(encoder_cls: type, registry_name: str, onco_config: A
     If no config class is registered for *registry_name*, returns a
     ``types.SimpleNamespace`` built from the merged dict.
     """
-    from .encoders import _CLASS_TO_NAME
+    from .encoders import _CLASS_TO_NAME, _ENCODERS
 
     cfg_chain: list[Type] = []
     for cls in reversed(encoder_cls.__mro__):
@@ -126,8 +126,14 @@ def resolve_encoder_config(encoder_cls: type, registry_name: str, onco_config: A
         merged.update(_get_defaults(cfg_cls))
 
     # Override with values from the YAML EncoderConfig entry.
+    # Match by short registry_name OR by dotted name resolving to the same class.
     enc_entry = next(
-        (e for e in onco_config.model.encoders if e.name == registry_name), None
+        (
+            e for e in onco_config.model.encoders
+            if e.name == registry_name
+            or _ENCODERS.get(e.name) is encoder_cls
+        ),
+        None,
     )
     if enc_entry is not None:
         merged["output_dim"] = enc_entry.output_dim

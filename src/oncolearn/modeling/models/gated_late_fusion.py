@@ -28,7 +28,11 @@ class GatedLateFusionConfig:
     modality_dropout_prob: float = 0.0
 
 
-@register_model("gated_late_fusion", modalities=["gene", "clinical", "image"])
+@register_model(
+    "gated_late_fusion",
+    "oncolearn.model.multimodal.gated_late_fusion",
+    modalities=["gene", "clinical", "image"],
+)
 class GatedLateFusionClassifier(BaseOncoClassifier):
     """
     PyTorch Lightning classifier wrapping :class:`GatedLateFusionModule`.
@@ -41,13 +45,12 @@ class GatedLateFusionClassifier(BaseOncoClassifier):
 
     def __init__(self, config: "OncoLearnConfig") -> None:
         super().__init__(config)
-        self._encoder_names = [ec.name for ec in config.model.encoders]
         self.model = GatedLateFusionModule(config)
 
     def forward(self, batch):
         inputs = {
-            name: batch[name]
-            for name in self._encoder_names
-            if name in batch
+            key: batch[key]
+            for key in self.model._encoder_names
+            if key in batch
         }
         return self.model(inputs, modality_ids=batch.get("modality_ids"))

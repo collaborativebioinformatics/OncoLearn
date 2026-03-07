@@ -25,12 +25,14 @@ class ImageDataset(Dataset):
         patient_to_files: Dict[str, List[Path]],
         patient_ids: List[str],
         transform: Optional[Any] = None,
-        n_slices: int = 5
+        n_slices: int = 5,
+        batch_key: str = "image",
     ):
         self.patient_to_files = patient_to_files
         self.patient_ids = patient_ids
         self.transform = transform
         self.n_slices = n_slices
+        self.batch_key = batch_key
         
     def get_keys(self) -> List[str]:
         """Method required by MultimodalDataset to align records."""
@@ -52,7 +54,7 @@ class ImageDataset(Dataset):
             # Fallback to zero tensor (N_slices, 3, 224, 224)
             # In practical setups, we drop patients without images beforehand
             return {
-                "image": torch.zeros((self.n_slices, 3, 224, 224), dtype=torch.float32),
+                self.batch_key: torch.zeros((self.n_slices, 3, 224, 224), dtype=torch.float32),
                 "patient_id": patient_id
             }
             
@@ -78,14 +80,14 @@ class ImageDataset(Dataset):
             tensors.append(loaded_tensor)
             
         sequence_tensor = torch.stack(tensors, dim=0) # (N, 3, 224, 224)
-        
+
         return {
-            "image": sequence_tensor,
+            self.batch_key: sequence_tensor,
             "patient_id": patient_id
         }
 
 
-@register_modality("image")
+@register_modality("image", "oncolearn.modality.image")
 class ImageDataModule(pl.LightningDataModule):
     """
     API-first LightningDataModule for Images.
@@ -95,27 +97,36 @@ class ImageDataModule(pl.LightningDataModule):
         self,
         tcia_manifest_url: Optional[str] = None,
         tcia_cohort_name: str = "BRCA",
+        cohort_code: Optional[str] = None,
         image_size: Tuple[int, int] = (224, 224),
         batch_size: int = 16,
         num_workers: int = 4,
         data_dir: str = "data/tcia",
+        base_directory: Optional[str] = None,
         train_split: float = 0.8,
         seed: int = 42,
         n_slices: int = 5,
         prefer_mr: bool = True,
+        batch_key: str = "image",
+        files: Optional[List[Path]] = None,  # accepted but unused (images come from TCIA)
     ):
+        # Resolve aliases
+        resolved_dir = base_directory if base_directory is not None else data_dir
+        resolved_cohort = cohort_code if cohort_code is not None else tcia_cohort_name
+
         super().__init__()
         self.name = "image"
         self.tcia_manifest_url = tcia_manifest_url
-        self.tcia_cohort_name = tcia_cohort_name
+        self.tcia_cohort_name = resolved_cohort
         self.image_size = image_size
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.data_dir = Path(data_dir)
+        self.data_dir = Path(resolved_dir)
         self.train_split = train_split
         self.seed = seed
         self.n_slices = n_slices
         self.prefer_mr = prefer_mr
+        self.batch_key = batch_key
 
         self.api_dataset = None
         if self.tcia_manifest_url:
@@ -188,7 +199,10 @@ class ImageDataModule(pl.LightningDataModule):
         ])
 
         # Create base dataset (use eval_transform so slices are resized consistently)
-        full_dataset = ImageDataset(self.patient_to_files, self.patient_ids, transform=eval_transform, n_slices=self.n_slices)
+        full_dataset = ImageDataset(
+            self.patient_to_files, self.patient_ids,
+            transform=eval_transform, n_slices=self.n_slices, batch_key=self.batch_key,
+        )
         self._full_dataset = full_dataset
 
         if len(full_dataset) == 0:
@@ -206,14 +220,12 @@ class ImageDataModule(pl.LightningDataModule):
         self.train_dataset = ImageDataset(
             self.patient_to_files,
             [self.patient_ids[i] for i in train_ds.indices],
-            transform=train_transform,
-            n_slices=self.n_slices
+            transform=train_transform, n_slices=self.n_slices, batch_key=self.batch_key,
         )
         self.val_dataset = ImageDataset(
             self.patient_to_files,
             [self.patient_ids[i] for i in val_ds.indices],
-            transform=eval_transform,
-            n_slices=self.n_slices
+            transform=eval_transform, n_slices=self.n_slices, batch_key=self.batch_key,
         )
         self.test_dataset = self.val_dataset
 

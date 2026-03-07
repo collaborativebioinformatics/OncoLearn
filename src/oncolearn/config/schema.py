@@ -2,7 +2,7 @@
 OncoLearn configuration schema.
 
 Defines the hierarchical dataclass tree that describes a full experiment:
-model → modalities → training → output.
+model → data → training → output.
 """
 
 from dataclasses import dataclass, field
@@ -14,14 +14,19 @@ class EncoderConfig:
     """Configuration for a single encoder.
 
     Attributes:
-        name: Registry name of the encoder (e.g. ``"gene"``, ``"image"``, ``"tabular"``).
+        name: Registry name of the encoder (e.g. ``"gene"``, ``"oncolearn.encoder.multimodal.RNABERTEncoder"``).
               Must match a key registered via :func:`~oncolearn.registry.register_encoder`.
+        modality: Dotted modality name used as the batch-routing key (e.g.
+                  ``"oncolearn.modality.gene"``).  Must match a ``name`` in
+                  ``data.modalities`` when set.  Defaults to ``None``, in which
+                  case ``name`` is used as the batch key.
         output_dim: Embedding dimension produced by this encoder.
         kwargs: Encoder-specific keyword arguments forwarded verbatim to the encoder's
                 ``__init__`` (e.g. ``checkpoint_path``, ``input_dim``).
     """
 
     name: str
+    modality: Optional[str] = None
     output_dim: int = 128
     kwargs: Dict[str, Any] = field(default_factory=dict)
 
@@ -31,15 +36,41 @@ class ModalityConfig:
     """Configuration for a single data modality.
 
     Attributes:
-        name: Registry name of the modality (e.g. ``"tabular"``, ``"image"``).
-              Must match a key registered via :func:`~oncolearn.registry.register_modality`.
-        kwargs: Keyword arguments forwarded verbatim to the modality's
-                ``DataModule.__init__``.  Use this to set cohort codes, file lists,
-                slice counts, etc.
+        name: Registry name of the modality (e.g. ``"gene"``, ``"oncolearn.modality.gene"``).
+        join_on: Patient-ID field used to align multi-modal records.
+        join_strategy: Join strategy.  Only ``"inner"`` is currently supported.
+        files: List of data file names (relative to the cohort directory) for
+               this modality.  Replaces the opaque ``features_files`` / ``clinical_file``
+               kwargs.
+        kwargs: Remaining modality-specific keyword arguments forwarded to the
+                DataModule constructor (e.g. ``n_slices``, per-modality
+                ``base_directory`` / ``cohort_code`` overrides).
     """
 
     name: str
+    join_on: str = "patient_id"
+    join_strategy: str = "inner"
+    files: Optional[List[str]] = None
     kwargs: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class DataConfig:
+    """Configuration for all data modalities and their shared settings.
+
+    Attributes:
+        modalities: Ordered list of modalities to include.
+        base_directory: Root directory for tabular data (e.g. ``"data/xenabrowser"``).
+        cohort_code: Cohort identifier (e.g. ``"TCGA-BRCA"``).
+        splits_dir: Path to folder with ``train.txt``, ``test.txt``,
+                    ``validation.txt`` split files.  When set, overrides
+                    per-modality random splits.
+    """
+
+    modalities: List[ModalityConfig]
+    base_directory: str = "data/xenabrowser"
+    cohort_code: str = "TCGA-BRCA"
+    splits_dir: Optional[str] = None
 
 
 @dataclass
@@ -48,13 +79,9 @@ class ModelConfig:
 
     Attributes:
         name: Registry name of the model (e.g. ``"gated_late_fusion"``).
-              Must match a key registered via :func:`~oncolearn.registry.register_model`.
-        encoders: Ordered list of encoders to include in the model. Each entry specifies
-                  the encoder name (registry key), its output dimension, and any
-                  encoder-specific kwargs (e.g. ``checkpoint_path`` for the image encoder).
+        encoders: Ordered list of encoders to include in the model.
         freeze_encoders: Whether to freeze all pre-trained encoder backbones.
         modality_dropout_prob: Per-modality drop probability during training (0 = disabled).
-                               At least one modality is always retained.
     """
 
     name: str
@@ -98,20 +125,16 @@ class OncoLearnConfig:
     """Top-level experiment configuration.
 
     Required sections:
-        model: Fusion model settings. ``model.name`` must match a registered model.
-        modalities: At least one modality. Each ``name`` must match a registered modality.
+        model: Fusion model settings.  ``model.name`` must match a registered model.
+        data: Data settings.  ``data.modalities`` must be non-empty; each
+              ``name`` must match a registered modality.
 
     Optional sections:
         training: Training hyperparameters (all fields have defaults).
         output: Output directory and checkpointing.
-        join_on: Patient-ID field used to align multi-modal records (default: ``"patient_id"``).
-        join_strategy: How to join modalities. Only ``"inner"`` is currently supported.
     """
 
     model: ModelConfig
-    modalities: List[ModalityConfig]
+    data: DataConfig
     training: TrainingConfig = field(default_factory=TrainingConfig)
     output: OutputConfig = field(default_factory=OutputConfig)
-    join_on: str = "patient_id"
-    join_strategy: str = "inner"
-    splits_dir: Optional[str] = None
