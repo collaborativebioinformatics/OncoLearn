@@ -17,8 +17,7 @@ class PillowLoader(BaseImageLoader):
         try:
             image = Image.open(str(img_path)).convert('RGB')
             return image
-        except ImportError:
-            raise ImportError(
-                "Pillow is required for standard image files. "
-                "Run `uv add oncolearn[image]` to install it."
-            )
+        except (FileNotFoundError, OSError, IOError) as e:
+            raise OSError(
+                f"Failed to open image file {img_path}: {e}"
+            ) from e

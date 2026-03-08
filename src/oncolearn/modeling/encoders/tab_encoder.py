@@ -65,8 +65,9 @@ class FTTransformerEncoder(BaseEncoder):
             dim_out=enc_cfg.dim,
         )
 
-        self._freeze(self.tab_transformer)
-        logger.info(f"TabTransformer encoder frozen with {enc_cfg.input_dim} continuous features")
+        if self.freeze_encoders:
+            self._freeze(self.tab_transformer)
+            logger.info(f"TabTransformer encoder frozen with {enc_cfg.input_dim} continuous features")
 
         self.output_proj = (
             nn.Linear(enc_cfg.dim, enc_cfg.output_dim)
@@ -78,7 +79,10 @@ class FTTransformerEncoder(BaseEncoder):
         B = x.shape[0]
         x_categ = torch.zeros(B, 0, dtype=torch.long, device=x.device)
 
-        with torch.no_grad():
+        if self.freeze_encoders:
+            with torch.no_grad():
+                encoded = self.tab_transformer(x_categ, x)
+        else:
             encoded = self.tab_transformer(x_categ, x)
 
         return self.output_proj(encoded)

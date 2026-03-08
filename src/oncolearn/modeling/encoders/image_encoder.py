@@ -203,6 +203,13 @@ class MRMGHierarchicalImageEncoder(BaseEncoder):
             if "pos_embed" in backbone_dict:
                 num_patches = backbone_dict["pos_embed"].shape[1] - 1
                 grid = round(num_patches ** (1 / 3))
+                if grid ** 3 != num_patches:
+                    logger.warning(
+                        f"3D ViT pos_embed has {num_patches} patches — not a perfect cube. "
+                        f"Inferred grid edge {grid} (grid³={grid**3}). "
+                        f"Using default target_size={vit_3d_default_target_size}."
+                    )
+                    grid = round(vit_3d_default_target_size / 8)
                 target_size = grid * 8
 
             model = vit_3d_base_patchsize8(img_size=target_size, in_chans=vit_3d_in_channels)

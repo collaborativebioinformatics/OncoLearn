@@ -140,6 +140,7 @@ class ImageDataModule(pl.LightningDataModule):
             
         self.patient_to_files = {}
         self.patient_ids = []
+        self._full_dataset: Optional["ImageDataset"] = None
 
     def prepare_data(self):
         """
@@ -162,11 +163,14 @@ class ImageDataModule(pl.LightningDataModule):
         target_dir = self.data_dir / f"TCGA-{self.tcia_cohort_name}"
         if not target_dir.exists():
             print(f"Warning: Image directory {target_dir} not found. Ensure prepare_data() succeeded.")
-            
+            self._full_dataset = ImageDataset({}, [], n_slices=self.n_slices, batch_key=self.batch_key)
+            self.train_dataset = self.val_dataset = self.test_dataset = self._full_dataset
+            return
+
         # Collect all valid image files and map to patient IDs
         self.patient_to_files = {}
         file_count = 0
-        
+
         for file_path in target_dir.rglob("*"):
             if file_path.is_file():
                 for loader in DEFAULT_LOADERS:
@@ -206,7 +210,7 @@ class ImageDataModule(pl.LightningDataModule):
         self._full_dataset = full_dataset
 
         if len(full_dataset) == 0:
-            self.train_dataset, self.val_dataset, self.test_dataset = [], [], []
+            self.train_dataset = self.val_dataset = self.test_dataset = full_dataset
             return
 
         # Split

@@ -103,6 +103,14 @@ class RNABERTEncoder(BaseEncoder):
             nn.Dropout(enc_cfg.projection_dropout),
         )
 
+        # Registered fallback projection for when RNA BERT is unavailable.
+        # nn.LazyLinear defers weight init until the first forward call so we
+        # don't need to know the input feature count at construction time.
+        if self._rna_bert_unavailable:
+            self.fallback_proj: nn.Module = nn.LazyLinear(hidden_size)
+        else:
+            self.fallback_proj = None  # type: ignore[assignment]
+
     def _load_huggingface_model(self, model_name: str) -> nn.Module:
         """Load RNA BERT via bmfm_targets instead of AutoModel."""
         try:
@@ -166,8 +174,6 @@ class RNABERTEncoder(BaseEncoder):
         """
         # Fast path: RNA BERT unavailable at load time — use linear projection directly.
         if self._rna_bert_unavailable:
-            if not hasattr(self, "fallback_proj"):
-                self.fallback_proj = nn.Linear(x.shape[1], self.hidden_size).to(x.device)
             embeddings = self.fallback_proj(x)
             return self.projection(embeddings)
 
@@ -194,8 +200,8 @@ class RNABERTEncoder(BaseEncoder):
             logger.warning(
                 f"RNA BERT forward failed: {e}.\n{traceback.format_exc()}\nUsing fallback projection."
             )
-            if not hasattr(self, "fallback_proj"):
-                self.fallback_proj = nn.Linear(x.shape[1], self.hidden_size).to(x.device)
+            if self.fallback_proj is None:
+                self.fallback_proj = nn.LazyLinear(self.hidden_size).to(x.device)
             embeddings = self.fallback_proj(x)
 
         if embeddings.dim() == 1:

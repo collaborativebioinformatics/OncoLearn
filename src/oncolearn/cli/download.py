@@ -291,7 +291,7 @@ def execute(args):
         else:  # tcia
             cohort_list = get_tcia_cohorts()
     else:
-        cohort_list = [c.strip().upper() for c in args.cohorts.split(',')]
+        cohort_list = [c.strip().upper() for c in args.cohorts.split(',') if c.strip()]
 
     # Download cohorts
     unzip = hasattr(args, 'unzip') and args.unzip

@@ -160,8 +160,11 @@ class XenaCohortBuilder(BaseCohortBuilder):
         Returns:
             Configured Cohort instance
         """
-        with open(yaml_file, 'r') as f:
-            config = yaml.safe_load(f)
+        try:
+            with open(yaml_file, 'r') as f:
+                config = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            raise ValueError(f"Invalid YAML in cohort config {yaml_file}: {e}") from e
         
         cohort_info = config["cohort"]
         datasets_config = config["datasets"]
@@ -264,5 +267,3 @@ class XenaCohortBuilder(BaseCohortBuilder):
             return []
         
         return [f.stem.upper() for f in self.config_dir.glob("*.yaml")]
-
-        return cohorts

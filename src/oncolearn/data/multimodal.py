@@ -198,7 +198,7 @@ class MultimodalDataModule(pl.LightningDataModule):
             full_datasets = {
                 name: dm.full_dataset
                 for name, dm in self.datamodules.items()
-                if dm.full_dataset is not None
+                if hasattr(dm, "_full_dataset") and dm.full_dataset is not None
             }
 
             if stage == "fit" or stage is None:
@@ -243,9 +243,11 @@ class MultimodalDataModule(pl.LightningDataModule):
 
     def _compute_class_weights(self) -> None:
         labels = self.train_dataset.get_labels()
-        if not labels or any(l is None for l in labels):
+        valid_labels = [l for l in labels if l is not None]
+        if not valid_labels:
             return
-        counts = Counter(labels)
+        counts = Counter(valid_labels)
+        labels = valid_labels
         n_classes = self.num_classes if self.num_classes is not None else max(counts) + 1
         total = len(labels)
         self.class_weights = torch.tensor(

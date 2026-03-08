@@ -64,6 +64,7 @@ class ClinicalDataModule(pl.LightningDataModule):
         self.clinical_file = resolved_file
         self.stage_col = stage_col
         self.batch_key = batch_key
+        self._full_dataset: Optional["TabularDataset"] = None
 
     def prepare_data(self):
         # Clinical TSV is downloaded alongside gene data by XenaCohortBuilder.

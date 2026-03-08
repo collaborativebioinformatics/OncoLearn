@@ -44,7 +44,7 @@ class BaseEncoder(nn.Module):
         if huggingface_models:
             for i, model_name in enumerate(huggingface_models, start=1):
                 enc = self._load_huggingface_model(model_name)
-                if self.freeze_encoders:
+                if enc is not None and self.freeze_encoders:
                     self._freeze(enc)
                     logger.info(f"Frozen HuggingFace encoder: {model_name}")
                 setattr(self, f"hf_enc{i}", enc)
