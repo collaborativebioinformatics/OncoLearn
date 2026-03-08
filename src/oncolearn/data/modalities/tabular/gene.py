@@ -137,8 +137,44 @@ class GeneDataModule(pl.LightningDataModule):
         return self._full_dataset
 
     def setup_full(self, stage=None):
+        """Load all patients without label filtering for use as a feature encoder.
+
+        Unlike ``setup()``, this method keeps patients that lack PAM50 labels so
+        that the gene modality covers the full multimodal intersection (e.g. all
+        57 imaging patients even when only 6 of them have PAM50 annotations).
+        Labels in the full dataset are omitted; the clinical modality supplies
+        stage labels during multimodal training.
+        """
         if not hasattr(self, "_full_dataset"):
-            self.setup(stage=stage)
+            from .parsers.xenabrowser_parser import XenabrowserParser
+
+            cohort_dir = self.data_dir / self.cohort_code
+            targets = (
+                [cohort_dir / f for f in self.features_files]
+                if self.features_files
+                else list(cohort_dir.rglob("*"))
+            )
+            dfs = []
+            for file_path in targets:
+                if file_path.is_file() and XenabrowserParser.can_parse(file_path):
+                    dfs.append(XenabrowserParser.load(file_path))
+
+            if not dfs:
+                self._full_dataset = None
+                return
+
+            merged = dfs[0]
+            for df in dfs[1:]:
+                merged = pd.merge(merged, df, on="patient_id", how="left")
+
+            print(
+                f"GeneDataModule (full): merged {len(merged)} patients"
+                f" from {len(dfs)} file(s)."
+            )
+            # No label_col — labels come from the clinical modality in multimodal mode
+            self._full_dataset = TabularDataset(
+                merged, label_col=None, batch_key=self.batch_key
+            )
 
     def train_dataloader(self):
         return DataLoader(

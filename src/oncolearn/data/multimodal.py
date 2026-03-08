@@ -97,15 +97,23 @@ class MultimodalDataset(Dataset):
         )
 
     def get_labels(self) -> List[int]:
-        """Return the integer label for each sample, reading from the first labelled dataset."""
+        """Return the integer label for each sample.
+
+        Iterates modalities in order and returns the first valid (non-NaN)
+        label found.  This allows the clinical modality to supply stage labels
+        even when the gene modality's full dataset has no PAM50 annotations.
+        """
         labels = []
         for record_indices in self._indices_map:
             label = None
             for mod_name, ds in self.datasets.items():
                 idx = record_indices[mod_name]
                 if hasattr(ds, "labels") and ds.labels is not None:
-                    label = int(ds.labels[idx])
-                    break
+                    try:
+                        label = int(ds.labels[idx])
+                        break
+                    except (ValueError, TypeError):
+                        continue  # NaN or non-castable → try next modality
             labels.append(label)
         return labels
 

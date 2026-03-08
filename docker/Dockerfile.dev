@@ -111,17 +111,17 @@ COPY submodules/biomed-multi-omic ./submodules/biomed-multi-omic/
 # This layer stays cached as long as pyproject.toml/uv.lock/submodule don't change,
 # even when src/ is edited frequently.
 RUN --mount=type=cache,target=/workspace/.uv-cache,sharing=locked \
-    uv sync --no-dev --extra ${GPU_EXTRA} --extra multimodal --no-install-project
+    uv sync --no-dev --extra ${GPU_EXTRA} --extra multimodal --extra eda --extra image --no-install-project
 
 # Install oncolearn editable (cheap; only re-runs when src/ changes)
 COPY src/ ./src/
 RUN --mount=type=cache,target=/workspace/.uv-cache,sharing=locked \
-    uv sync --no-dev --extra ${GPU_EXTRA} --extra multimodal
+    uv sync --no-dev --extra ${GPU_EXTRA} --extra multimodal --extra eda --extra image
 
 # ============================================================================
 # Stage 5: R Dependencies Builder
 # ============================================================================
-FROM r-base:latest AS r-builder
+FROM rocker/r-ver:4.4.2 AS r-builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV RENV_PATHS_CACHE=/workspace/.renv-cache
@@ -209,15 +209,23 @@ RUN mkdir -p /usr/share/desktop-directories \
 COPY --from=pdc-builder /opt/pdc-client /opt/pdc-client
 RUN ln -sf /opt/pdc-client/pdc-client /usr/local/bin/pdc_client
 
+# Copy Python 3.12 interpreter from python-builder stage.
+# ubuntu:22.04 does not ship Python 3.12; the venv's bin/python symlinks to
+# /usr/local/bin/python3.12, which must exist in the runtime image.
+COPY --from=python-builder /usr/local/bin/python3.12 /usr/local/bin/python3.12
+COPY --from=python-builder /usr/local/lib/libpython3.12.so.1.0 /usr/local/lib/libpython3.12.so.1.0
+COPY --from=python-builder /usr/local/lib/python3.12 /usr/local/lib/python3.12
+RUN ldconfig
+
 # Copy Python virtual environment and uv from python-builder stage
 COPY --from=python-builder /workspace/.venv /workspace/.venv
 COPY --from=python-builder /usr/local/bin/uv /usr/local/bin/uv
 
-# Copy R installation and libraries from r-builder stage
-COPY --from=r-builder /usr/lib/R /usr/lib/R
+# Copy R installation and libraries from r-builder stage.
+# rocker/r-ver installs R entirely under /usr/local/ (not /usr/lib/R or /usr/bin/).
 COPY --from=r-builder /usr/local/lib/R /usr/local/lib/R
-COPY --from=r-builder /usr/bin/R /usr/bin/R
-COPY --from=r-builder /usr/bin/Rscript /usr/bin/Rscript
+COPY --from=r-builder /usr/local/bin/R /usr/local/bin/R
+COPY --from=r-builder /usr/local/bin/Rscript /usr/local/bin/Rscript
 COPY --from=r-builder /workspace/renv /workspace/renv
 
 WORKDIR /workspace

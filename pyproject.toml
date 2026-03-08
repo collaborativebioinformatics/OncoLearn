@@ -36,6 +36,7 @@ rocm = [
 ]
 eda = [
     "matplotlib>=3.10.8",
+    "matplotlib-venn>=1.1.2",
     "scikit-learn>=1.7.2",
     "hdbscan>=0.8.41",
     "umap-learn>=0.5.9.post2",

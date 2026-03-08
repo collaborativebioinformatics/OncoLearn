@@ -22,7 +22,7 @@ import pytorch_lightning as pl
 
 # Utilize Tensor Cores on supported GPUs (trades negligible precision for performance)
 torch.set_float32_matmul_precision("high")
-from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, ModelSummary
 
 from oncolearn.config import OncoLearnConfig, load_config
 from oncolearn.registry import get_model, get_modality
@@ -143,6 +143,7 @@ class OncoTrainer:
         output_dir = Path(out.dir) / out.experiment_name
 
         callbacks = [
+            ModelSummary(max_depth=2),
             ModelCheckpoint(
                 dirpath=str(output_dir),
                 filename="best_model",

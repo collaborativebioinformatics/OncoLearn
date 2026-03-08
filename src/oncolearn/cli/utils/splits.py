@@ -41,7 +41,7 @@ def write_id_file(path: Path, ids: Iterable[str]) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w") as f:
-        for pid in sorted(ids):
+        for pid in sorted(set(ids)):
             f.write(pid + "\n")
 
 
@@ -85,8 +85,15 @@ def generate_kfold_splits(
     output_dir = Path(output_dir)
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
 
-    ids_arr = list(patient_ids)
-    lbls_arr = list(labels)
+    # Deduplicate while preserving label alignment
+    seen: set = set()
+    ids_arr: List[str] = []
+    lbls_arr: List[int] = []
+    for pid, lbl in zip(patient_ids, labels):
+        if pid not in seen:
+            seen.add(pid)
+            ids_arr.append(pid)
+            lbls_arr.append(lbl)
 
     fold_dirs: List[Path] = []
 
@@ -123,9 +130,23 @@ def generate_kfold_splits(
         write_id_file(fold_dir / "test.txt", test_ids)
         write_id_file(fold_dir / "validation.txt", val_ids)
 
-        train_counts = Counter(lbls_arr[ids_arr.index(pid)] for pid in train_ids)
-        val_counts = Counter(lbls_arr[ids_arr.index(pid)] for pid in val_ids)
-        test_counts = Counter(lbls_arr[ids_arr.index(pid)] for pid in test_ids)
+        # Sanity-check: no patient should appear in more than one split
+        train_set = set(train_ids)
+        val_set = set(val_ids)
+        test_set = set(test_ids)
+        tv_overlap = train_set & val_set
+        te_overlap = train_set & test_set
+        ve_overlap = val_set & test_set
+        if tv_overlap or te_overlap or ve_overlap:
+            raise AssertionError(
+                f"fold_{fold_idx} has overlapping patients: "
+                f"train∩val={tv_overlap}, train∩test={te_overlap}, val∩test={ve_overlap}"
+            )
+
+        label_map = dict(zip(ids_arr, lbls_arr))
+        train_counts = Counter(label_map[pid] for pid in train_ids)
+        val_counts = Counter(label_map[pid] for pid in val_ids)
+        test_counts = Counter(label_map[pid] for pid in test_ids)
 
         print(
             f"  fold_{fold_idx}: "

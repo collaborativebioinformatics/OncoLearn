@@ -32,11 +32,8 @@ data:
       join_strategy: inner
       files:
         - TCGA-BRCA.mirna.tsv
-        - pam50.tsv
-        - TCGA-BRCA.star_counts.tsv
-        - TCGA-BRCA.star_fpkm.tsv
-        - TCGA-BRCA.star_fpkm-uq.tsv
         - TCGA-BRCA.star_tpm.tsv
+        - pam50.tsv
     - name: oncolearn.modality.clinical
       join_on: patient_id
       join_strategy: inner

@@ -80,15 +80,24 @@ services:
       - .:/workspace
       - uv-cache:/root/.cache/uv
       - renv-cache:/workspace/renv
-      - /usr/lib/wsl:/usr/lib/wsl:ro  # WSL GPU libraries
+      - /usr/lib/wsl:/usr/lib/wsl:ro          # WSL GPU libraries
+      - /opt/rocm/lib:/opt/rocm/lib:ro         # ROCm runtime libs (libroctx64, etc.)
     environment:
       - LLVM_CONFIG=/usr/bin/llvm-config-20
       - CMAKE_PREFIX_PATH=/usr/lib/llvm-20
-      - LD_LIBRARY_PATH=/usr/lib/wsl/lib
+      - JAVA_TOOL_OPTIONS=-Djava.awt.headless=true
+      - LD_LIBRARY_PATH=/opt/rocm/lib:/usr/lib/wsl/lib
+      - TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL=1
     devices:
       - /dev/dxg  # WSL2 DirectX Graphics device for GPU passthrough
     group_add:
       - video
+    cap_add:
+      - SYS_PTRACE  # required for ROCm GPU topology discovery
+    security_opt:
+      - seccomp:unconfined  # required for ROCm HSA runtime
+    ipc: host  # required for ROCm shared memory
+    shm_size: '2gb'
 
   # Production PyTorch environment (CPU only)
   pytorch-prod-cpu:
