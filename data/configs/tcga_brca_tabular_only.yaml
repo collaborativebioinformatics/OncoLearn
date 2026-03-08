@@ -29,17 +29,37 @@ data:
 
 training:
   max_epochs: 50
-  learning_rate: 0.0001
-  weight_decay: 0.00001
   batch_size: 16
   num_workers: 4
   accelerator: auto
   devices: 1
   early_stopping_patience: 10
   subtype_lambda: 0.3
-  scheduler: cosine
   seed: 42
   use_class_weights: true
+
+  optimizer:
+    name: torch.optim.AdamW
+    params:
+      lr: 0.0001
+      weight_decay: 0.00001
+
+  scheduler:
+    name: torch.optim.lr_scheduler.CosineAnnealingLR
+    params:
+      T_max: null
+    monitor: val_loss
+    interval: epoch
+    frequency: 1
+
+  loss:
+    name: torch.nn.CrossEntropyLoss
+    params: {}
+
+  regularization:
+    l1_lambda: 0.0
+    gradient_clip_val: 0.0
+    label_smoothing: 0.0
 
 output:
   dir: outputs

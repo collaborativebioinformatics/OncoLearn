@@ -14,10 +14,14 @@ import yaml
 from .schema import (
     DataConfig,
     EncoderConfig,
+    LossConfig,
     ModalityConfig,
     ModelConfig,
     OncoLearnConfig,
+    OptimizerConfig,
     OutputConfig,
+    RegularizationConfig,
+    SchedulerConfig,
     TrainingConfig,
 )
 
@@ -114,6 +118,47 @@ def _parse_legacy_modalities(raw: dict) -> DataConfig:
     )
 
 
+def _parse_training_section(raw: dict) -> TrainingConfig:
+    """Parse the ``training:`` section, handling nested optimizer/scheduler/loss/regularization."""
+    nested_keys = {"optimizer", "scheduler", "loss", "regularization"}
+    flat = {k: v for k, v in raw.items() if k not in nested_keys}
+    training_cfg = _dataclass_from_dict(TrainingConfig, flat)
+
+    if "optimizer" in raw:
+        opt_raw = raw["optimizer"]
+        training_cfg.optimizer = OptimizerConfig(
+            name=opt_raw.get("name", "torch.optim.AdamW"),
+            params=opt_raw.get("params", {}),
+        )
+
+    if "scheduler" in raw:
+        sched_raw = raw["scheduler"]
+        training_cfg.scheduler = SchedulerConfig(
+            name=sched_raw.get("name", "torch.optim.lr_scheduler.CosineAnnealingLR"),
+            params=sched_raw.get("params", {}),
+            monitor=sched_raw.get("monitor", "val_loss"),
+            interval=sched_raw.get("interval", "epoch"),
+            frequency=sched_raw.get("frequency", 1),
+        )
+
+    if "loss" in raw:
+        loss_raw = raw["loss"]
+        training_cfg.loss = LossConfig(
+            name=loss_raw.get("name", "torch.nn.CrossEntropyLoss"),
+            params=loss_raw.get("params", {}),
+        )
+
+    if "regularization" in raw:
+        reg_raw = raw["regularization"]
+        training_cfg.regularization = RegularizationConfig(
+            l1_lambda=reg_raw.get("l1_lambda", 0.0),
+            gradient_clip_val=reg_raw.get("gradient_clip_val", 0.0),
+            label_smoothing=reg_raw.get("label_smoothing", 0.0),
+        )
+
+    return training_cfg
+
+
 def load_config(path: Union[str, Path]) -> OncoLearnConfig:
     """Load an OncoLearn experiment config from a YAML file.
 
@@ -188,7 +233,7 @@ def load_config(path: Union[str, Path]) -> OncoLearnConfig:
         )
 
     # --- training (optional) ---
-    training_cfg = _dataclass_from_dict(TrainingConfig, raw.get("training", {}))
+    training_cfg = _parse_training_section(raw.get("training", {}))
 
     # --- output (optional) ---
     output_cfg = _dataclass_from_dict(OutputConfig, raw.get("output", {}))
@@ -251,7 +296,32 @@ def save_config(config: OncoLearnConfig, path: Union[str, Path]) -> None:
         data_dict["modalities"].append(entry)
     raw["data"] = data_dict
 
-    raw["training"] = dataclasses.asdict(config.training)
+    t = config.training
+    raw["training"] = {
+        "max_epochs": t.max_epochs,
+        "batch_size": t.batch_size,
+        "num_workers": t.num_workers,
+        "accelerator": t.accelerator,
+        "devices": t.devices,
+        "early_stopping_patience": t.early_stopping_patience,
+        "subtype_lambda": t.subtype_lambda,
+        "seed": t.seed,
+        "use_class_weights": t.use_class_weights,
+        "optimizer": {"name": t.optimizer.name, "params": dict(t.optimizer.params)},
+        "scheduler": {
+            "name": t.scheduler.name,
+            "params": dict(t.scheduler.params),
+            "monitor": t.scheduler.monitor,
+            "interval": t.scheduler.interval,
+            "frequency": t.scheduler.frequency,
+        },
+        "loss": {"name": t.loss.name, "params": dict(t.loss.params)},
+        "regularization": {
+            "l1_lambda": t.regularization.l1_lambda,
+            "gradient_clip_val": t.regularization.gradient_clip_val,
+            "label_smoothing": t.regularization.label_smoothing,
+        },
+    }
     raw["output"] = dataclasses.asdict(config.output)
 
     with path.open("w") as f:

@@ -94,21 +94,58 @@ class ModelConfig:
 
 
 @dataclass
+class OptimizerConfig:
+    """Configuration for the optimizer."""
+
+    name: str = "torch.optim.AdamW"
+    params: Dict[str, Any] = field(default_factory=lambda: {"lr": 1e-4, "weight_decay": 1e-5})
+
+
+@dataclass
+class SchedulerConfig:
+    """Configuration for the learning rate scheduler."""
+
+    name: str = "torch.optim.lr_scheduler.CosineAnnealingLR"
+    params: Dict[str, Any] = field(default_factory=dict)
+    monitor: str = "val_loss"
+    interval: str = "epoch"
+    frequency: int = 1
+
+
+@dataclass
+class LossConfig:
+    """Configuration for the loss function."""
+
+    name: str = "torch.nn.CrossEntropyLoss"
+    params: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class RegularizationConfig:
+    """Regularization settings."""
+
+    l1_lambda: float = 0.0
+    gradient_clip_val: float = 0.0
+    label_smoothing: float = 0.0
+
+
+@dataclass
 class TrainingConfig:
     """Training hyperparameters."""
 
     max_epochs: int = 50
-    learning_rate: float = 1e-4
-    weight_decay: float = 1e-5
     batch_size: int = 16
     num_workers: int = 4
     accelerator: str = "auto"
     devices: int = 1
     early_stopping_patience: int = 10
     subtype_lambda: float = 0.3
-    scheduler: str = "cosine"
     seed: int = 42
     use_class_weights: bool = True
+    optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
+    scheduler: SchedulerConfig = field(default_factory=SchedulerConfig)
+    loss: LossConfig = field(default_factory=LossConfig)
+    regularization: RegularizationConfig = field(default_factory=RegularizationConfig)
 
 
 @dataclass

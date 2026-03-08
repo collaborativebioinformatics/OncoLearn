@@ -164,6 +164,7 @@ class OncoTrainer:
             ),
         ]
 
+        gradient_clip_val = t.regularization.gradient_clip_val or None
         self._pl_trainer = pl.Trainer(
             max_epochs=t.max_epochs,
             accelerator=t.accelerator,
@@ -171,6 +172,7 @@ class OncoTrainer:
             default_root_dir=str(output_dir),
             callbacks=callbacks,
             log_every_n_steps=1,
+            gradient_clip_val=gradient_clip_val,
         )
 
         logger.info(
