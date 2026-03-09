@@ -63,6 +63,7 @@ multimodal = [
     "transformers>=4.57.3",
     "timm>=0.9.10",
     "igraph",
+    "optuna>=4.7.0",
     # Image processing dependencies
     "pillow>=12.1.0",
     "pydicom>=3.0.1",

@@ -61,6 +61,73 @@ training:
     gradient_clip_val: 0.0
     label_smoothing: 0.0
 
+  # Uncomment to enable Optuna hyperparameter search before the final training run.
+  # hpo:
+  #   n_trials: 30
+  #   epochs_per_trial: 10        # reduced epoch budget per trial
+  #   study_name: brca_tabular_hpo
+  #   storage: sqlite:///outputs/hpo.db   # omit for in-memory (non-persistent)
+  #   direction: maximize
+  #   metric: val_acc
+  #   pruning: true
+  #   seed: 42
+  #   search_space:
+  #     training.optimizer.name:
+  #       type: categorical
+  #       choices:
+  #         - torch.optim.AdamW
+  #         - torch.optim.Adam
+  #         - torch.optim.SGD
+  #         - torch.optim.RMSprop
+  #     training.batch_size:
+  #       type: categorical
+  #       choices: [4, 8, 16, 32]
+  #     training.early_stopping_patience:
+  #       type: int
+  #       low: 5
+  #       high: 20
+  #     training.regularization.label_smoothing:
+  #       type: float
+  #       low: 0.0
+  #       high: 0.3
+  #     training.regularization.l1_lambda:
+  #       type: float
+  #       low: 0.0
+  #       high: 1.0e-3
+  #     model.dropout:
+  #       type: float
+  #       low: 0.05
+  #       high: 0.5
+  #     model.modality_dropout_prob:
+  #       type: float
+  #       low: 0.0
+  #       high: 0.4
+  #     model.encoders.0.output_dim:
+  #       type: categorical
+  #       choices: [64, 128, 256]
+  #     model.encoders.0.kwargs.projection_dropout:
+  #       type: float
+  #       low: 0.0
+  #       high: 0.5
+  #     model.encoders.0.kwargs.max_seq_len:
+  #       type: categorical
+  #       choices: [256, 512, 1024]
+  #   optimizer_params:
+  #     torch.optim.AdamW:
+  #       lr:           {type: float, low: 1.0e-5, high: 1.0e-2, log: true}
+  #       weight_decay: {type: float, low: 1.0e-6, high: 1.0e-3, log: true}
+  #     torch.optim.Adam:
+  #       lr:           {type: float, low: 1.0e-5, high: 1.0e-2, log: true}
+  #       weight_decay: {type: float, low: 1.0e-6, high: 1.0e-3, log: true}
+  #     torch.optim.SGD:
+  #       lr:           {type: float, low: 1.0e-3, high: 1.0e-1, log: true}
+  #       momentum:     {type: float, low: 0.5, high: 0.99}
+  #       weight_decay: {type: float, low: 1.0e-6, high: 1.0e-3, log: true}
+  #     torch.optim.RMSprop:
+  #       lr:           {type: float, low: 1.0e-5, high: 1.0e-2, log: true}
+  #       momentum:     {type: float, low: 0.0, high: 0.9}
+  #       weight_decay: {type: float, low: 1.0e-6, high: 1.0e-3, log: true}
+
 output:
   dir: outputs
   experiment_name: tcga_brca_tabular_only

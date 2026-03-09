@@ -135,9 +135,16 @@ class OncoTrainer:
     def train(self) -> Dict[str, float]:
         """Run the full training loop via PyTorch Lightning.
 
+        If ``config.training.hpo`` is set, an Optuna study is run first and
+        the best-found hyperparameters are applied to the config before the
+        final training run begins.
+
         Returns:
             Final callback metrics from the Lightning trainer.
         """
+        if self.config.training.hpo is not None:
+            self._run_hpo()
+
         t = self.config.training
         out = self.config.output
         output_dir = Path(out.dir) / out.experiment_name
@@ -164,7 +171,7 @@ class OncoTrainer:
             ),
         ]
 
-        gradient_clip_val = t.regularization.gradient_clip_val or None
+        gradient_clip_val = t.regularization.gradient_clip_val if t.regularization.gradient_clip_val > 0 else None
         self._pl_trainer = pl.Trainer(
             max_epochs=t.max_epochs,
             accelerator=t.accelerator,
@@ -185,6 +192,28 @@ class OncoTrainer:
 
         self._pl_trainer.fit(self.model, datamodule=self.datamodule)
         return dict(self._pl_trainer.callback_metrics)
+
+    def _run_hpo(self) -> None:
+        """Run an Optuna study and apply best params to self.config in-place."""
+        from oncolearn.modeling.hyps import OptunaHPTuner
+
+        hpo_cfg = self.config.training.hpo
+        logger.info(
+            "HPO enabled — running %d trials before final training", hpo_cfg.n_trials
+        )
+        tuner = OptunaHPTuner(self.config, hpo_cfg)
+        best_params, best_config = tuner.tune()
+
+        # Apply best params back to this trainer's live config so the final
+        # training run (which follows immediately) uses them.
+        from oncolearn.modeling.hyps import apply_params
+        apply_params(self.config, best_params)
+
+        # Rebuild model/datamodule with updated config
+        self.datamodule = self._build_datamodule()
+        self.model = self._build_model()
+
+        logger.info("HPO complete — best params applied: %s", best_params)
 
     def test(self) -> Dict[str, float]:
         """Evaluate on the test split.

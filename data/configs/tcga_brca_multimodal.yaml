@@ -9,41 +9,41 @@ model:
   num_subtype_classes: 0
   freeze_encoders: true
   dropout: 0.2
-  modality_dropout_prob: 0.0
+  modality_dropout_prob: 0.3
   encoders:
     - name: oncolearn.encoder.multimodal.RNABERTEncoder
       modality: oncolearn.modality.gene
       output_dim: 128
-    - name: oncolearn.encoder.multimodal.ClinicalMLPEncoder
+    - name: oncolearn.encoder.multimodal.FTTransformerEncoder
       modality: oncolearn.modality.clinical
       output_dim: 64
-    - name: oncolearn.encoder.multimodal.FMBCMRIEncoder
+    - name: oncolearn.encoder.multimodal.MRMGHierarchicalImageEncoder
       modality: oncolearn.modality.image
       output_dim: 256
       checkpoint_path: /workspace/models/breast_MR_checkpoint.pth.tar
 
 data:
-  base_directory: data/xenabrowser
-  cohort_code: TCGA-BRCA
-  splits_dir: data/configs/BRCA/kfold/fold_0
+  splits_dir: data/configs/BRCA/multimodal/kfold/fold_0
   modalities:
     - name: oncolearn.modality.gene
+      base_directory: data/xenabrowser
+      cohort_code: TCGA-BRCA
       join_on: patient_id
       join_strategy: inner
       files:
         - TCGA-BRCA.mirna.tsv
-        - TCGA-BRCA.star_tpm.tsv
-        - pam50.tsv
     - name: oncolearn.modality.clinical
+      base_directory: data/xenabrowser
+      cohort_code: TCGA-BRCA
       join_on: patient_id
       join_strategy: inner
       files:
         - TCGA-BRCA.clinical.tsv
       stage_col: ajcc_pathologic_stage.diagnoses
     - name: oncolearn.modality.image
+      base_directory: data/tcia
       join_on: patient_id
       join_strategy: inner
-      base_directory: data/tcia
       cohort_code: BRCA
       n_slices: 5
       prefer_mr: false
@@ -79,8 +79,113 @@ training:
 
   regularization:
     l1_lambda: 0.0
-    gradient_clip_val: 0.0
+    gradient_clip_val: 1.0
     label_smoothing: 0.0
+
+  # Uncomment to enable Optuna hyperparameter search before the final training run.
+  hpo:
+    n_trials: 30
+    epochs_per_trial: 30        # reduced epoch budget per trial
+    study_name: brca_multimodal
+    storage: sqlite:///outputs/brca_multimodal.db   # omit for in-memory (non-persistent)
+    direction: maximize
+    metric: val_acc
+    pruning: true
+    seed: 42
+    search_space:
+      training.optimizer.name:
+        type: categorical
+        choices:
+          - torch.optim.AdamW
+          - torch.optim.Adam
+          - torch.optim.SGD
+          - torch.optim.RMSprop
+      training.batch_size:
+        type: categorical
+        choices: [8]
+      training.early_stopping_patience:
+        type: int
+        low: 5
+        high: 20
+      training.regularization.label_smoothing:
+        type: float
+        low: 0.0
+        high: 0.3
+      training.regularization.l1_lambda:
+        type: float
+        low: 0.0
+        high: 1.0e-5
+      model.dropout:
+        type: float
+        low: 0.05
+        high: 0.5
+      model.modality_dropout_prob:
+        type: float
+        low: 0.0
+        high: 0.4
+      model.encoders.0.output_dim:
+        type: categorical
+        choices: [64, 128, 256]
+      model.encoders.0.kwargs.projection_dropout:
+        type: float
+        low: 0.0
+        high: 0.5
+      model.encoders.0.kwargs.max_seq_len:
+        type: categorical
+        choices: [256, 512]
+    optimizer_params:
+      torch.optim.AdamW:
+        lr:
+          type: float
+          low: 1.0e-5
+          high: 1.0e-2
+          log: true
+        weight_decay:
+          type: float
+          low: 1.0e-6
+          high: 1.0e-3
+          log: true
+      torch.optim.Adam:
+        lr:
+          type: float
+          low: 1.0e-5
+          high: 1.0e-2
+          log: true
+        weight_decay:
+          type: float
+          low: 1.0e-6
+          high: 1.0e-3
+          log: true
+      torch.optim.SGD:
+        lr:
+          type: float
+          low: 1.0e-3
+          high: 1.0e-1
+          log: true
+        momentum:
+          type: float
+          low: 0.5
+          high: 0.99
+        weight_decay:
+          type: float
+          low: 1.0e-6
+          high: 1.0e-3
+          log: true
+      torch.optim.RMSprop:
+        lr:
+          type: float
+          low: 1.0e-5
+          high: 1.0e-2
+          log: true
+        momentum:
+          type: float
+          low: 0.0
+          high: 0.9
+        weight_decay:
+          type: float
+          low: 1.0e-6
+          high: 1.0e-3
+          log: true
 
 output:
   dir: outputs

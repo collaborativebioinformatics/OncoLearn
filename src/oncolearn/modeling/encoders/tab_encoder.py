@@ -20,20 +20,20 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-@register_config("clinical")
+@register_config("oncolearn.encoder.multimodal.FTTransformerEncoder")
 @dataclass
 class FTTransformerEncoderConfig:
     """Configuration for the FT-Transformer tabular encoder."""
 
     output_dim: int = 128
-    input_dim: int = 1
+    input_dim: int = 32
     dim: int = 128
     num_heads: int = 4
     depth: int = 2
     dropout: float = 0.2
 
 
-@register_encoder("clinical", "oncolearn.encoder.multimodal.ClinicalMLPEncoder")
+@register_encoder("oncolearn.encoder.multimodal.FTTransformerEncoder")
 class FTTransformerEncoder(BaseEncoder):
     """
     FTTransformer encoder for continuous tabular / clinical features.
@@ -54,6 +54,14 @@ class FTTransformerEncoder(BaseEncoder):
         super().__init__(config, output_dim=enc_cfg.output_dim, huggingface_models=None)
         self.input_dim = enc_cfg.input_dim
 
+        # Project variable-length input features to the fixed input_dim expected by
+        # FTTransformer.  LazyLinear defers weight init to the first forward pass so
+        # we don't need to know the feature count at construction time.
+        self.input_proj = nn.Sequential(
+            nn.LazyLinear(enc_cfg.input_dim),
+            nn.LayerNorm(enc_cfg.input_dim),
+        )
+
         self.tab_transformer = FTTransformer(
             categories=(),
             num_continuous=enc_cfg.input_dim,
@@ -65,24 +73,26 @@ class FTTransformerEncoder(BaseEncoder):
             dim_out=enc_cfg.dim,
         )
 
+        # NOTE: FTTransformer is always trained — it has no pretrained checkpoint so
+        # freezing random weights would make the clinical encoder unlearnable.
         if self.freeze_encoders:
-            self._freeze(self.tab_transformer)
-            logger.info(f"TabTransformer encoder frozen with {enc_cfg.input_dim} continuous features")
+            logger.info(
+                "freeze_encoders=True but FTTransformerEncoder has no pretrained checkpoint; "
+                "training the tab_transformer regardless."
+            )
 
         self.output_proj = (
             nn.Linear(enc_cfg.dim, enc_cfg.output_dim)
             if enc_cfg.dim != enc_cfg.output_dim
             else nn.Identity()
         )
+        self.output_norm = nn.LayerNorm(enc_cfg.output_dim)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B = x.shape[0]
+        x = self.input_proj(x)
         x_categ = torch.zeros(B, 0, dtype=torch.long, device=x.device)
 
-        if self.freeze_encoders:
-            with torch.no_grad():
-                encoded = self.tab_transformer(x_categ, x)
-        else:
-            encoded = self.tab_transformer(x_categ, x)
+        encoded = self.tab_transformer(x_categ, x)
 
-        return self.output_proj(encoded)
+        return self.output_norm(self.output_proj(encoded))

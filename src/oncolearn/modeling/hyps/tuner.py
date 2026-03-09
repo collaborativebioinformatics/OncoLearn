@@ -1,0 +1,259 @@
+"""
+Optuna-based hyperparameter tuner for OncoLearn.
+
+Called automatically by :class:`~oncolearn.trainer.OncoTrainer` when
+``training.hpo`` is present in the experiment config.  Not normally
+instantiated directly.
+"""
+
+from __future__ import annotations
+
+import logging
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
+
+import optuna
+import pytorch_lightning as pl
+
+if TYPE_CHECKING:
+    from oncolearn.config import HpoConfig, OncoLearnConfig
+
+logger = logging.getLogger(__name__)
+
+
+class OptunaHPTuner:
+    """Run an Optuna study driven entirely by :class:`~oncolearn.config.HpoConfig`.
+
+    Args:
+        base_config: Structural config template (data paths, encoder names, etc.).
+        hpo_cfg:     Parsed HPO settings from ``training.hpo``.
+    """
+
+    def __init__(
+        self,
+        base_config: "OncoLearnConfig",
+        hpo_cfg: "HpoConfig",
+    ) -> None:
+        self.base_config = base_config
+        self.hpo_cfg = hpo_cfg
+        self._study: Optional[optuna.Study] = None
+
+    # ------------------------------------------------------------------
+    # Objective
+    # ------------------------------------------------------------------
+
+    def _objective(self, trial: optuna.Trial) -> float:
+        from oncolearn.trainer import OncoTrainer, set_seed
+        from .search_space import suggest_hyperparams
+
+        config = suggest_hyperparams(trial, self.base_config, self.hpo_cfg)
+
+        if self.hpo_cfg.epochs_per_trial is not None:
+            config.training.max_epochs = self.hpo_cfg.epochs_per_trial
+
+        config.output.experiment_name = (
+            f"{self.hpo_cfg.study_name}/trial_{trial.number}"
+        )
+
+        set_seed(self.hpo_cfg.seed + trial.number)
+
+        n = self.hpo_cfg.n_trials
+        print(
+            f"\n[HPO] Trial {trial.number + 1}/{n} | params={trial.params}",
+            flush=True,
+        )
+
+        extra_callbacks: List[pl.Callback] = []
+        if self.hpo_cfg.pruning:
+            cb = _make_pruning_callback(trial, self.hpo_cfg.metric)
+            if cb is not None:
+                extra_callbacks.append(cb)
+
+        try:
+            trainer = _TrialOncoTrainer(config, extra_callbacks=extra_callbacks)
+            metrics = trainer.train()
+        except optuna.exceptions.TrialPruned:
+            raise
+        except Exception as exc:
+            logger.warning("Trial %d failed: %s", trial.number, exc, exc_info=True)
+            raise optuna.exceptions.TrialPruned() from exc
+
+        value = metrics.get(self.hpo_cfg.metric)
+        if value is None:
+            logger.warning(
+                "Trial %d: metric '%s' not found. Available: %s",
+                trial.number,
+                self.hpo_cfg.metric,
+                list(metrics.keys()),
+            )
+            raise optuna.exceptions.TrialPruned()
+
+        if hasattr(value, "item"):
+            value = value.item()
+
+        print(
+            f"[HPO] Trial {trial.number + 1}/{self.hpo_cfg.n_trials} done | "
+            f"{self.hpo_cfg.metric}={value:.4f}",
+            flush=True,
+        )
+        logger.info(
+            "Trial %d | %s=%.4f | params=%s",
+            trial.number,
+            self.hpo_cfg.metric,
+            value,
+            trial.params,
+        )
+        return float(value)
+
+    # ------------------------------------------------------------------
+    # Public
+    # ------------------------------------------------------------------
+
+    def tune(self) -> Tuple[Dict, "OncoLearnConfig"]:
+        """Run the study and return ``(best_params, best_config)``.
+
+        ``best_config`` has the best-found values already applied and is
+        ready to pass straight to :class:`~oncolearn.trainer.OncoTrainer`
+        for a final full training run.
+        """
+        from .search_space import apply_params
+        import copy
+
+        pruner = (
+            optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=3)
+            if self.hpo_cfg.pruning
+            else optuna.pruners.NopPruner()
+        )
+        sampler = optuna.samplers.TPESampler(seed=self.hpo_cfg.seed)
+
+        self._study = optuna.create_study(
+            study_name=self.hpo_cfg.study_name,
+            storage=self.hpo_cfg.storage,
+            direction=self.hpo_cfg.direction,
+            sampler=sampler,
+            pruner=pruner,
+            load_if_exists=True,
+        )
+
+        optuna.logging.set_verbosity(
+            optuna.logging.DEBUG
+            if logger.isEnabledFor(logging.DEBUG)
+            else optuna.logging.WARNING
+        )
+
+        logger.info(
+            "HPO start | study=%s | n_trials=%d | metric=%s | direction=%s",
+            self.hpo_cfg.study_name,
+            self.hpo_cfg.n_trials,
+            self.hpo_cfg.metric,
+            self.hpo_cfg.direction,
+        )
+
+        self._study.optimize(
+            self._objective,
+            n_trials=self.hpo_cfg.n_trials,
+            catch=(Exception,),
+        )
+
+        best_trial = self._study.best_trial
+        best_params = best_trial.params
+
+        best_config = copy.deepcopy(self.base_config)
+        apply_params(best_config, best_params)
+
+        logger.info(
+            "HPO done | best %s=%.4f | params=%s",
+            self.hpo_cfg.metric,
+            best_trial.value,
+            best_params,
+        )
+        return best_params, best_config
+
+    @property
+    def study(self) -> Optional[optuna.Study]:
+        """Underlying :class:`optuna.Study` (available after :meth:`tune`)."""
+        return self._study
+
+    def results_dataframe(self):
+        """Return a pandas DataFrame of all completed trials."""
+        if self._study is None:
+            raise RuntimeError("Call tune() first.")
+        return self._study.trials_dataframe()
+
+
+# ---------------------------------------------------------------------------
+# Internal: trial trainer with injectable callbacks
+# ---------------------------------------------------------------------------
+
+class _TrialOncoTrainer:
+    """Thin wrapper around OncoTrainer that injects extra PL callbacks."""
+
+    def __init__(
+        self,
+        config: "OncoLearnConfig",
+        extra_callbacks: Optional[List[pl.Callback]] = None,
+    ) -> None:
+        from oncolearn.trainer import OncoTrainer
+
+        self._trainer = OncoTrainer(config)
+        self._extra_callbacks = extra_callbacks or []
+        self._config = config
+
+    def train(self) -> Dict:
+        from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, ModelSummary
+
+        t = self._config.training
+        out = self._config.output
+        output_dir = Path(out.dir) / out.experiment_name
+
+        callbacks: List[pl.Callback] = [
+            ModelSummary(max_depth=1),
+            ModelCheckpoint(
+                dirpath=str(output_dir),
+                filename="best_model",
+                monitor="val_acc",
+                mode="max",
+                save_top_k=1,
+            ),
+            EarlyStopping(
+                monitor="val_acc",
+                patience=t.early_stopping_patience,
+                mode="max",
+            ),
+            *self._extra_callbacks,
+        ]
+
+        gradient_clip_val = t.regularization.gradient_clip_val or None
+        pl_trainer = pl.Trainer(
+            max_epochs=t.max_epochs,
+            accelerator=t.accelerator,
+            devices=t.devices,
+            default_root_dir=str(output_dir),
+            callbacks=callbacks,
+            log_every_n_steps=1,
+            gradient_clip_val=gradient_clip_val,
+            enable_progress_bar=True,
+            enable_model_summary=False,
+        )
+        pl_trainer.fit(
+            self._trainer.model, datamodule=self._trainer.datamodule
+        )
+        return dict(pl_trainer.callback_metrics)
+
+
+# ---------------------------------------------------------------------------
+# Pruning callback helper
+# ---------------------------------------------------------------------------
+
+def _make_pruning_callback(
+    trial: optuna.Trial, metric: str
+) -> Optional[pl.Callback]:
+    try:
+        from optuna.integration import PyTorchLightningPruningCallback
+
+        return PyTorchLightningPruningCallback(trial, monitor=metric)
+    except ImportError:
+        logger.debug(
+            "optuna-integration not installed; trial pruning disabled."
+        )
+        return None

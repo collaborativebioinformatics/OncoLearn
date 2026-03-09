@@ -6,7 +6,7 @@ model → data → training → output.
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 
 @dataclass
@@ -130,6 +130,108 @@ class RegularizationConfig:
 
 
 @dataclass
+class HpoParamSpec:
+    """Search range for a single hyperparameter.
+
+    The *type* field controls which Optuna ``suggest_*`` method is used:
+
+    * ``"float"`` → :meth:`optuna.Trial.suggest_float` (use ``low``/``high``; ``log`` optional)
+    * ``"int"``   → :meth:`optuna.Trial.suggest_int`   (use ``low``/``high``; ``step`` optional)
+    * ``"categorical"`` → :meth:`optuna.Trial.suggest_categorical` (use ``choices``)
+
+    The parameter is applied to the config via its dotted path (the dict key in
+    ``HpoConfig.search_space``), e.g. ``"training.optimizer.params.lr"``.
+    Dict segments (like ``params``) and list indices (like ``model.encoders.0``)
+    are handled automatically.
+    """
+
+    type: str  # "float" | "int" | "categorical"
+    # float / int
+    low: Optional[float] = None
+    high: Optional[float] = None
+    log: bool = False
+    step: Optional[Union[int, float]] = None
+    # categorical
+    choices: Optional[List[Any]] = None
+
+
+@dataclass
+class HpoConfig:
+    """Optional hyperparameter optimisation settings.
+
+    When ``training.hpo`` is present in the YAML config, :class:`~oncolearn.trainer.OncoTrainer`
+    will run an Optuna study before the final training run.  The best found parameters
+    are applied to the config and returned alongside the normal training metrics.
+
+    ``search_space`` is a mapping from dotted config path → :class:`HpoParamSpec`.
+    Example YAML::
+
+        training:
+          hpo:
+            n_trials: 30
+            epochs_per_trial: 10
+            metric: val_acc
+            search_space:
+              training.optimizer.name:
+                type: categorical
+                choices:
+                  - torch.optim.AdamW
+                  - torch.optim.Adam
+                  - torch.optim.SGD
+                  - torch.optim.RMSprop
+              training.optimizer.params.lr:
+                type: float
+                low: 1.0e-5
+                high: 1.0e-2
+                log: true
+              training.batch_size:
+                type: categorical
+                choices: [4, 8, 16, 32]
+              model.dropout:
+                type: float
+                low: 0.05
+                high: 0.5
+              model.encoders.0.output_dim:
+                type: categorical
+                choices: [64, 128, 256]
+              model.encoders.0.kwargs.projection_dropout:
+                type: float
+                low: 0.0
+                high: 0.5
+    """
+
+    n_trials: int = 20
+    study_name: str = "oncolearn_hpo"
+    storage: Optional[str] = None
+    direction: str = "maximize"
+    metric: str = "val_acc"
+    pruning: bool = True
+    epochs_per_trial: Optional[int] = None
+    seed: int = 42
+    search_space: Dict[str, HpoParamSpec] = field(default_factory=dict)
+    optimizer_params: Dict[str, Dict[str, HpoParamSpec]] = field(default_factory=dict)
+    """Per-optimizer conditional param search spaces.
+
+    Maps optimizer dotted name → {param_name → HpoParamSpec}.  When
+    ``training.optimizer.name`` is also in ``search_space``, only the params
+    for the *chosen* optimizer are sampled in each trial.  This prevents
+    invalid kwargs (e.g. ``momentum`` passed to AdamW) from reaching the
+    optimizer constructor.
+
+    Example YAML::
+
+        optimizer_params:
+          torch.optim.AdamW:
+            lr:   {type: float, low: 1.0e-5, high: 1.0e-2, log: true}
+            weight_decay: {type: float, low: 1.0e-6, high: 1.0e-3, log: true}
+          torch.optim.SGD:
+            lr:       {type: float, low: 1.0e-3, high: 1.0e-1, log: true}
+            momentum: {type: float, low: 0.5, high: 0.99}
+            weight_decay: {type: float, low: 1.0e-6, high: 1.0e-3, log: true}
+    """
+
+
+@dataclass
 class TrainingConfig:
     """Training hyperparameters."""
 
@@ -146,7 +248,7 @@ class TrainingConfig:
     scheduler: SchedulerConfig = field(default_factory=SchedulerConfig)
     loss: LossConfig = field(default_factory=LossConfig)
     regularization: RegularizationConfig = field(default_factory=RegularizationConfig)
-
+    hpo: Optional[HpoConfig] = None   
 
 @dataclass
 class OutputConfig:
@@ -169,7 +271,7 @@ class OncoLearnConfig:
     Optional sections:
         training: Training hyperparameters (all fields have defaults).
         output: Output directory and checkpointing.
-    """
+     """
 
     model: ModelConfig
     data: DataConfig

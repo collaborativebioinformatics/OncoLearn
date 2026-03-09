@@ -240,7 +240,7 @@ class ImageDataModule(pl.LightningDataModule):
 
     def setup_full(self, stage=None):
         """Ensure setup() has been called so full_dataset is available."""
-        if not hasattr(self, "_full_dataset"):
+        if self._full_dataset is None:
             self.setup(stage=stage)
 
     def _filter_mr_preferred(

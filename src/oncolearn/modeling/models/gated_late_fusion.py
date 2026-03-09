@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from oncolearn.config import OncoLearnConfig
 
 
-@register_config("gated_late_fusion")
+@register_config("oncolearn.model.multimodal.gated_late_fusion")
 @dataclass
 class GatedLateFusionConfig:
     """Configuration for the Gated Late Fusion model."""
@@ -29,7 +29,6 @@ class GatedLateFusionConfig:
 
 
 @register_model(
-    "gated_late_fusion",
     "oncolearn.model.multimodal.gated_late_fusion",
     modalities=["gene", "clinical", "image"],
 )

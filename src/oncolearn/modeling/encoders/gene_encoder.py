@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-@register_config("gene")
+@register_config("oncolearn.encoder.multimodal.RNABERTEncoder")
 @dataclass
 class RNABERTEncoderConfig:
     """Configuration for the RNA BERT gene expression encoder."""
@@ -31,7 +31,7 @@ class RNABERTEncoderConfig:
     projection_dropout: float = 0.1
 
 
-@register_encoder("gene", "oncolearn.encoder.multimodal.RNABERTEncoder")
+@register_encoder("oncolearn.encoder.multimodal.RNABERTEncoder")
 class RNABERTEncoder(BaseEncoder):
     """
     RNA BERT encoder using IBM Research's biomed.rna.bert.110m.mlm.multitask.v1 model.

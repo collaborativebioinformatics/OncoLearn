@@ -14,6 +14,8 @@ import yaml
 from .schema import (
     DataConfig,
     EncoderConfig,
+    HpoConfig,
+    HpoParamSpec,
     LossConfig,
     ModalityConfig,
     ModelConfig,
@@ -155,8 +157,59 @@ def _parse_training_section(raw: dict) -> TrainingConfig:
             gradient_clip_val=reg_raw.get("gradient_clip_val", 0.0),
             label_smoothing=reg_raw.get("label_smoothing", 0.0),
         )
-
+        
+    if "hpo" in raw: 
+        training_cfg.hpo = _parse_hpo_section(raw["hpo"])   
+    
     return training_cfg
+
+
+def _parse_hpo_section(raw: dict) -> HpoConfig:
+    """Parse the ``training.hpo:`` section into an :class:`HpoConfig`."""
+    search_space: dict[str, HpoParamSpec] = {}
+    for path, spec_raw in raw.get("search_space", {}).items():
+        if not isinstance(spec_raw, dict) or "type" not in spec_raw:
+            raise ValueError(
+                f"HPO search_space entry '{path}' must be a dict with a 'type' key."
+            )
+        search_space[path] = HpoParamSpec(
+            type=spec_raw["type"],
+            low=spec_raw.get("low"),
+            high=spec_raw.get("high"),
+            log=spec_raw.get("log", False),
+            step=spec_raw.get("step"),
+            choices=spec_raw.get("choices"),
+        )
+
+    optimizer_params: dict[str, dict[str, HpoParamSpec]] = {}
+    for opt_name, param_specs in raw.get("optimizer_params", {}).items():
+        optimizer_params[opt_name] = {}
+        for param_name, spec_raw in param_specs.items():
+            if not isinstance(spec_raw, dict) or "type" not in spec_raw:
+                raise ValueError(
+                    f"HPO optimizer_params['{opt_name}']['{param_name}'] must be a dict with a 'type' key."
+                )
+            optimizer_params[opt_name][param_name] = HpoParamSpec(
+                type=spec_raw["type"],
+                low=spec_raw.get("low"),
+                high=spec_raw.get("high"),
+                log=spec_raw.get("log", False),
+                step=spec_raw.get("step"),
+                choices=spec_raw.get("choices"),
+            )
+
+    return HpoConfig(
+        n_trials=raw.get("n_trials", 20),
+        study_name=raw.get("study_name", "oncolearn_hpo"),
+        storage=raw.get("storage"),
+        direction=raw.get("direction", "maximize"),
+        metric=raw.get("metric", "val_acc"),
+        pruning=raw.get("pruning", True),
+        epochs_per_trial=raw.get("epochs_per_trial"),
+        seed=raw.get("seed", 42),
+        search_space=search_space,
+        optimizer_params=optimizer_params,
+    )
 
 
 def load_config(path: Union[str, Path]) -> OncoLearnConfig:

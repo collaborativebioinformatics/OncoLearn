@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-@register_config("image")
+@register_config("oncolearn.encoder.multimodal.MRMGHierarchicalImageEncoder")
 @dataclass
 class MRMGHierarchicalImageEncoderConfig:
     """Configuration for the FM-BCMRI hierarchical image encoder."""
@@ -72,7 +72,7 @@ class HierarchicalAttentionPooling(nn.Module):
         return self.output_proj(x)                         # (B, output_dim)
 
 
-@register_encoder("image", "oncolearn.encoder.multimodal.FMBCMRIEncoder")
+@register_encoder("oncolearn.encoder.multimodal.MRMGHierarchicalImageEncoder")
 class MRMGHierarchicalImageEncoder(BaseEncoder):
     """
     Pretrained image encoder from checkpoint with hierarchical attention pooling.
@@ -126,6 +126,7 @@ class MRMGHierarchicalImageEncoder(BaseEncoder):
             hidden_dim=feat_dim,
             output_dim=enc_cfg.output_dim,
         )
+        self.output_norm = nn.LayerNorm(enc_cfg.output_dim)
 
         # Stored for use in forward()
         self._backbone_feature_dim = feat_dim
@@ -313,7 +314,7 @@ class MRMGHierarchicalImageEncoder(BaseEncoder):
             features = self.feature_proj(features)                          # (B, 256)
             # Wrap as a single-token sequence for the attention pool
             features = features.unsqueeze(1)                                # (B, 1, 256)
-            return self.attention_pool(features, modality_ids[:, :1])
+            return self.output_norm(self.attention_pool(features, modality_ids[:, :1]))
 
         images_flat = images.view(B * N, C, H, W)
 
@@ -327,7 +328,7 @@ class MRMGHierarchicalImageEncoder(BaseEncoder):
 
         features = self.feature_proj(features)                                   # (B*N, feat_dim)
         features = features.view(B, N, self._backbone_feature_dim)
-        return self.attention_pool(features, modality_ids)
+        return self.output_norm(self.attention_pool(features, modality_ids))
 
     def forward_single_image(self, image: torch.Tensor, modality_id: int = 0) -> torch.Tensor:
         """Forward pass for a single image (inference convenience method)."""
@@ -346,4 +347,4 @@ class MRMGHierarchicalImageEncoder(BaseEncoder):
         modality_ids = torch.full((B,), modality_id, dtype=torch.long, device=image.device)
         mod_emb = self.attention_pool.modality_embed(modality_ids)
         x = torch.cat([features, mod_emb], dim=-1)
-        return self.attention_pool.output_proj(x)
+        return self.output_norm(self.attention_pool.output_proj(x))

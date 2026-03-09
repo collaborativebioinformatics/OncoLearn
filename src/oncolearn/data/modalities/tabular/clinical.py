@@ -111,7 +111,7 @@ class ClinicalDataModule(pl.LightningDataModule):
         return self._full_dataset
 
     def setup_full(self, stage=None):
-        if not hasattr(self, "_full_dataset"):
+        if self._full_dataset is None:
             self.setup(stage=stage)
 
     def train_dataloader(self):

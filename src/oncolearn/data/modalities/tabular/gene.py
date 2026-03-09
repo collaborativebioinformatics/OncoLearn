@@ -70,6 +70,7 @@ class GeneDataModule(pl.LightningDataModule):
         self.label_column = label_column
         self.features_files = resolved_files
         self.batch_key = batch_key
+        self._full_dataset = None
 
         self.builder = XenaCohortBuilder()
 
@@ -145,7 +146,7 @@ class GeneDataModule(pl.LightningDataModule):
         Labels in the full dataset are omitted; the clinical modality supplies
         stage labels during multimodal training.
         """
-        if not hasattr(self, "_full_dataset"):
+        if self._full_dataset is None:
             from .parsers.xenabrowser_parser import XenabrowserParser
 
             cohort_dir = self.data_dir / self.cohort_code

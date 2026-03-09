@@ -102,7 +102,7 @@ class BaseOncoClassifier(pl.LightningModule):
         )
         loss = self.loss_fn(preds["stage_logits"], labels)
         if self._l1_lambda > 0.0:
-            l1 = sum(p.abs().sum() for p in self.parameters())
+            l1 = sum(p.abs().sum() for p in self.parameters() if p.requires_grad)
             loss = loss + self._l1_lambda * l1
         self.log("train_loss", loss, prog_bar=True, batch_size=labels.shape[0])
         return loss
