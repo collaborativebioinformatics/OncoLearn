@@ -1,21 +1,12 @@
-#!/usr/bin/env python3
-"""
-OncoLearn training CLI.
-
-Wraps :class:`~oncolearn.trainer.OncoTrainer` for use via the ``oncolearn train``
-command or directly as ``python -m oncolearn.trainer``.
-"""
+"""Train subcommand — register and execute."""
 
 import argparse
 import sys
 
-_VARIANT_CONFIGS = {
-    "v1_imaging":    "data/configs/modeling/multimodal/tcga_brca_multimodal.yaml",
-    "v2_no_imaging": "data/configs/modeling/multimodal/tcga_brca_tabular_only.yaml",
-}
+from .args import add_arguments, _VARIANT_CONFIGS
 
 
-def register_subcommand(subparsers):
+def register_subcommand(subparsers) -> None:
     """Register the ``train`` subcommand with *subparsers*."""
     parser = subparsers.add_parser(
         "train",
@@ -31,24 +22,8 @@ Examples:
   oncolearn train --variant v2_no_imaging --epochs 10 --batch_size 8
         """,
     )
-    _add_arguments(parser)
+    add_arguments(parser)
     parser.set_defaults(func=execute)
-
-
-def _add_arguments(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--config", type=str, default=None,
-        help="Path to an OncoLearn YAML config (data/configs/modeling/multimodal/*.yaml).",
-    )
-    parser.add_argument(
-        "--variant", type=str, default="v2_no_imaging",
-        choices=list(_VARIANT_CONFIGS),
-        help="Quick shorthand used when --config is not provided.",
-    )
-    parser.add_argument("--epochs", type=int, default=10,
-                        help="Max training epochs (shorthand override).")
-    parser.add_argument("--batch_size", type=int, default=16,
-                        help="Batch size (shorthand override).")
 
 
 def execute(args) -> None:
@@ -66,6 +41,7 @@ def execute(args) -> None:
 
     trainer = OncoTrainer(config)
     trainer.train()
+    sys.exit(0)
 
 
 def main(argv=None) -> None:
@@ -79,10 +55,6 @@ Examples:
   python -m oncolearn.trainer --variant v2_no_imaging --epochs 10 --batch_size 8
         """,
     )
-    _add_arguments(parser)
+    add_arguments(parser)
     args = parser.parse_args(argv)
     execute(args)
-
-
-if __name__ == "__main__":
-    main()

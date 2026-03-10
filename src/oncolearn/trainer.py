@@ -269,14 +269,14 @@ class OncoTrainer:
 def main() -> None:
     """Entry point for ``python -m oncolearn.trainer``.
 
-    Delegates to :func:`oncolearn.cli.train.main` for the full argument set.
+    Delegates to :func:`oncolearn.cli.subcommands.train.command.main` for the full argument set.
 
     Examples::
 
         python -m oncolearn.trainer --config data/configs/modeling/multimodal/tcga_brca_tabular_only.yaml
         python -m oncolearn.trainer --variant v2_no_imaging --epochs 10 --batch_size 8
     """
-    from oncolearn.cli.train import main as cli_main
+    from oncolearn.cli.subcommands.train.command import main as cli_main
     cli_main()
 
 

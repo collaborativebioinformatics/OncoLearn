@@ -13,7 +13,6 @@ dependencies = [
 
 [project.scripts]
 oncolearn = "oncolearn.cli.cli:main"
-download = "oncolearn.cli.download:main"
 
 [project.optional-dependencies]
 
