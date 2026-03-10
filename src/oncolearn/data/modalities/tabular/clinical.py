@@ -24,13 +24,11 @@ class ClinicalDataModule(pl.LightningDataModule):
         cohort_code: TCGA cohort identifier (e.g. ``"TCGA-BRCA"``).
         batch_size: DataLoader batch size.
         num_workers: DataLoader worker count.
-        base_directory: Root directory for Xena data.  Alias for ``data_dir``.
-        data_dir: Deprecated alias for ``base_directory``.
+        base_directory: Root directory for Xena data.
         train_split: Fraction of data to use for training.
         seed: Random seed for reproducible splits.
-        clinical_file: TSV file name.  Overridden by ``files[0]`` when ``files``
-                       is provided.
         files: List of file names; ``files[0]`` is used as the clinical TSV.
+               Defaults to ``["TCGA-BRCA.clinical.tsv"]``.
         stage_col: Column name containing AJCC pathologic stage.
         batch_key: Key used in the batch dict (defaults to ``"clinical"``).
     """
@@ -40,28 +38,22 @@ class ClinicalDataModule(pl.LightningDataModule):
         cohort_code: str = "TCGA-BRCA",
         batch_size: int = 16,
         num_workers: int = 4,
-        base_directory: Optional[str] = None,
-        data_dir: str = "data/xenabrowser",
+        base_directory: str = "data/xenabrowser",
         train_split: float = 0.8,
         seed: int = 42,
-        clinical_file: str = "TCGA-BRCA.clinical.tsv",
         files: Optional[List[str]] = None,
         stage_col: str = ClinicalParser.STAGE_COL,
         batch_key: str = "clinical",
     ):
-        # Resolve aliases
-        resolved_dir = base_directory if base_directory is not None else data_dir
-        resolved_file = files[0] if files else clinical_file
-
         super().__init__()
         self.name = "clinical"
         self.cohort_code = cohort_code
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.data_dir = Path(resolved_dir)
+        self.data_dir = Path(base_directory)
         self.train_split = train_split
         self.seed = seed
-        self.clinical_file = resolved_file
+        self.clinical_file = files[0] if files else "TCGA-BRCA.clinical.tsv"
         self.stage_col = stage_col
         self.batch_key = batch_key
         self._full_dataset: Optional["TabularDataset"] = None

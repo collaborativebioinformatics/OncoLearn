@@ -47,9 +47,7 @@ class FTTransformerEncoder(BaseEncoder):
     def __init__(self, config: "OncoLearnConfig") -> None:
         from oncolearn.registry import resolve_encoder_config
 
-        enc_cfg: FTTransformerEncoderConfig = resolve_encoder_config(
-            type(self), "clinical", config
-        )
+        enc_cfg: FTTransformerEncoderConfig = resolve_encoder_config(type(self), config)
 
         super().__init__(config, output_dim=enc_cfg.output_dim, huggingface_models=None)
         self.input_dim = enc_cfg.input_dim

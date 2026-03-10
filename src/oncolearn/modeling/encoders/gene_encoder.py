@@ -48,9 +48,7 @@ class RNABERTEncoder(BaseEncoder):
     def __init__(self, config: "OncoLearnConfig") -> None:
         from oncolearn.registry import resolve_encoder_config
 
-        enc_cfg: RNABERTEncoderConfig = resolve_encoder_config(
-            type(self), "gene", config
-        )
+        enc_cfg: RNABERTEncoderConfig = resolve_encoder_config(type(self), config)
 
         if enc_cfg.huggingface_models is None:
             enc_cfg.huggingface_models = [

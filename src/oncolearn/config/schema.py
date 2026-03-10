@@ -14,7 +14,7 @@ class EncoderConfig:
     """Configuration for a single encoder.
 
     Attributes:
-        name: Registry name of the encoder (e.g. ``"gene"``, ``"oncolearn.encoder.multimodal.RNABERTEncoder"``).
+        name: Registry name of the encoder (e.g. ``"oncolearn.encoder.multimodal.RNABERTEncoder"``).
               Must match a key registered via :func:`~oncolearn.registry.register_encoder`.
         modality: Dotted modality name used as the batch-routing key (e.g.
                   ``"oncolearn.modality.gene"``).  Must match a ``name`` in
@@ -78,7 +78,7 @@ class ModelConfig:
     """Configuration for the fusion model.
 
     Attributes:
-        name: Registry name of the model (e.g. ``"gated_late_fusion"``).
+        name: Registry name of the model (e.g. ``"oncolearn.model.multimodal.gated_late_fusion"``).
         encoders: Ordered list of encoders to include in the model.
         freeze_encoders: Whether to freeze all pre-trained encoder backbones.
         modality_dropout_prob: Per-modality drop probability during training (0 = disabled).

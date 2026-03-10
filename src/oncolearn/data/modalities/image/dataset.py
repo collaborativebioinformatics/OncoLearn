@@ -96,13 +96,11 @@ class ImageDataModule(pl.LightningDataModule):
     def __init__(
         self,
         tcia_manifest_url: Optional[str] = None,
-        tcia_cohort_name: str = "BRCA",
-        cohort_code: Optional[str] = None,
+        cohort_code: str = "BRCA",
         image_size: Tuple[int, int] = (224, 224),
         batch_size: int = 16,
         num_workers: int = 4,
-        data_dir: str = "data/tcia",
-        base_directory: Optional[str] = None,
+        base_directory: str = "data/tcia",
         train_split: float = 0.8,
         seed: int = 42,
         n_slices: int = 5,
@@ -110,18 +108,14 @@ class ImageDataModule(pl.LightningDataModule):
         batch_key: str = "image",
         files: Optional[List[Path]] = None,  # accepted but unused (images come from TCIA)
     ):
-        # Resolve aliases
-        resolved_dir = base_directory if base_directory is not None else data_dir
-        resolved_cohort = cohort_code if cohort_code is not None else tcia_cohort_name
-
         super().__init__()
         self.name = "image"
         self.tcia_manifest_url = tcia_manifest_url
-        self.tcia_cohort_name = resolved_cohort
+        self.cohort_name = cohort_code
         self.image_size = image_size
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.data_dir = Path(resolved_dir)
+        self.data_dir = Path(base_directory)
         self.train_split = train_split
         self.seed = seed
         self.n_slices = n_slices
@@ -131,11 +125,11 @@ class ImageDataModule(pl.LightningDataModule):
         self.api_dataset = None
         if self.tcia_manifest_url:
             self.api_dataset = TCIADataset(
-                name=f"TCIA_{self.tcia_cohort_name}",
+                name=f"TCIA_{self.cohort_name}",
                 description="TCIA manifest dynamically loaded by ImageDataModule",
                 url=self.tcia_manifest_url,
-                filename=f"{self.tcia_cohort_name}.tcia",
-                default_subdir=f"TCGA-{self.tcia_cohort_name}"
+                filename=f"{self.cohort_name}.tcia",
+                default_subdir=f"TCGA-{self.cohort_name}"
             )
             
         self.patient_to_files = {}
@@ -160,7 +154,7 @@ class ImageDataModule(pl.LightningDataModule):
         Parse local files and build patient IDs.
         """
         # Discover images in target directory
-        target_dir = self.data_dir / f"TCGA-{self.tcia_cohort_name}"
+        target_dir = self.data_dir / f"TCGA-{self.cohort_name}"
         if not target_dir.exists():
             print(f"Warning: Image directory {target_dir} not found. Ensure prepare_data() succeeded.")
             self._full_dataset = ImageDataset({}, [], n_slices=self.n_slices, batch_key=self.batch_key)

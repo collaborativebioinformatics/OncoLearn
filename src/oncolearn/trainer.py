@@ -126,7 +126,30 @@ class OncoTrainer:
     def _build_model(self) -> pl.LightningModule:
         """Look up the registered model class and instantiate it with the config."""
         model_cls = get_model(self.config.model.name)
+        self._check_modality_compatibility(model_cls)
         return model_cls(self.config)
+
+    def _check_modality_compatibility(self, model_cls) -> None:
+        """Warn if the config's modalities don't match the model's declared expectations."""
+        expected = getattr(model_cls, "expected_modalities", [])
+        if not expected:
+            return
+        configured = {m.name for m in self.config.data.modalities}
+        expected_set = set(expected)
+        missing = expected_set - configured
+        unexpected = configured - expected_set
+        if missing:
+            logger.warning(
+                "Model '%s' expects modalities %s but the following are absent from "
+                "data.modalities: %s",
+                self.config.model.name, sorted(expected), sorted(missing),
+            )
+        if unexpected:
+            logger.warning(
+                "Model '%s' does not declare support for modalities %s — "
+                "they will be passed to the model anyway.",
+                self.config.model.name, sorted(unexpected),
+            )
 
     # ------------------------------------------------------------------
     # Public API

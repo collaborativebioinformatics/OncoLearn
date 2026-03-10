@@ -30,7 +30,11 @@ class GatedLateFusionConfig:
 
 @register_model(
     "oncolearn.model.multimodal.gated_late_fusion",
-    modalities=["gene", "clinical", "image"],
+    modalities=[
+        "oncolearn.modality.gene",
+        "oncolearn.modality.clinical",
+        "oncolearn.modality.image"
+    ]
 )
 class GatedLateFusionClassifier(BaseOncoClassifier):
     """

@@ -62,15 +62,14 @@ def test_modality_config_defaults():
 def test_training_config_defaults():
     cfg = TrainingConfig()
     assert cfg.max_epochs == 50
-    assert cfg.learning_rate == pytest.approx(1e-4)
-    assert cfg.weight_decay == pytest.approx(1e-5)
+    assert cfg.optimizer.params["lr"] == pytest.approx(1e-4)
+    assert cfg.optimizer.params["weight_decay"] == pytest.approx(1e-5)
     assert cfg.batch_size == 16
     assert cfg.num_workers == 4
     assert cfg.accelerator == "auto"
     assert cfg.devices == 1
     assert cfg.early_stopping_patience == 10
     assert cfg.subtype_lambda == pytest.approx(0.3)
-    assert cfg.scheduler == "cosine"
     assert cfg.seed == 42
 
 
@@ -196,7 +195,7 @@ def test_load_full_config_new_format(tmp_path):
                 },
             ],
         },
-        "training": {"max_epochs": 20, "learning_rate": 5e-4, "batch_size": 8, "seed": 123},
+        "training": {"max_epochs": 20, "batch_size": 8, "seed": 123},
         "output": {"dir": "my_outputs", "experiment_name": "exp_01"},
     }
     cfg = load_config(_write_yaml(tmp_path / "cfg.yaml", raw))
@@ -214,51 +213,10 @@ def test_load_full_config_new_format(tmp_path):
     assert cfg.output.dir == "my_outputs"
 
 
-# ---------------------------------------------------------------------------
-# load_config — backward compat (old top-level modalities: list)
-# ---------------------------------------------------------------------------
-
-def test_load_minimal_config_legacy_format(tmp_path):
-    cfg = load_config(_write_yaml(tmp_path / "cfg.yaml", {
-        "model": {"name": "gated_late_fusion"},
-        "modalities": [{"name": "gene"}],
-    }))
-    assert cfg.model.name == "gated_late_fusion"
-    assert len(cfg.data.modalities) == 1
-    assert cfg.data.modalities[0].name == "gene"
-    assert cfg.training.max_epochs == 50  # default
-
-
-def test_load_config_legacy_modality_kwargs(tmp_path):
-    cfg = load_config(_write_yaml(tmp_path / "cfg.yaml", {
-        "model": {"name": "m"},
-        "modalities": [{"name": "gene", "cohort_code": "TCGA-BRCA", "n_workers": 2}],
-    }))
-    assert cfg.data.modalities[0].kwargs == {"cohort_code": "TCGA-BRCA", "n_workers": 2}
-
-
-def test_load_config_legacy_join_fields(tmp_path):
-    cfg = load_config(_write_yaml(tmp_path / "cfg.yaml", {
-        "model": {"name": "m"},
-        "modalities": [{"name": "gene"}],
-        "join_on": "sample_id",
-        "join_strategy": "inner",
-    }))
-    assert cfg.data.modalities[0].join_on == "sample_id"
-
-
-def test_load_config_legacy_features_files_promoted(tmp_path):
-    cfg = load_config(_write_yaml(tmp_path / "cfg.yaml", {
-        "model": {"name": "m"},
-        "modalities": [{"name": "gene", "features_files": ["a.tsv", "b.tsv"]}],
-    }))
-    assert cfg.data.modalities[0].files == ["a.tsv", "b.tsv"]
-
-
 def test_load_config_partial_training_override(tmp_path):
     cfg = load_config(_write_yaml(tmp_path / "cfg.yaml", {
         "model": {"name": "m"},
-        "modalities": [{"name": "gene"}],
+        "data": {"modalities": [{"name": "gene"}]},
         "training": {"max_epochs": 5, "seed": 99},
     }))
     assert cfg.training.max_epochs == 5
@@ -269,7 +227,7 @@ def test_load_config_partial_training_override(tmp_path):
 def test_load_config_unknown_training_keys_are_silently_dropped(tmp_path):
     cfg = load_config(_write_yaml(tmp_path / "cfg.yaml", {
         "model": {"name": "m"},
-        "modalities": [{"name": "gene"}],
+        "data": {"modalities": [{"name": "gene"}]},
         "training": {"max_epochs": 1, "nonexistent_key": "value"},
     }))
     assert cfg.training.max_epochs == 1
@@ -292,7 +250,7 @@ def test_load_config_raises_on_missing_model_section(tmp_path):
         load_config(cfg_file)
 
 
-def test_load_config_raises_on_missing_both_data_and_modalities(tmp_path):
+def test_load_config_raises_on_missing_data_section(tmp_path):
     cfg_file = _write_yaml(tmp_path / "cfg.yaml", {
         "model": {"name": "gated_late_fusion"},
     })
@@ -303,7 +261,7 @@ def test_load_config_raises_on_missing_both_data_and_modalities(tmp_path):
 def test_load_config_raises_on_empty_modalities_list(tmp_path):
     cfg_file = _write_yaml(tmp_path / "cfg.yaml", {
         "model": {"name": "gated_late_fusion"},
-        "modalities": [],
+        "data": {"modalities": []},
     })
     with pytest.raises((ValueError, KeyError)):
         load_config(cfg_file)
@@ -312,7 +270,7 @@ def test_load_config_raises_on_empty_modalities_list(tmp_path):
 def test_load_config_raises_on_duplicate_modality_names(tmp_path):
     cfg_file = _write_yaml(tmp_path / "cfg.yaml", {
         "model": {"name": "m"},
-        "modalities": [{"name": "gene"}, {"name": "gene"}],
+        "data": {"modalities": [{"name": "gene"}, {"name": "gene"}]},
     })
     with pytest.raises(ValueError, match="Duplicate"):
         load_config(cfg_file)
@@ -429,6 +387,6 @@ def test_example_configs_have_valid_training_params():
     for filename in ("tcga_brca_tabular_only.yaml", "tcga_brca_multimodal.yaml"):
         cfg = load_config(DATA_CONFIGS / filename)
         assert cfg.training.max_epochs > 0
-        assert cfg.training.learning_rate > 0
+        assert cfg.training.optimizer.params["lr"] > 0
         assert cfg.training.batch_size > 0
         assert cfg.training.seed >= 0

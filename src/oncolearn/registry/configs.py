@@ -5,7 +5,7 @@ Usage::
 
     from oncolearn.registry import register_config
 
-    @register_config("gene")
+    @register_config("oncolearn.encoder.multimodal.RNABERTEncoder")
     @dataclass
     class RNABERTEncoderConfig:
         output_dim: int = 128
@@ -97,7 +97,7 @@ def _instantiate(cfg_cls: Type, kwargs: Dict[str, Any]) -> Any:
 # Resolution
 # ---------------------------------------------------------------------------
 
-def resolve_encoder_config(encoder_cls: type, registry_name: str, onco_config: Any) -> Any:
+def resolve_encoder_config(encoder_cls: type, onco_config: Any) -> Any:
     """Resolve the encoder config instance for *encoder_cls*.
 
     Algorithm:
@@ -105,12 +105,12 @@ def resolve_encoder_config(encoder_cls: type, registry_name: str, onco_config: A
     2. For each ancestor that is a registered encoder with a registered config,
        collect that config class.
     3. Merge defaults parent-first so child fields overwrite parent fields.
-    4. Apply overrides from ``onco_config.model.encoders[name]``:
-       ``output_dim`` and all ``kwargs`` entries.
+    4. Apply overrides from the matching ``onco_config.model.encoders`` entry
+       (matched by class identity): ``output_dim`` and all ``kwargs`` entries.
     5. Instantiate (and return) the leaf registered config class, passing only
        the fields it declares.
 
-    If no config class is registered for *registry_name*, returns a
+    If no config class is registered for *encoder_cls*, returns a
     ``types.SimpleNamespace`` built from the merged dict.
     """
     from .encoders import _CLASS_TO_NAME, _ENCODERS
@@ -125,21 +125,17 @@ def resolve_encoder_config(encoder_cls: type, registry_name: str, onco_config: A
     for cfg_cls in cfg_chain:
         merged.update(_get_defaults(cfg_cls))
 
-    # Override with values from the YAML EncoderConfig entry.
-    # Match by short registry_name OR by dotted name resolving to the same class.
+    # Override with values from the YAML EncoderConfig entry matched by class identity.
     enc_entry = next(
-        (
-            e for e in onco_config.model.encoders
-            if e.name == registry_name
-            or _ENCODERS.get(e.name) is encoder_cls
-        ),
+        (e for e in onco_config.model.encoders if _ENCODERS.get(e.name) is encoder_cls),
         None,
     )
     if enc_entry is not None:
         merged["output_dim"] = enc_entry.output_dim
         merged.update(enc_entry.kwargs)
 
-    leaf_cfg_cls = _CONFIGS.get(registry_name)
+    # Use the most-derived config class found in the MRO walk as the leaf.
+    leaf_cfg_cls = cfg_chain[-1] if cfg_chain else None
     if leaf_cfg_cls is None:
         import types
         return types.SimpleNamespace(**merged)
@@ -147,7 +143,7 @@ def resolve_encoder_config(encoder_cls: type, registry_name: str, onco_config: A
     return _instantiate(leaf_cfg_cls, merged)
 
 
-def resolve_model_config(model_cls: type, registry_name: str, onco_config: Any) -> Any:
+def resolve_model_config(model_cls: type, onco_config: Any) -> Any:
     """Resolve the model config instance for *model_cls*.
 
     Same MRO-walk and merge strategy as :func:`resolve_encoder_config`.
@@ -172,7 +168,7 @@ def resolve_model_config(model_cls: type, registry_name: str, onco_config: Any) 
             if f.name in merged:
                 merged[f.name] = getattr(onco_config.model, f.name)
 
-    leaf_cfg_cls = _CONFIGS.get(registry_name)
+    leaf_cfg_cls = cfg_chain[-1] if cfg_chain else None
     if leaf_cfg_cls is None:
         import types
         return types.SimpleNamespace(**merged)

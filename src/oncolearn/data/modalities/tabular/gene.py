@@ -27,15 +27,12 @@ class GeneDataModule(pl.LightningDataModule):
         cohort_code: TCGA cohort identifier (e.g. ``"TCGA-BRCA"``).
         batch_size: DataLoader batch size.
         num_workers: DataLoader worker count.
-        base_directory: Root directory for Xena data.  Alias for ``data_dir``.
-        data_dir: Deprecated alias for ``base_directory``.
+        base_directory: Root directory for Xena data.
         train_split: Fraction of data to use for training (random split).
         seed: Random seed for reproducible splits.
         label_column: Name of the label column.  Auto-detected when ``None``.
-        files: List of TSV file names to load.  Alias for ``features_files``.
-        features_files: Deprecated alias for ``files``.
-        batch_key: Key used in the batch dict (defaults to ``"gene"`` for
-                   backward compatibility; pass ``mod_cfg.name`` for dotted-name routing).
+        files: List of TSV file names to load.
+        batch_key: Key used in the batch dict; pass ``mod_cfg.name`` for dotted-name routing.
     """
 
     def __init__(
@@ -43,32 +40,23 @@ class GeneDataModule(pl.LightningDataModule):
         cohort_code: str = "TCGA-BRCA",
         batch_size: int = 16,
         num_workers: int = 4,
-        base_directory: Optional[str] = None,
-        data_dir: str = "data/xenabrowser",
+        base_directory: str = "data/xenabrowser",
         train_split: float = 0.8,
         seed: int = 42,
         label_column: Optional[str] = None,
         files: Optional[List[str]] = None,
-        features_files: Optional[List[str]] = None,
         batch_key: str = "gene",
     ):
-        # Resolve aliases: base_directory > data_dir
-        resolved_dir = base_directory if base_directory is not None else data_dir
-        # Resolve aliases: files > features_files > default
-        resolved_files = files if files is not None else features_files
-        if resolved_files is None and cohort_code == "TCGA-BRCA":
-            resolved_files = ["TCGA-BRCA.mirna.tsv", "pam50.tsv"]
-
         super().__init__()
         self.name = "gene"
         self.cohort_code = cohort_code
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.data_dir = Path(resolved_dir)
+        self.data_dir = Path(base_directory)
         self.train_split = train_split
         self.seed = seed
         self.label_column = label_column
-        self.features_files = resolved_files
+        self.features_files = files
         self.batch_key = batch_key
         self._full_dataset = None
 

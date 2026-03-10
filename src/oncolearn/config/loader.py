@@ -92,33 +92,6 @@ def _parse_data_section(raw: dict) -> DataConfig:
     )
 
 
-def _parse_legacy_modalities(raw: dict) -> DataConfig:
-    """Convert old top-level ``modalities:`` list to ``DataConfig`` (backward compat)."""
-    modality_cfgs = []
-    for entry in raw.get("modalities", []):
-        if "name" not in entry:
-            raise KeyError(
-                f"Every entry in 'modalities' must have a 'name' key. Got: {entry}"
-            )
-        name = entry["name"]
-        # Legacy format: all non-name keys are kwargs; no first-class join_on/files
-        kwargs = {k: v for k, v in entry.items() if k != "name"}
-        # Pull out features_files → files if present
-        files = kwargs.pop("features_files", None)
-        modality_cfgs.append(ModalityConfig(
-            name=name,
-            join_on=raw.get("join_on", "patient_id"),
-            join_strategy=raw.get("join_strategy", "inner"),
-            files=files,
-            kwargs=kwargs,
-        ))
-    return DataConfig(
-        modalities=modality_cfgs,
-        base_directory="data/xenabrowser",
-        cohort_code="TCGA-BRCA",
-        splits_dir=raw.get("splits_dir", None),
-    )
-
 
 def _parse_training_section(raw: dict) -> TrainingConfig:
     """Parse the ``training:`` section, handling nested optimizer/scheduler/loss/regularization."""
@@ -215,9 +188,6 @@ def _parse_hpo_section(raw: dict) -> HpoConfig:
 def load_config(path: Union[str, Path]) -> OncoLearnConfig:
     """Load an OncoLearn experiment config from a YAML file.
 
-    Supports both the new ``data:`` section format and the legacy top-level
-    ``modalities:`` list format.
-
     Args:
         path: Path to the ``.yaml`` config file.
 
@@ -270,20 +240,16 @@ def load_config(path: Union[str, Path]) -> OncoLearnConfig:
     )
     model_cfg.encoders = encoder_cfgs
 
-    # --- data section (new format) or legacy modalities list ---
-    if "data" in raw:
-        if not raw["data"].get("modalities"):
-            raise KeyError(
-                f"Config '{path.name}': 'data' section must contain a 'modalities' list."
-            )
-        data_cfg = _parse_data_section(raw)
-    elif "modalities" in raw:
-        data_cfg = _parse_legacy_modalities(raw)
-    else:
+    # --- data section ---
+    if "data" not in raw:
         raise KeyError(
-            f"Config '{path.name}' must contain either a 'data' section or a "
-            "'modalities' list."
+            f"Config '{path.name}' must contain a 'data' section with a 'modalities' list."
         )
+    if not raw["data"].get("modalities"):
+        raise KeyError(
+            f"Config '{path.name}': 'data' section must contain a 'modalities' list."
+        )
+    data_cfg = _parse_data_section(raw)
 
     # --- training (optional) ---
     training_cfg = _parse_training_section(raw.get("training", {}))

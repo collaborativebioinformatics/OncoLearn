@@ -93,9 +93,7 @@ class MRMGHierarchicalImageEncoder(BaseEncoder):
     def __init__(self, config: "OncoLearnConfig") -> None:
         from oncolearn.registry import resolve_encoder_config
 
-        enc_cfg: MRMGHierarchicalImageEncoderConfig = resolve_encoder_config(
-            type(self), "image", config
-        )
+        enc_cfg: MRMGHierarchicalImageEncoderConfig = resolve_encoder_config(type(self), config)
 
         super().__init__(config, output_dim=enc_cfg.output_dim, huggingface_models=None)
 

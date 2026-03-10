@@ -195,32 +195,6 @@ data:
 
 
 # ---------------------------------------------------------------------------
-# Backward-compat: old top-level modalities list still parses
-# ---------------------------------------------------------------------------
-
-def test_legacy_modalities_list(tmp_path):
-    legacy_yaml = """\
-model:
-  name: gated_late_fusion
-
-modalities:
-  - name: gene
-    cohort_code: TCGA-BRCA
-    features_files:
-      - TCGA-BRCA.mirna.tsv
-      - pam50.tsv
-
-join_on: patient_id
-join_strategy: inner
-"""
-    cfg = load_config(write_yaml(tmp_path, legacy_yaml))
-    assert len(cfg.data.modalities) == 1
-    assert cfg.data.modalities[0].name == "gene"
-    assert cfg.data.modalities[0].files == ["TCGA-BRCA.mirna.tsv", "pam50.tsv"]
-    assert cfg.data.modalities[0].join_on == "patient_id"
-
-
-# ---------------------------------------------------------------------------
 # Round-trip
 # ---------------------------------------------------------------------------
 
