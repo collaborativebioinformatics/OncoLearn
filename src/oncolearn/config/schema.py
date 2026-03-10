@@ -163,7 +163,12 @@ class HpoConfig:
     will run an Optuna study before the final training run.  The best found parameters
     are applied to the config and returned alongside the normal training metrics.
 
-    ``search_space`` is a mapping from dotted config path → :class:`HpoParamSpec`.
+    ``search_space`` accepts flat dotted-path keys as well as two special nested keys:
+
+    * ``training.optimizers`` — maps optimizer class name → per-param specs.  When
+      multiple optimizers are listed, Optuna also searches over which one to use.
+    * ``training.losses`` — same pattern for the loss function.
+
     Example YAML::
 
         training:
@@ -172,31 +177,22 @@ class HpoConfig:
             epochs_per_trial: 10
             metric: val_acc
             search_space:
-              training.optimizer.name:
-                type: categorical
-                choices:
-                  - torch.optim.AdamW
-                  - torch.optim.Adam
-                  - torch.optim.SGD
-                  - torch.optim.RMSprop
-              training.optimizer.params.lr:
-                type: float
-                low: 1.0e-5
-                high: 1.0e-2
-                log: true
+              training.optimizers:
+                torch.optim.AdamW:
+                  lr:           {type: float, low: 1.0e-5, high: 1.0e-2, log: true}
+                  weight_decay: {type: float, low: 1.0e-6, high: 1.0e-3, log: true}
+                torch.optim.SGD:
+                  lr:       {type: float, low: 1.0e-3, high: 1.0e-1, log: true}
+                  momentum: {type: float, low: 0.5, high: 0.99}
+              training.losses:
+                torch.nn.CrossEntropyLoss:
+                  label_smoothing: {type: float, low: 0.0, high: 0.3}
               training.batch_size:
                 type: categorical
                 choices: [4, 8, 16, 32]
               model.dropout:
                 type: float
                 low: 0.05
-                high: 0.5
-              model.encoders.0.output_dim:
-                type: categorical
-                choices: [64, 128, 256]
-              model.encoders.0.kwargs.projection_dropout:
-                type: float
-                low: 0.0
                 high: 0.5
     """
 
@@ -209,25 +205,19 @@ class HpoConfig:
     epochs_per_trial: Optional[int] = None
     seed: int = 42
     search_space: Dict[str, HpoParamSpec] = field(default_factory=dict)
-    optimizer_params: Dict[str, Dict[str, HpoParamSpec]] = field(default_factory=dict)
+    optimizers: Dict[str, Dict[str, HpoParamSpec]] = field(default_factory=dict)
     """Per-optimizer conditional param search spaces.
 
-    Maps optimizer dotted name → {param_name → HpoParamSpec}.  When
-    ``training.optimizer.name`` is also in ``search_space``, only the params
-    for the *chosen* optimizer are sampled in each trial.  This prevents
-    invalid kwargs (e.g. ``momentum`` passed to AdamW) from reaching the
-    optimizer constructor.
+    Maps optimizer dotted class name → {param_name → HpoParamSpec}.  When
+    multiple optimizers are listed, a categorical choice is also suggested.
+    Only the params for the *chosen* optimizer are sampled in each trial,
+    preventing invalid kwargs (e.g. ``momentum`` passed to AdamW).
+    """
+    losses: Dict[str, Dict[str, HpoParamSpec]] = field(default_factory=dict)
+    """Per-loss conditional param search spaces.
 
-    Example YAML::
-
-        optimizer_params:
-          torch.optim.AdamW:
-            lr:   {type: float, low: 1.0e-5, high: 1.0e-2, log: true}
-            weight_decay: {type: float, low: 1.0e-6, high: 1.0e-3, log: true}
-          torch.optim.SGD:
-            lr:       {type: float, low: 1.0e-3, high: 1.0e-1, log: true}
-            momentum: {type: float, low: 0.5, high: 0.99}
-            weight_decay: {type: float, low: 1.0e-6, high: 1.0e-3, log: true}
+    Maps loss dotted class name → {param_name → HpoParamSpec}.  When
+    multiple losses are listed, a categorical choice is also suggested.
     """
 
 

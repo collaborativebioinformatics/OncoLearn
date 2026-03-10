@@ -140,29 +140,20 @@ def _parse_training_section(raw: dict) -> TrainingConfig:
 def _parse_hpo_section(raw: dict) -> HpoConfig:
     """Parse the ``training.hpo:`` section into an :class:`HpoConfig`."""
     search_space: dict[str, HpoParamSpec] = {}
-    for path, spec_raw in raw.get("search_space", {}).items():
-        if not isinstance(spec_raw, dict) or "type" not in spec_raw:
-            raise ValueError(
-                f"HPO search_space entry '{path}' must be a dict with a 'type' key."
-            )
-        search_space[path] = HpoParamSpec(
-            type=spec_raw["type"],
-            low=spec_raw.get("low"),
-            high=spec_raw.get("high"),
-            log=spec_raw.get("log", False),
-            step=spec_raw.get("step"),
-            choices=spec_raw.get("choices"),
-        )
+    optimizers: dict[str, dict[str, HpoParamSpec]] = {}
+    losses: dict[str, dict[str, HpoParamSpec]] = {}
 
-    optimizer_params: dict[str, dict[str, HpoParamSpec]] = {}
-    for opt_name, param_specs in raw.get("optimizer_params", {}).items():
-        optimizer_params[opt_name] = {}
-        for param_name, spec_raw in param_specs.items():
+    for path, spec_raw in raw.get("search_space", {}).items():
+        if path == "training.optimizers":
+            optimizers = _parse_conditional_params(spec_raw, "training.optimizers")
+        elif path == "training.losses":
+            losses = _parse_conditional_params(spec_raw, "training.losses")
+        else:
             if not isinstance(spec_raw, dict) or "type" not in spec_raw:
                 raise ValueError(
-                    f"HPO optimizer_params['{opt_name}']['{param_name}'] must be a dict with a 'type' key."
+                    f"HPO search_space entry '{path}' must be a dict with a 'type' key."
                 )
-            optimizer_params[opt_name][param_name] = HpoParamSpec(
+            search_space[path] = HpoParamSpec(
                 type=spec_raw["type"],
                 low=spec_raw.get("low"),
                 high=spec_raw.get("high"),
@@ -181,8 +172,33 @@ def _parse_hpo_section(raw: dict) -> HpoConfig:
         epochs_per_trial=raw.get("epochs_per_trial"),
         seed=raw.get("seed", 42),
         search_space=search_space,
-        optimizer_params=optimizer_params,
+        optimizers=optimizers,
+        losses=losses,
     )
+
+
+def _parse_conditional_params(
+    raw: dict, section_name: str
+) -> dict[str, dict[str, HpoParamSpec]]:
+    """Parse a ``{class_name: {param: spec}}`` nested block into HpoParamSpec dicts."""
+    result: dict[str, dict[str, HpoParamSpec]] = {}
+    for class_name, param_specs in raw.items():
+        result[class_name] = {}
+        for param_name, spec_raw in param_specs.items():
+            if not isinstance(spec_raw, dict) or "type" not in spec_raw:
+                raise ValueError(
+                    f"HPO {section_name}['{class_name}']['{param_name}'] "
+                    "must be a dict with a 'type' key."
+                )
+            result[class_name][param_name] = HpoParamSpec(
+                type=spec_raw["type"],
+                low=spec_raw.get("low"),
+                high=spec_raw.get("high"),
+                log=spec_raw.get("log", False),
+                step=spec_raw.get("step"),
+                choices=spec_raw.get("choices"),
+            )
+    return result
 
 
 def load_config(path: Union[str, Path]) -> OncoLearnConfig:
