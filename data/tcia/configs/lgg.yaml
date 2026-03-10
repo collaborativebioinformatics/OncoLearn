@@ -1,6 +1,0 @@
-cohort:
-  code: LGG
-  name: TCGA-LGG
-  description: TCGA Brain Lower Grade Glioma cohort (no TCIA manifests available)
-
-datasets: []

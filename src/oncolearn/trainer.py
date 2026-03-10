@@ -6,7 +6,7 @@ Typical usage::
     from oncolearn.config import load_config
     from oncolearn.trainer import OncoTrainer
 
-    config = load_config("data/configs/tcga_brca_tabular_only.yaml")
+    config = load_config("data/configs/modeling/multimodal/tcga_brca_tabular_only.yaml")
     trainer = OncoTrainer(config)
     trainer.train()
 """
@@ -64,7 +64,7 @@ class OncoTrainer:
 
     Example::
 
-        config = load_config("data/configs/tcga_brca_tabular_only.yaml")
+        config = load_config("data/configs/modeling/multimodal/tcga_brca_tabular_only.yaml")
         trainer = OncoTrainer(config)
         best_metrics = trainer.train()
         test_metrics = trainer.test()
@@ -273,7 +273,7 @@ def main() -> None:
 
     Examples::
 
-        python -m oncolearn.trainer --config data/configs/tcga_brca_tabular_only.yaml
+        python -m oncolearn.trainer --config data/configs/modeling/multimodal/tcga_brca_tabular_only.yaml
         python -m oncolearn.trainer --variant v2_no_imaging --epochs 10 --batch_size 8
     """
     from oncolearn.cli.train import main as cli_main

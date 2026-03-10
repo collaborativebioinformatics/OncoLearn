@@ -30,7 +30,7 @@ class XenaCohortBuilder(BaseCohortBuilder):
             # Default to data/xenabrowser/configs in project root
             # Navigate from src/oncolearn/data/xenabrowser to project root
             project_root = Path(__file__).parent.parent.parent.parent.parent
-            config_dir = project_root / "data" / "xenabrowser" / "configs"
+            config_dir = project_root / "data" / "configs" / "xenabrowser"
         
         super().__init__(config_dir)
         self.config_dir = Path(config_dir)

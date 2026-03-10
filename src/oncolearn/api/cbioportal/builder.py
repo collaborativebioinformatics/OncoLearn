@@ -42,7 +42,7 @@ class CBioPortalCohortBuilder(BaseCohortBuilder):
     def __init__(self, config_dir: Optional[Path] = None):
         if config_dir is None:
             project_root = Path(__file__).parent.parent.parent.parent.parent
-            config_dir = project_root / "data" / "cbioportal" / "configs"
+            config_dir = project_root / "data" / "configs" / "cbioportal"
         super().__init__(config_dir)
         self.config_dir = Path(config_dir)
 

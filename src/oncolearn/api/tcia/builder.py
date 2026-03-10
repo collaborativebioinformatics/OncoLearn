@@ -30,7 +30,7 @@ class TCIACohortBuilder(BaseCohortBuilder):
             # Default to data/tcia/configs in project root
             # Navigate from src/oncolearn/data/tcia to project root
             project_root = Path(__file__).parent.parent.parent.parent.parent
-            config_dir = project_root / "data" / "tcia" / "configs"
+            config_dir = project_root / "data" / "configs" / "tcia"
 
         super().__init__(config_dir)
         self.config_dir = Path(config_dir)

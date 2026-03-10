@@ -112,11 +112,11 @@ Examples:
   oncolearn preprocess --tcia --split 4 --manifest /path/to/manifest.tcia
 
   # Generate stratified 5-fold training splits from a config
-  oncolearn preprocess --kfold --config data/configs/tcga_brca_tabular_only.yaml --n_splits 5
+  oncolearn preprocess --kfold --config data/configs/modeling/multimodal/tcga_brca_tabular_only.yaml --n_splits 5
 
   # Custom output directory and validation fraction
-  oncolearn preprocess --kfold --config data/configs/tcga_brca_tabular_only.yaml \\
-      --n_splits 5 --val_fraction 0.15 --output_dir data/configs/BRCA/kfold
+  oncolearn preprocess --kfold --config data/configs/modeling/multimodal/tcga_brca_tabular_only.yaml \\
+      --n_splits 5 --val_fraction 0.15 --output_dir data/configs/modeling/multimodal/splits/kfold
         """
     )
 
@@ -148,7 +148,7 @@ Examples:
         help="[--kfold] Fraction of train fold reserved for validation (default: 0.1)")
     parser.add_argument(
         "--output_dir", type=str, default=None,
-        help="[--kfold] Root output directory (default: data/configs/<COHORT>/kfold/)")
+        help="[--kfold] Root output directory (default: data/configs/modeling/multimodal/splits/kfold/)")
 
     # Shared optional arguments
     parser.add_argument(
@@ -347,7 +347,7 @@ def _execute_kfold(args):
             output_dir = Path(args.output_dir)
         else:
             cohort_short = data_cfg.cohort_code.replace("TCGA-", "")
-            output_dir = Path("data/configs") / cohort_short / "kfold"
+            output_dir = Path("data/configs/modeling/multimodal/splits") / "kfold"
 
         seed = args.seed if args.seed is not None else config.training.seed
 

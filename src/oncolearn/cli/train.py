@@ -10,8 +10,8 @@ import argparse
 import sys
 
 _VARIANT_CONFIGS = {
-    "v1_imaging":    "data/configs/tcga_brca_multimodal.yaml",
-    "v2_no_imaging": "data/configs/tcga_brca_tabular_only.yaml",
+    "v1_imaging":    "data/configs/modeling/multimodal/tcga_brca_multimodal.yaml",
+    "v2_no_imaging": "data/configs/modeling/multimodal/tcga_brca_tabular_only.yaml",
 }
 
 
@@ -25,7 +25,7 @@ def register_subcommand(subparsers):
         epilog="""
 Examples:
   # Config-driven (recommended)
-  oncolearn train --config data/configs/tcga_brca_tabular_only.yaml
+  oncolearn train --config data/configs/modeling/multimodal/tcga_brca_tabular_only.yaml
 
   # Quick shorthand
   oncolearn train --variant v2_no_imaging --epochs 10 --batch_size 8
@@ -38,7 +38,7 @@ Examples:
 def _add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--config", type=str, default=None,
-        help="Path to an OncoLearn YAML config (data/configs/*.yaml).",
+        help="Path to an OncoLearn YAML config (data/configs/modeling/multimodal/*.yaml).",
     )
     parser.add_argument(
         "--variant", type=str, default="v2_no_imaging",
@@ -75,7 +75,7 @@ def main(argv=None) -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python -m oncolearn.trainer --config data/configs/tcga_brca_tabular_only.yaml
+  python -m oncolearn.trainer --config data/configs/modeling/multimodal/tcga_brca_tabular_only.yaml
   python -m oncolearn.trainer --variant v2_no_imaging --epochs 10 --batch_size 8
         """,
     )

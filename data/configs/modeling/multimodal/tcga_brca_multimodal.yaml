@@ -23,7 +23,7 @@ model:
       checkpoint_path: /workspace/models/breast_MR_checkpoint.pth.tar
 
 data:
-  splits_dir: data/configs/BRCA/multimodal/kfold/fold_0
+  splits_dir: data/configs/modeling/multimodal/splits/kfold/fold_0
   modalities:
     - name: oncolearn.modality.gene
       base_directory: data/xenabrowser

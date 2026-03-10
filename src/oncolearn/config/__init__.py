@@ -5,7 +5,7 @@ Canonical usage::
 
     from oncolearn.config import load_config, OncoLearnConfig
 
-    config = load_config("data/configs/tcga_brca_tabular_only.yaml")
+    config = load_config("data/configs/modeling/multimodal/tcga_brca_tabular_only.yaml")
     trainer = OncoTrainer(config=config)
 """
 
