@@ -88,6 +88,12 @@ class CBioPortalDataset(Dataset):
                 return self._download_molecular(client, dest, verbose)
             elif self.dataset_type == "mutations":
                 return self._download_mutations(client, dest, verbose)
+            elif self.dataset_type == "structural_variants":
+                return self._download_structural_variants(client, dest, verbose)
+            elif self.dataset_type == "generic_assay":
+                return self._download_generic_assay(client, dest, verbose)
+            elif self.dataset_type == "copy_number_segments":
+                return self._download_copy_number_segments(client, dest, verbose)
             else:
                 raise ValueError(f"Unknown dataset_type: {self.dataset_type!r}")
         except Exception as exc:
@@ -238,6 +244,118 @@ class CBioPortalDataset(Dataset):
             print(f"  Saved {len(flat_records)} mutation records → {dest}")
         return True
 
+    def _download_structural_variants(self, client: CBioPortalClient, dest: Path, verbose: bool) -> bool:
+        """Fetch structural variant records and write long-format TSV."""
+        if not self.molecular_profile_id:
+            raise ValueError("molecular_profile_id required for structural_variants datasets")
+
+        if verbose:
+            print(f"  Fetching structural variants from profile '{self.molecular_profile_id}'…")
+
+        records = client.get_structural_variants(
+            molecular_profile_id=self.molecular_profile_id,
+            study_id=self.study_id,
+        )
+
+        if not records:
+            print(f"  WARNING: No structural variant data returned for {self.name}")
+            return False
+
+        flat_records = [_flatten_sv(r) for r in records]
+        all_keys: list = []
+        keys_set: set = set()
+        for rec in flat_records:
+            for k in rec:
+                if k not in keys_set:
+                    all_keys.append(k)
+                    keys_set.add(k)
+
+        with open(dest, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=all_keys, delimiter="\t",
+                                    extrasaction="ignore", restval="")
+            writer.writeheader()
+            writer.writerows(flat_records)
+
+        if verbose:
+            print(f"  Saved {len(flat_records)} structural variant records → {dest}")
+        return True
+
+    def _download_copy_number_segments(self, client: CBioPortalClient, dest: Path, verbose: bool) -> bool:
+        """Fetch CN segments (one GET per sample) and write long-format TSV."""
+        if verbose:
+            print(f"  Fetching copy-number segments for study '{self.study_id}'…")
+            print(f"  (requires one API call per sample — this may take several minutes)")
+
+        records = client.get_copy_number_segments(study_id=self.study_id)
+
+        if not records:
+            print(f"  WARNING: No copy-number segment data returned for {self.name}")
+            return False
+
+        _KEEP = {"sampleId", "patientId", "chromosome", "start", "end", "numberOfProbes", "segmentMean"}
+        fieldnames = ["sampleId", "patientId", "chromosome", "start", "end", "numberOfProbes", "segmentMean"]
+
+        with open(dest, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter="\t",
+                                    extrasaction="ignore", restval="")
+            writer.writeheader()
+            writer.writerows(records)
+
+        n_samples = len({r["sampleId"] for r in records})
+        if verbose:
+            print(f"  Saved {len(records)} segments across {n_samples} samples → {dest}")
+        return True
+
+    def _download_generic_assay(self, client: CBioPortalClient, dest: Path, verbose: bool) -> bool:
+        """Fetch GENERIC_ASSAY data and write entity × sample matrix TSV."""
+        if not self.molecular_profile_id:
+            raise ValueError("molecular_profile_id required for generic_assay datasets")
+
+        if verbose:
+            print(f"  Fetching generic assay data '{self.molecular_profile_id}'…")
+
+        records = client.get_generic_assay_data(
+            molecular_profile_id=self.molecular_profile_id,
+            sample_list_id=self.sample_list_id,
+            study_id=self.study_id if not self.sample_list_id else None,
+            sample_ids=client.get_sample_ids(self.study_id) if not self.sample_list_id else None,
+        )
+
+        if not records:
+            print(f"  WARNING: No generic assay data returned for {self.name}")
+            return False
+
+        # Build entity × sample matrix (rows = stableId, cols = samples)
+        entity_data: dict = {}
+        samples_seen: list = []
+        samples_set: set = set()
+
+        for rec in records:
+            entity_id = rec.get("stableId") or rec.get("genericAssayStableId", "")
+            sample = rec["sampleId"]
+            value = rec.get("value", "")
+
+            if entity_id not in entity_data:
+                entity_data[entity_id] = {}
+            entity_data[entity_id][sample] = value
+
+            if sample not in samples_set:
+                samples_seen.append(sample)
+                samples_set.add(sample)
+
+        samples = sorted(samples_seen)
+
+        with open(dest, "w", newline="") as f:
+            writer = csv.writer(f, delimiter="\t")
+            writer.writerow(["stableId"] + samples)
+            for entity_id in sorted(entity_data):
+                row = [entity_data[entity_id].get(s, "") for s in samples]
+                writer.writerow([entity_id] + row)
+
+        if verbose:
+            print(f"  Saved {len(entity_data)} entities × {len(samples)} samples → {dest}")
+        return True
+
 
 # ------------------------------------------------------------------
 #  Helpers
@@ -249,6 +367,20 @@ def _write_wide_tsv(dest: Path, id_col: str, attrs: list, rows: list) -> None:
         writer.writerow([id_col] + attrs)
         for row_id, row_data in rows:
             writer.writerow([row_id] + [row_data.get(a, "") for a in attrs])
+
+
+def _flatten_sv(rec: dict) -> dict:
+    """Flatten a cBioPortal structural variant record into a single-level dict."""
+    flat = {}
+    for k, v in rec.items():
+        if isinstance(v, dict):
+            for sub_k, sub_v in v.items():
+                flat[f"{k}.{sub_k}"] = sub_v
+        elif isinstance(v, list):
+            flat[k] = ";".join(str(i) for i in v)
+        else:
+            flat[k] = v
+    return flat
 
 
 def _flatten_mutation(rec: dict) -> dict:

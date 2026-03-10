@@ -5,6 +5,7 @@ Docs: https://www.cbioportal.org/api/swagger-ui
 """
 
 import json
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -13,6 +14,11 @@ from typing import Any, Dict, List, Optional
 
 _DEFAULT_BASE_URL = "https://www.cbioportal.org/api"
 _PAGE_SIZE = 10_000_000  # cBioPortal returns all data when size is very large
+_USER_AGENT = "OncoLearn/1.0 (https://github.com/oncolearn; research use)"
+# Retry on these transient HTTP status codes
+_RETRYABLE = {429, 500, 502, 503, 504}
+_RETRY_ATTEMPTS = 3
+_RETRY_BACKOFF = 2.0   # seconds; doubles each attempt (2 → 4 → 8)
 
 
 class CBioPortalAPIError(Exception):
@@ -25,9 +31,12 @@ class CBioPortalClient:
 
     All methods return parsed JSON (list or dict). Pagination is handled
     internally; callers receive the full result set.
+
+    Requests identify themselves via a ``User-Agent`` header and retry
+    automatically on transient 429/5xx responses with exponential backoff.
     """
 
-    def __init__(self, base_url: str = _DEFAULT_BASE_URL, timeout: int = 60):
+    def __init__(self, base_url: str = _DEFAULT_BASE_URL, timeout: int = 120):
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
 
@@ -39,16 +48,11 @@ class CBioPortalClient:
         url = f"{self.base_url}/{path.lstrip('/')}"
         if params:
             url = f"{url}?{urllib.parse.urlencode({k: v for k, v in params.items() if v is not None})}"
-        req = urllib.request.Request(url, headers={"Accept": "application/json"})
-        try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                return json.loads(resp.read().decode())
-        except urllib.error.HTTPError as exc:
-            raise CBioPortalAPIError(
-                f"HTTP {exc.code} for GET {url}: {exc.reason}"
-            ) from exc
-        except urllib.error.URLError as exc:
-            raise CBioPortalAPIError(f"Network error for GET {url}: {exc.reason}") from exc
+        req = urllib.request.Request(
+            url,
+            headers={"Accept": "application/json", "User-Agent": _USER_AGENT},
+        )
+        return self._send(req, url, method="GET")
 
     def _post(self, path: str, body: Any, params: Optional[Dict[str, Any]] = None) -> Any:
         url = f"{self.base_url}/{path.lstrip('/')}"
@@ -58,19 +62,40 @@ class CBioPortalClient:
         req = urllib.request.Request(
             url,
             data=data,
-            headers={"Accept": "application/json", "Content-Type": "application/json"},
+            headers={
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "User-Agent": _USER_AGENT,
+            },
             method="POST",
         )
-        try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                return json.loads(resp.read().decode())
-        except urllib.error.HTTPError as exc:
-            body_text = exc.read().decode(errors="replace")[:500]
-            raise CBioPortalAPIError(
-                f"HTTP {exc.code} for POST {url}: {exc.reason} — {body_text}"
-            ) from exc
-        except urllib.error.URLError as exc:
-            raise CBioPortalAPIError(f"Network error for POST {url}: {exc.reason}") from exc
+        return self._send(req, url, method="POST")
+
+    def _send(self, req: urllib.request.Request, url: str, method: str) -> Any:
+        """Execute a request with exponential-backoff retry on transient errors."""
+        delay = _RETRY_BACKOFF
+        for attempt in range(1, _RETRY_ATTEMPTS + 1):
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                    return json.loads(resp.read().decode())
+            except urllib.error.HTTPError as exc:
+                if exc.code in _RETRYABLE and attempt < _RETRY_ATTEMPTS:
+                    time.sleep(delay)
+                    delay *= 2
+                    continue
+                body_text = exc.read().decode(errors="replace")[:500] if method == "POST" else ""
+                suffix = f" — {body_text}" if body_text else ""
+                raise CBioPortalAPIError(
+                    f"HTTP {exc.code} for {method} {url}: {exc.reason}{suffix}"
+                ) from exc
+            except urllib.error.URLError as exc:
+                if attempt < _RETRY_ATTEMPTS:
+                    time.sleep(delay)
+                    delay *= 2
+                    continue
+                raise CBioPortalAPIError(
+                    f"Network error for {method} {url}: {exc.reason}"
+                ) from exc
 
     # ------------------------------------------------------------------ #
     #  Studies                                                             #
@@ -220,3 +245,100 @@ class CBioPortalClient:
     def get_sample_lists(self, study_id: str) -> List[Dict]:
         """Return all sample lists (e.g. 'all', 'rna_seq_v2_mrna') for a study."""
         return self._get(f"/studies/{study_id}/sample-lists")
+
+    def get_copy_number_segments(
+        self,
+        study_id: str,
+        sample_ids: Optional[List[str]] = None,
+        request_delay: float = 0.05,
+    ) -> List[Dict]:
+        """
+        Fetch all copy-number segments for a study by iterating per-sample.
+
+        The cBioPortal batch POST endpoint (``/copy-number-segments/fetch``) is
+        non-functional for these studies; the only working path is the per-sample
+        GET endpoint.  ``pageSize`` is capped at 10 000 server-side.
+
+        Args:
+            study_id: e.g. ``"brca_tcga"``
+            sample_ids: Subset of sample IDs; ``None`` fetches all samples.
+            request_delay: Seconds to sleep between per-sample requests (default
+                0.05 s → ~20 req/s). Increase if you see 429 responses.
+
+        Returns:
+            List of dicts with keys ``sampleId``, ``patientId``, ``chromosome``,
+            ``start``, ``end``, ``numberOfProbes``, ``segmentMean``.
+        """
+        _SEGMENT_PAGE_SIZE = 10_000
+        if sample_ids is None:
+            sample_ids = self.get_sample_ids(study_id)
+
+        all_segments: List[Dict] = []
+        for i, sid in enumerate(sample_ids):
+            records = self._get(
+                f"/studies/{study_id}/samples/{sid}/copy-number-segments",
+                {"pageSize": _SEGMENT_PAGE_SIZE, "pageNumber": 0},
+            )
+            all_segments.extend(records)
+            if request_delay > 0 and i < len(sample_ids) - 1:
+                time.sleep(request_delay)
+        return all_segments
+
+    def get_structural_variants(
+        self,
+        molecular_profile_id: str,
+        sample_ids: Optional[List[str]] = None,
+        study_id: Optional[str] = None,
+    ) -> List[Dict]:
+        """
+        Fetch structural variant records for a SV profile.
+
+        Unlike mutations/molecular data, the structural variant endpoint does not
+        accept a ``sampleListId``; sample identifiers must be passed explicitly.
+        """
+        if not sample_ids:
+            if not study_id:
+                raise ValueError("study_id required when sample_ids not provided")
+            sample_ids = self.get_sample_ids(study_id)
+
+        body = {
+            "sampleMolecularIdentifiers": [
+                {"sampleId": sid, "molecularProfileId": molecular_profile_id}
+                for sid in sample_ids
+            ],
+            "entrezGeneIds": [],
+        }
+        return self._post(
+            f"/molecular-profiles/{molecular_profile_id}/structural-variant/fetch",
+            body,
+        )
+
+    def get_generic_assay_data(
+        self,
+        molecular_profile_id: str,
+        sample_list_id: Optional[str] = None,
+        sample_ids: Optional[List[str]] = None,
+        study_id: Optional[str] = None,
+    ) -> List[Dict]:
+        """
+        Fetch GENERIC_ASSAY data (phosphoproteomics, methylation probes,
+        arm-level CNA, genetic ancestry, etc.).
+
+        Returns records with keys ``stableId``, ``sampleId``, ``value``.
+        """
+        if sample_list_id:
+            body = {"sampleListId": sample_list_id}
+        elif sample_ids and study_id:
+            body = {
+                "sampleMolecularIdentifiers": [
+                    {"sampleId": sid, "molecularProfileId": molecular_profile_id}
+                    for sid in sample_ids
+                ]
+            }
+        else:
+            raise ValueError("Provide sample_list_id or both sample_ids + study_id")
+
+        return self._post(
+            f"/generic_assay_data/{molecular_profile_id}/fetch",
+            body,
+        )
