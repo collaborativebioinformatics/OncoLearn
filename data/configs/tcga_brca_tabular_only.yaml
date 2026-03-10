@@ -90,6 +90,9 @@ training:
   #     training.losses:
   #       torch.nn.CrossEntropyLoss:
   #         label_smoothing: {type: float, low: 0.0, high: 0.3}
+  #       torch.nn.MultiMarginLoss:
+  #         p:      {type: categorical, choices: [1, 2]}
+  #         margin: {type: float, low: 0.5, high: 2.0}
   #     training.batch_size:
   #       type: categorical
   #       choices: [4, 8, 16, 32]
