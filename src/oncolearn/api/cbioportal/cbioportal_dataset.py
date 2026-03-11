@@ -3,8 +3,11 @@ cBioPortal dataset classes that download API data to local TSV files.
 """
 
 import csv
+import math
 from pathlib import Path
-from typing import List, Optional
+from typing import Callable, List, Optional
+
+from tqdm import tqdm
 
 from ..dataset import DataCategory, Dataset
 from .client import CBioPortalClient
@@ -38,6 +41,7 @@ class CBioPortalDataset(Dataset):
         # molecular / mutations-specific
         molecular_profile_id: Optional[str] = None,
         sample_list_id: Optional[str] = None,
+        batch_size: int = 200,
         # shared
         base_url: str = "https://www.cbioportal.org/api",
     ):
@@ -51,6 +55,7 @@ class CBioPortalDataset(Dataset):
         self.attribute_ids = attribute_ids or []
         self.molecular_profile_id = molecular_profile_id
         self.sample_list_id = sample_list_id
+        self.batch_size = batch_size
         self.base_url = base_url
 
     # ------------------------------------------------------------------
@@ -104,6 +109,12 @@ class CBioPortalDataset(Dataset):
     #  Internal download methods
     # ------------------------------------------------------------------
 
+    def _resolve_sample_ids(self, client: CBioPortalClient) -> List[str]:
+        """Resolve sample IDs from sample_list_id if set, otherwise from study_id."""
+        if self.sample_list_id:
+            return client.get_sample_list_ids(self.sample_list_id)
+        return client.get_sample_ids(self.study_id)
+
     def _download_clinical(self, client: CBioPortalClient, dest: Path, verbose: bool) -> bool:
         """Fetch clinical data and write wide-format TSV."""
         if verbose:
@@ -133,15 +144,7 @@ class CBioPortalDataset(Dataset):
                 wide[row_id] = {}
             wide[row_id][attr] = val
 
-        # Determine column order: preserve insertion order, then sort remaining
-        all_attrs: list = []
-        seen: set = set()
-        for row in wide.values():
-            for a in row:
-                if a not in seen:
-                    all_attrs.append(a)
-                    seen.add(a)
-        all_attrs.sort()
+        all_attrs = sorted({a for row in wide.values() for a in row})
 
         id_col = "sample"
         rows = sorted(wide.items())
@@ -153,56 +156,43 @@ class CBioPortalDataset(Dataset):
         return True
 
     def _download_molecular(self, client: CBioPortalClient, dest: Path, verbose: bool) -> bool:
-        """Fetch molecular data and write gene × sample matrix TSV."""
+        """
+        Fetch molecular data in sample batches and write a sample × gene TSV.
+
+        Rows are samples, columns are genes/probes (sample-major format).  This
+        avoids loading the full gene × sample matrix into memory at once, which
+        is prohibitive for large profiles such as HM450 methylation
+        (~485 K probes × 800+ samples ≈ 388 M records).
+        """
         if not self.molecular_profile_id:
             raise ValueError("molecular_profile_id required for molecular datasets")
 
+        sample_ids = self._resolve_sample_ids(client)
+        if not sample_ids:
+            print(f"  WARNING: No samples found for {self.name}")
+            return False
+
+        n_batches = math.ceil(len(sample_ids) / self.batch_size)
         if verbose:
             print(f"  Fetching molecular profile '{self.molecular_profile_id}' "
-                  f"(this may take a while for large profiles)…")
+                  f"({len(sample_ids)} samples, {n_batches} batches of {self.batch_size})…")
 
-        records = client.get_molecular_data(
-            molecular_profile_id=self.molecular_profile_id,
-            sample_list_id=self.sample_list_id,
-            study_id=self.study_id if not self.sample_list_id else None,
-            sample_ids=client.get_sample_ids(self.study_id) if not self.sample_list_id else None,
+        def _gene_key(rec: dict) -> str:
+            return (rec.get("gene") or {}).get("hugoGeneSymbol") \
+                   or str(rec.get("entrezGeneId", ""))
+
+        batches = client.get_molecular_data_batched(
+            self.molecular_profile_id, sample_ids, batch_size=self.batch_size
         )
-
-        if not records:
+        total = self._write_batched_sample_matrix(
+            batches, _gene_key, dest, n_batches, self.molecular_profile_id, verbose
+        )
+        if total == 0:
             print(f"  WARNING: No molecular data returned for {self.name}")
             return False
 
-        # Build gene × sample pivot
-        # rows = genes, cols = samples (XenaBrowser convention)
-        gene_data: dict = {}   # hugoSymbol → {sampleId: value}
-        samples_seen: list = []
-        samples_set: set = set()
-
-        for rec in records:
-            gene_sym = rec.get("gene", {}).get("hugoGeneSymbol") or str(rec.get("entrezGeneId", ""))
-            sample = rec["sampleId"]
-            value = rec.get("value", "")
-
-            if gene_sym not in gene_data:
-                gene_data[gene_sym] = {}
-            gene_data[gene_sym][sample] = value
-
-            if sample not in samples_set:
-                samples_seen.append(sample)
-                samples_set.add(sample)
-
-        samples = sorted(samples_seen)
-        gene_col = "Hugo_Symbol"
-
-        with open(dest, "w", newline="") as f:
-            writer = csv.writer(f, delimiter="\t")
-            writer.writerow([gene_col] + samples)
-            for gene_sym in sorted(gene_data):
-                row = [gene_data[gene_sym].get(s, "") for s in samples]
-                writer.writerow([gene_sym] + row)
-
         if verbose:
-            print(f"  Saved {len(gene_data)} genes × {len(samples)} samples → {dest}")
+            print(f"  Saved {total} samples → {dest}")
         return True
 
     def _download_mutations(self, client: CBioPortalClient, dest: Path, verbose: bool) -> bool:
@@ -217,22 +207,15 @@ class CBioPortalDataset(Dataset):
             molecular_profile_id=self.molecular_profile_id,
             sample_list_id=self.sample_list_id,
             study_id=self.study_id if not self.sample_list_id else None,
-            sample_ids=client.get_sample_ids(self.study_id) if not self.sample_list_id else None,
+            sample_ids=self._resolve_sample_ids(client) if not self.sample_list_id else None,
         )
 
         if not records:
             print(f"  WARNING: No mutation data returned for {self.name}")
             return False
 
-        # Flatten nested fields for TSV output
-        flat_records = [_flatten_mutation(r) for r in records]
-        all_keys: list = []
-        keys_set: set = set()
-        for rec in flat_records:
-            for k in rec:
-                if k not in keys_set:
-                    all_keys.append(k)
-                    keys_set.add(k)
+        flat_records = [_flatten_record(r) for r in records]
+        all_keys = _ordered_keys(flat_records)
 
         with open(dest, "w", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=all_keys, delimiter="\t",
@@ -261,14 +244,8 @@ class CBioPortalDataset(Dataset):
             print(f"  WARNING: No structural variant data returned for {self.name}")
             return False
 
-        flat_records = [_flatten_sv(r) for r in records]
-        all_keys: list = []
-        keys_set: set = set()
-        for rec in flat_records:
-            for k in rec:
-                if k not in keys_set:
-                    all_keys.append(k)
-                    keys_set.add(k)
+        flat_records = [_flatten_record(r) for r in records]
+        all_keys = _ordered_keys(flat_records)
 
         with open(dest, "w", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=all_keys, delimiter="\t",
@@ -284,15 +261,14 @@ class CBioPortalDataset(Dataset):
         """Fetch CN segments (one GET per sample) and write long-format TSV."""
         if verbose:
             print(f"  Fetching copy-number segments for study '{self.study_id}'…")
-            print(f"  (requires one API call per sample — this may take several minutes)")
+            print("  (requires one API call per sample — this may take several minutes)")
 
-        records = client.get_copy_number_segments(study_id=self.study_id)
+        records = client.get_copy_number_segments(study_id=self.study_id, show_progress=verbose)
 
         if not records:
             print(f"  WARNING: No copy-number segment data returned for {self.name}")
             return False
 
-        _KEEP = {"sampleId", "patientId", "chromosome", "start", "end", "numberOfProbes", "segmentMean"}
         fieldnames = ["sampleId", "patientId", "chromosome", "start", "end", "numberOfProbes", "segmentMean"]
 
         with open(dest, "w", newline="") as f:
@@ -307,54 +283,93 @@ class CBioPortalDataset(Dataset):
         return True
 
     def _download_generic_assay(self, client: CBioPortalClient, dest: Path, verbose: bool) -> bool:
-        """Fetch GENERIC_ASSAY data and write entity × sample matrix TSV."""
+        """
+        Fetch GENERIC_ASSAY data in sample batches and write a sample × entity TSV.
+
+        Rows are samples, columns are assay entity stable IDs (sample-major format).
+        """
         if not self.molecular_profile_id:
             raise ValueError("molecular_profile_id required for generic_assay datasets")
 
+        sample_ids = self._resolve_sample_ids(client)
+        if not sample_ids:
+            print(f"  WARNING: No samples found for {self.name}")
+            return False
+
+        n_batches = math.ceil(len(sample_ids) / self.batch_size)
         if verbose:
-            print(f"  Fetching generic assay data '{self.molecular_profile_id}'…")
+            print(f"  Fetching generic assay data '{self.molecular_profile_id}' "
+                  f"({len(sample_ids)} samples, {n_batches} batches of {self.batch_size})…")
 
-        records = client.get_generic_assay_data(
-            molecular_profile_id=self.molecular_profile_id,
-            sample_list_id=self.sample_list_id,
-            study_id=self.study_id if not self.sample_list_id else None,
-            sample_ids=client.get_sample_ids(self.study_id) if not self.sample_list_id else None,
+        def _entity_key(rec: dict) -> str:
+            return rec.get("stableId") or rec.get("genericAssayStableId", "")
+
+        batches = client.get_generic_assay_data_batched(
+            self.molecular_profile_id, sample_ids, batch_size=self.batch_size
         )
-
-        if not records:
+        total = self._write_batched_sample_matrix(
+            batches, _entity_key, dest, n_batches, self.molecular_profile_id, verbose
+        )
+        if total == 0:
             print(f"  WARNING: No generic assay data returned for {self.name}")
             return False
 
-        # Build entity × sample matrix (rows = stableId, cols = samples)
-        entity_data: dict = {}
-        samples_seen: list = []
-        samples_set: set = set()
+        if verbose:
+            print(f"  Saved {total} samples → {dest}")
+        return True
 
-        for rec in records:
-            entity_id = rec.get("stableId") or rec.get("genericAssayStableId", "")
-            sample = rec["sampleId"]
-            value = rec.get("value", "")
+    def _write_batched_sample_matrix(
+        self,
+        batch_iter,
+        key_extractor: Callable[[dict], str],
+        dest: Path,
+        n_batches: int,
+        desc: str,
+        verbose: bool,
+    ) -> int:
+        """
+        Stream batches of records into a sample × feature TSV.
 
-            if entity_id not in entity_data:
-                entity_data[entity_id] = {}
-            entity_data[entity_id][sample] = value
+        Assumes all samples share the same feature set (true for dense cBioPortal
+        profiles). Column order is determined from the first non-empty batch.
 
-            if sample not in samples_set:
-                samples_seen.append(sample)
-                samples_set.add(sample)
-
-        samples = sorted(samples_seen)
+        Returns the number of samples written, or 0 if no data was received.
+        """
+        cols_ordered: Optional[List[str]] = None
+        total_samples = 0
 
         with open(dest, "w", newline="") as f:
             writer = csv.writer(f, delimiter="\t")
-            writer.writerow(["stableId"] + samples)
-            for entity_id in sorted(entity_data):
-                row = [entity_data[entity_id].get(s, "") for s in samples]
-                writer.writerow([entity_id] + row)
+            with tqdm(batch_iter, total=n_batches, unit="batch",
+                      desc=desc, disable=not verbose, leave=False) as pbar:
+                for batch_records in pbar:
+                    sample_data: dict = {}
+                    for rec in batch_records:
+                        key = key_extractor(rec)
+                        sample = rec["sampleId"]
+                        if sample not in sample_data:
+                            sample_data[sample] = {}
+                        sample_data[sample][key] = rec.get("value", "")
 
-        if verbose:
-            print(f"  Saved {len(entity_data)} entities × {len(samples)} samples → {dest}")
-        return True
+                    if not sample_data:
+                        continue
+
+                    if cols_ordered is None:
+                        # All samples in a profile share the same gene/probe set;
+                        # read column order from the first sample (O(n_cols) not O(batch×n_cols)).
+                        cols_ordered = sorted(next(iter(sample_data.values())))
+                        writer.writerow(["sample"] + cols_ordered)
+
+                    for sid, vals in sample_data.items():
+                        writer.writerow([sid] + [vals.get(c, "") for c in cols_ordered])
+                        total_samples += 1
+                    pbar.set_postfix(samples=total_samples)
+
+        if not cols_ordered:
+            dest.unlink(missing_ok=True)
+            return 0
+
+        return total_samples
 
 
 # ------------------------------------------------------------------
@@ -369,8 +384,8 @@ def _write_wide_tsv(dest: Path, id_col: str, attrs: list, rows: list) -> None:
             writer.writerow([row_id] + [row_data.get(a, "") for a in attrs])
 
 
-def _flatten_sv(rec: dict) -> dict:
-    """Flatten a cBioPortal structural variant record into a single-level dict."""
+def _flatten_record(rec: dict) -> dict:
+    """Flatten a cBioPortal record with nested dicts/lists into a single-level dict."""
     flat = {}
     for k, v in rec.items():
         if isinstance(v, dict):
@@ -383,15 +398,13 @@ def _flatten_sv(rec: dict) -> dict:
     return flat
 
 
-def _flatten_mutation(rec: dict) -> dict:
-    """Flatten a cBioPortal mutation record into a single-level dict."""
-    flat = {}
-    for k, v in rec.items():
-        if isinstance(v, dict):
-            for sub_k, sub_v in v.items():
-                flat[f"{k}.{sub_k}"] = sub_v
-        elif isinstance(v, list):
-            flat[k] = ";".join(str(i) for i in v)
-        else:
-            flat[k] = v
-    return flat
+def _ordered_keys(records: List[dict]) -> List[str]:
+    """Collect all keys from a list of dicts, preserving first-seen insertion order."""
+    keys: list = []
+    seen: set = set()
+    for rec in records:
+        for k in rec:
+            if k not in seen:
+                keys.append(k)
+                seen.add(k)
+    return keys

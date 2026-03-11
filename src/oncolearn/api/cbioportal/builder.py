@@ -105,6 +105,7 @@ class CBioPortalCohortBuilder(BaseCohortBuilder):
             # molecular / mutations
             molecular_profile_id=dataset_config.get("molecular_profile_id"),
             sample_list_id=dataset_config.get("sample_list_id"),
+            batch_size=dataset_config.get("batch_size", 200),
         )
 
     # ------------------------------------------------------------------
