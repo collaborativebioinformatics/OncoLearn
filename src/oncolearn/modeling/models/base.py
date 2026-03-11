@@ -65,6 +65,7 @@ class BaseOncoClassifier(pl.LightningModule):
             "precision": MulticlassPrecision(num_classes=num_classes, average="macro"),
             "recall": MulticlassRecall(num_classes=num_classes, average="macro"),
         })
+        self.train_metrics = metrics.clone(prefix="train_")
         self.val_metrics = metrics.clone(prefix="val_")
         self.test_metrics = metrics.clone(prefix="test_")
 
@@ -105,7 +106,16 @@ class BaseOncoClassifier(pl.LightningModule):
             l1 = sum(p.abs().sum() for p in self.parameters() if p.requires_grad)
             loss = loss + self._l1_lambda * l1
         self.log("train_loss", loss, prog_bar=True, batch_size=labels.shape[0])
+        self.train_metrics.update(preds["stage_logits"], labels)
         return loss
+
+    def on_train_epoch_end(self):
+        metrics = self.train_metrics.compute()
+        self.log("train_acc", metrics["train_acc"], prog_bar=False)
+        self.log("train_f1", metrics["train_f1"], prog_bar=False)
+        self.log("train_precision", metrics["train_precision"])
+        self.log("train_recall", metrics["train_recall"])
+        self.train_metrics.reset()
 
     def validation_step(self, batch, batch_idx):
         labels = batch["label"]

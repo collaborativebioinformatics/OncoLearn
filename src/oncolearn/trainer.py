@@ -23,6 +23,7 @@ import pytorch_lightning as pl
 # Utilize Tensor Cores on supported GPUs (trades negligible precision for performance)
 torch.set_float32_matmul_precision("high")
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, ModelSummary
+from pytorch_lightning.loggers import TensorBoardLogger
 
 from oncolearn.config import OncoLearnConfig, load_config
 from oncolearn.registry import get_model, get_modality
@@ -195,12 +196,17 @@ class OncoTrainer:
         ]
 
         gradient_clip_val = t.regularization.gradient_clip_val if t.regularization.gradient_clip_val > 0 else None
+        tb_logger = TensorBoardLogger(
+            save_dir=str(output_dir),
+            name="tensorboard",
+        )
         self._pl_trainer = pl.Trainer(
             max_epochs=t.max_epochs,
             accelerator=t.accelerator,
             devices=t.devices,
             default_root_dir=str(output_dir),
             callbacks=callbacks,
+            logger=tb_logger,
             log_every_n_steps=1,
             gradient_clip_val=gradient_clip_val,
         )
