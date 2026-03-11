@@ -1,0 +1,13 @@
+cohort:
+  code: KIRP
+  name: TCGA-KIRP
+  description: TCGA Kidney Renal Papillary Cell Carcinoma cohort with imaging data
+
+datasets:
+  - name: KIRP Imaging Manifest
+    description: TCGA kidney papillary cell cancer imaging manifest
+    category: manifest
+    url: https://www.cancerimagingarchive.net/wp-content/uploads/doiJNLP-TCGA-KIRP-01-30-2017.tcia
+    filename: doiJNLP-TCGA-KIRP-01-30-2017.tcia
+    default_subdir: TCGA-KIRP
+    file_type: manifest

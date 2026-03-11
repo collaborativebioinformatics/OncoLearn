@@ -1,0 +1,13 @@
+cohort:
+  code: THCA
+  name: TCGA-THCA
+  description: TCGA Thyroid Carcinoma cohort with imaging data
+
+datasets:
+  - name: THCA Imaging Manifest
+    description: TCGA thyroid cancer imaging manifest
+    category: manifest
+    url: https://www.cancerimagingarchive.net/wp-content/uploads/TCIA_TCGA-THCA_09-16-2015.tcia
+    filename: TCIA_TCGA-THCA_09-16-2015.tcia
+    default_subdir: TCGA-THCA
+    file_type: manifest

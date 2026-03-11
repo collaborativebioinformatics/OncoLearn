@@ -1,0 +1,13 @@
+cohort:
+  code: LIHC
+  name: TCGA-LIHC
+  description: TCGA Liver Hepatocellular Carcinoma cohort with imaging data
+
+datasets:
+  - name: LIHC Imaging Manifest
+    description: TCGA liver cancer imaging manifest
+    category: manifest
+    url: https://www.cancerimagingarchive.net/wp-content/uploads/doiJNLP-TCGA-LIHC-01-30-2017.tcia
+    filename: doiJNLP-TCGA-LIHC-01-30-2017.tcia
+    default_subdir: TCGA-LIHC
+    file_type: manifest

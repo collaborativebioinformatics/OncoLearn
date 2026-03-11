@@ -1,4 +1,3 @@
-cbioportal
-cptac
-tcia
-xenabrowser
+sources
+!configs
+!configs/*

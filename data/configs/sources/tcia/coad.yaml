@@ -1,0 +1,13 @@
+cohort:
+  code: COAD
+  name: TCGA-COAD
+  description: TCGA Colon Adenocarcinoma cohort with imaging data
+
+datasets:
+  - name: COAD Imaging Manifest
+    description: TCGA colon cancer imaging manifest
+    category: manifest
+    url: https://www.cancerimagingarchive.net/wp-content/uploads/TCIA_TCGA-COAD_09-16-2015.tcia
+    filename: TCIA_TCGA-COAD_09-16-2015.tcia
+    default_subdir: TCGA-COAD
+    file_type: manifest

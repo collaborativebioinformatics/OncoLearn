@@ -1,0 +1,21 @@
+cohort:
+  code: ACC
+  name: TCGA-ACC
+  description: TCGA Adrenocortical Carcinoma cohort with imaging data
+
+datasets:
+  - name: ACC Ki67 Segmentation Manifest
+    description: Adrenal ACC Ki67 segmentation manifest file
+    category: manifest
+    url: https://www.cancerimagingarchive.net/wp-content/uploads/Adrenal-ACC-Ki67-Seg_v1.tcia
+    filename: Adrenal-ACC-Ki67-Seg_v1.tcia
+    default_subdir: TCGA-ACC
+    file_type: manifest
+
+  - name: ACC Ki67 Supporting Data
+    description: Adrenal ACC Ki67 supporting data spreadsheet
+    category: clinical
+    url: https://www.cancerimagingarchive.net/wp-content/uploads/Adrenal-ACC-Ki67-Seg_SupportingData_20230522.xlsx
+    filename: Adrenal-ACC-Ki67-Seg_SupportingData_20230522.xlsx
+    default_subdir: TCGA-ACC
+    file_type: data

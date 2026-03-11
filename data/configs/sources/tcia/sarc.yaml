@@ -1,0 +1,13 @@
+cohort:
+  code: SARC
+  name: TCGA-SARC
+  description: TCGA Sarcoma cohort with imaging data
+
+datasets:
+  - name: SARC Imaging Manifest
+    description: TCGA sarcoma imaging manifest
+    category: manifest
+    url: https://www.cancerimagingarchive.net/wp-content/uploads/TCIA_TCGA-SARC_09-16-2015.tcia
+    filename: TCIA_TCGA-SARC_09-16-2015.tcia
+    default_subdir: TCGA-SARC
+    file_type: manifest
