@@ -47,15 +47,15 @@ class ClinicalParser(XenabrowserParser):
         return super().can_parse(file_path) and "clinical" in file_path.stem.lower()
 
     @classmethod
-    def parse(cls, file_path: Path, stage_col: str = STAGE_COL) -> pd.DataFrame:
+    def parse(cls, file_path: Path, label_col: str = STAGE_COL) -> pd.DataFrame:
         df = cls.load(file_path)
 
         # Map stage labels; drop rows with no valid stage
-        if stage_col in df.columns:
-            df["label"] = df[stage_col].apply(_map_stage)
+        if label_col in df.columns:
+            df["label"] = df[label_col].apply(_map_stage)
             df = df[df["label"].notna()].copy()
             df["label"] = df["label"].astype(int)
-            df = df.drop(columns=[stage_col])
+            df = df.drop(columns=[label_col])
 
         # Keep only numeric-coercible feature columns
         meta_cols = {"patient_id", "label"}

@@ -30,7 +30,7 @@ class GeneDataModule(pl.LightningDataModule):
         base_directory: Root directory for Xena data.
         train_split: Fraction of data to use for training (random split).
         seed: Random seed for reproducible splits.
-        label_column: Name of the label column.  Auto-detected when ``None``.
+        label_col: Name of the label column.  Auto-detected when ``None``.
         files: List of TSV file names to load.
         batch_key: Key used in the batch dict; pass ``mod_cfg.name`` for dotted-name routing.
     """
@@ -43,7 +43,7 @@ class GeneDataModule(pl.LightningDataModule):
         base_directory: str = "data/xenabrowser",
         train_split: float = 0.8,
         seed: int = 42,
-        label_column: Optional[str] = None,
+        label_col: Optional[str] = None,
         files: Optional[List[str]] = None,
         batch_key: str = "gene",
     ):
@@ -55,7 +55,7 @@ class GeneDataModule(pl.LightningDataModule):
         self.data_dir = Path(base_directory)
         self.train_split = train_split
         self.seed = seed
-        self.label_column = label_column
+        self.label_column = label_col
         self.features_files = files
         self.batch_key = batch_key
         self._full_dataset = None

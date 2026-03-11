@@ -29,7 +29,8 @@ class ClinicalDataModule(pl.LightningDataModule):
         seed: Random seed for reproducible splits.
         files: List of file names; ``files[0]`` is used as the clinical TSV.
                Defaults to ``["TCGA-BRCA.clinical.tsv"]``.
-        stage_col: Column name containing AJCC pathologic stage.
+        label_col: Column containing the label to extract (e.g. ``"AJCC_PATHOLOGIC_TUMOR_STAGE"``).
+               Defaults to ``ClinicalParser.STAGE_COL`` (XenaBrowser format).
         batch_key: Key used in the batch dict (defaults to ``"clinical"``).
     """
 
@@ -42,7 +43,7 @@ class ClinicalDataModule(pl.LightningDataModule):
         train_split: float = 0.8,
         seed: int = 42,
         files: Optional[List[str]] = None,
-        stage_col: str = ClinicalParser.STAGE_COL,
+        label_col: str = ClinicalParser.STAGE_COL,
         batch_key: str = "clinical",
     ):
         super().__init__()
@@ -54,7 +55,7 @@ class ClinicalDataModule(pl.LightningDataModule):
         self.train_split = train_split
         self.seed = seed
         self.clinical_file = files[0] if files else "TCGA-BRCA.clinical.tsv"
-        self.stage_col = stage_col
+        self.label_col = label_col
         self.batch_key = batch_key
         self._full_dataset: Optional["TabularDataset"] = None
 
@@ -69,7 +70,7 @@ class ClinicalDataModule(pl.LightningDataModule):
                 f"Clinical file not found: {file_path}. "
                 "Ensure gene modality prepare_data() has run first."
             )
-        df = ClinicalParser.parse(file_path, stage_col=self.stage_col)
+        df = ClinicalParser.parse(file_path, label_col=self.label_col)
         print(
             f"ClinicalDataModule: {len(df)} patients, "
             f"{df.shape[1] - 2} numeric features."  # -2 for patient_id + label
