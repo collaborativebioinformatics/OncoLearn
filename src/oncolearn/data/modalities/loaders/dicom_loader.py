@@ -3,7 +3,7 @@ from functools import lru_cache
 import numpy as np
 from PIL import Image
 from pathlib import Path
-from .base import BaseImageLoader
+from .base import BaseDataLoader
 
 
 @lru_cache(maxsize=1000)
@@ -29,7 +29,7 @@ def _read_pixel_array_cached(path_str: str) -> np.ndarray:
     return pixel_array
 
 
-class DicomLoader(BaseImageLoader):
+class DicomLoader(BaseDataLoader):
     """
     Image loader specialized in loading .dcm / .dicom arrays into PIL images.
     """

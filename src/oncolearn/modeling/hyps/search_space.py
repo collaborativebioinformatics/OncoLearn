@@ -102,6 +102,53 @@ def suggest_hyperparams(
     return config
 
 
+def config_params_from_trial(
+    trial_params: Dict[str, Any],
+    hpo_cfg: "HpoConfig",
+) -> Dict[str, Any]:
+    """Convert raw Optuna trial params back to a config-path dict for :func:`apply_params`.
+
+    Optuna stores parameters under internal namespaced keys (e.g.
+    ``"opt.torch.optim.AdamW.lr"``) that are NOT valid config attribute
+    paths.  This function reconstructs the proper mapping used by
+    :func:`apply_params` (e.g. ``"training.optimizer.params"``).
+    """
+    params: Dict[str, Any] = {}
+
+    # Flat params: any key that doesn't use the internal opt./loss. namespace
+    for key, val in trial_params.items():
+        if not key.startswith("opt.") and not key.startswith("loss."):
+            params[key] = val
+
+    # Conditional optimizer params
+    if hpo_cfg.optimizers:
+        chosen_opt = trial_params.get("training.optimizer.name")
+        if chosen_opt:
+            params["training.optimizer.name"] = chosen_opt
+            prefix = f"opt.{chosen_opt}."
+            opt_params = {
+                key[len(prefix):]: val
+                for key, val in trial_params.items()
+                if key.startswith(prefix)
+            }
+            params["training.optimizer.params"] = opt_params
+
+    # Conditional loss params
+    if hpo_cfg.losses:
+        chosen_loss = trial_params.get("training.loss.name")
+        if chosen_loss:
+            params["training.loss.name"] = chosen_loss
+            prefix = f"loss.{chosen_loss}."
+            loss_params = {
+                key[len(prefix):]: val
+                for key, val in trial_params.items()
+                if key.startswith(prefix)
+            }
+            params["training.loss.params"] = loss_params
+
+    return params
+
+
 def apply_params(config: "OncoLearnConfig", params: Dict[str, Any]) -> None:
     """Write ``{path: value}`` pairs into *config* in-place.
 

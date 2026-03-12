@@ -3,9 +3,10 @@ import torch
 from pathlib import Path
 from PIL import Image
 
-from oncolearn.data.modalities.image.loaders.dicom_loader import DicomLoader
-from oncolearn.data.modalities.image.loaders.pillow_loader import PillowLoader
-from oncolearn.data.modalities.image.dataset import ImageDataset, ImageDataModule
+from oncolearn.data.modalities.loaders.dicom_loader import DicomLoader
+from oncolearn.data.modalities.loaders.pillow_loader import PillowLoader
+from oncolearn.data.modalities.image import ImageDataset
+from oncolearn.data.modules.image import ImageDataModule
 
 
 # ---------------------------------------------------------------------------
@@ -75,17 +76,10 @@ def test_pillow_loader_returns_rgb_image(sample_png):
     assert img.mode == "RGB"
 
 
-def test_pillow_loader_missing_pillow(monkeypatch):
-    """Raises ImportError with a helpful message when PIL is unavailable."""
-    import PIL.Image
-
-    def _raise(*_args, **_kwargs):
-        raise ImportError("No module named 'PIL'")
-
-    monkeypatch.setattr(PIL.Image, "open", _raise)
-
-    with pytest.raises(ImportError, match="Pillow is required for standard image files"):
-        PillowLoader.load(Path("fake.png"))
+def test_pillow_loader_missing_file(tmp_path):
+    """Raises OSError when the file does not exist."""
+    with pytest.raises(OSError):
+        PillowLoader.load(tmp_path / "nonexistent.png")
 
 
 # ---------------------------------------------------------------------------
@@ -192,8 +186,8 @@ def test_image_dataset_patient_id_in_item(tmp_path):
 
 def test_image_datamodule_setup_discovers_patients(brca_image_dir):
     dm = ImageDataModule(
-        tcia_cohort_name="BRCA",
-        data_dir=str(brca_image_dir),
+        cohort_code="BRCA",
+        base_directory=str(brca_image_dir),
         image_size=(32, 32),
         batch_size=2,
         num_workers=0,
@@ -206,8 +200,8 @@ def test_image_datamodule_setup_discovers_patients(brca_image_dir):
 def test_image_datamodule_setup_maps_correct_file_counts(brca_image_dir):
     """Each patient_to_files entry should have the right number of slices."""
     dm = ImageDataModule(
-        tcia_cohort_name="BRCA",
-        data_dir=str(brca_image_dir),
+        cohort_code="BRCA",
+        base_directory=str(brca_image_dir),
         image_size=(32, 32),
         batch_size=2,
         num_workers=0,
@@ -229,8 +223,8 @@ def test_image_datamodule_setup_maps_correct_file_counts(brca_image_dir):
 def test_image_datamodule_train_val_split(brca_image_dir):
     """80/20 split over 6 patients → 4 train, 2 val."""
     dm = ImageDataModule(
-        tcia_cohort_name="BRCA",
-        data_dir=str(brca_image_dir),
+        cohort_code="BRCA",
+        base_directory=str(brca_image_dir),
         image_size=(32, 32),
         batch_size=2,
         num_workers=0,
@@ -250,8 +244,8 @@ def test_image_datamodule_train_val_split(brca_image_dir):
 def test_image_datamodule_no_overlap_between_splits(brca_image_dir):
     """Train and val patient sets must be disjoint."""
     dm = ImageDataModule(
-        tcia_cohort_name="BRCA",
-        data_dir=str(brca_image_dir),
+        cohort_code="BRCA",
+        base_directory=str(brca_image_dir),
         image_size=(32, 32),
         batch_size=2,
         num_workers=0,
@@ -267,8 +261,8 @@ def test_image_datamodule_no_overlap_between_splits(brca_image_dir):
 def test_image_datamodule_datasets_return_tensors(brca_image_dir):
     """Items from train_dataset should be float32 image tensors."""
     dm = ImageDataModule(
-        tcia_cohort_name="BRCA",
-        data_dir=str(brca_image_dir),
+        cohort_code="BRCA",
+        base_directory=str(brca_image_dir),
         image_size=(32, 32),
         batch_size=2,
         num_workers=0,
@@ -284,8 +278,8 @@ def test_image_datamodule_datasets_return_tensors(brca_image_dir):
 def test_image_datamodule_dataloader_batches(brca_image_dir):
     """train_dataloader should yield a batch shaped (B, N, 3, H, W)."""
     dm = ImageDataModule(
-        tcia_cohort_name="BRCA",
-        data_dir=str(brca_image_dir),
+        cohort_code="BRCA",
+        base_directory=str(brca_image_dir),
         image_size=(32, 32),
         batch_size=2,
         num_workers=0,
@@ -308,13 +302,13 @@ def test_image_datamodule_dataloader_batches(brca_image_dir):
 # ---------------------------------------------------------------------------
 
 def test_extract_patient_id_from_tcga_path(tmp_path):
-    dm = ImageDataModule(tcia_cohort_name="BRCA", data_dir=str(tmp_path), num_workers=0)
+    dm = ImageDataModule(cohort_code="BRCA", base_directory=str(tmp_path), num_workers=0)
     path = Path("/data/tcia/TCGA-BRCA/TCGA-A1-0001/scan/slice_001.png")
     assert dm._extract_patient_id(path) == "TCGA-A1-0001"
 
 
 def test_extract_patient_id_falls_back_to_stem(tmp_path):
     """Paths with no 3-part TCGA segment fall back to the file stem."""
-    dm = ImageDataModule(tcia_cohort_name="BRCA", data_dir=str(tmp_path), num_workers=0)
+    dm = ImageDataModule(cohort_code="BRCA", base_directory=str(tmp_path), num_workers=0)
     path = Path("/data/images/no_patient_info/slice.png")
     assert dm._extract_patient_id(path) == "slice"

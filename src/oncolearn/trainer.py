@@ -26,9 +26,10 @@ from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, ModelSum
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from oncolearn.config import OncoLearnConfig, load_config
-from oncolearn.registry import get_model, get_modality
+from oncolearn.registry import get_model, get_dataset
 import oncolearn.modeling  # noqa: F401 — triggers @register_model / @register_encoder decorators
-from oncolearn.data.multimodal import MultimodalDataModule
+import oncolearn.data.modules  # noqa: F401 — triggers @register_dataset decorators
+from oncolearn.data.modules.multimodal import MultimodalDataModule
 
 logger = logging.getLogger(__name__)
 
@@ -94,30 +95,55 @@ class OncoTrainer:
         return torch.device("cpu")
 
     def _build_datamodule(self) -> MultimodalDataModule:
-        """Instantiate each registered modality DataModule with its config kwargs."""
-        dm_instances = []
-        data_cfg = self.config.data
-        for mod_cfg in data_cfg.modalities:
-            dm_cls = get_modality(mod_cfg.name)
-            # Build kwargs: data-level defaults then per-modality overrides.
-            dm_kwargs: dict = {
-                "base_directory": data_cfg.base_directory,
-                "cohort_code": data_cfg.cohort_code,
-            }
-            dm_kwargs.update(mod_cfg.kwargs)
-            if mod_cfg.files is not None:
-                dm_kwargs["files"] = mod_cfg.files
-            dm = dm_cls(batch_key=mod_cfg.name, **dm_kwargs)
-            dm.name = mod_cfg.name  # required by MultimodalDataModule
-            dm_instances.append(dm)
+        """Load the pipeline file and instantiate a datamodule per modality."""
+        from oncolearn.data.pipeline.loader import load_pipeline_file
+        from oncolearn.data.modules.base import PipelineDataModule
+        from oncolearn.data.pipeline.nodes import ImageModality, TabularModality
 
-        # Use the first modality's join settings (typically all the same).
-        first = data_cfg.modalities[0]
+        data_cfg = self.config.data
         t = self.config.training
-        return MultimodalDataModule(
-            modalities=dm_instances,
-            join_on=first.join_on,
-            strategy=first.join_strategy,
+
+        dataset_node = load_pipeline_file(data_cfg.pipeline)
+        dms = []
+        for m in dataset_node.modalities:
+            if isinstance(m, ImageModality):
+                from oncolearn.data.modules.image import ImageDataModule
+                dm = ImageDataModule(
+                    cohort_code=m.cohort_code,
+                    base_directory=m.base_dir,
+                    n_slices=m.n_slices,
+                    prefer_mr=m.prefer_mr,
+                    batch_size=t.batch_size,
+                    num_workers=t.num_workers,
+                    seed=t.seed,
+                    batch_key=m.name,
+                )
+                dm.name = m.name
+                dms.append(dm)
+            elif isinstance(m, TabularModality):
+                dms.append(PipelineDataModule.from_modality(
+                    m,
+                    batch_size=t.batch_size,
+                    num_workers=t.num_workers,
+                    seed=t.seed,
+                ))
+            else:
+                raise TypeError(
+                    f"Unknown modality node type: {type(m)}. "
+                    f"Expected TabularModality or ImageModality."
+                )
+
+        # Resolve dataset class: registry lookup if dataset_node.name is set,
+        # else fall back to MultimodalDataModule.
+        if dataset_node.name:
+            dataset_cls = get_dataset(dataset_node.name)
+        else:
+            dataset_cls = MultimodalDataModule
+
+        return dataset_cls(
+            modalities=dms,
+            join_on=dataset_node.join_on,
+            strategy=dataset_node.join_strategy,
             batch_size=t.batch_size,
             num_workers=t.num_workers,
             splits_dir=data_cfg.splits_dir,
@@ -131,26 +157,8 @@ class OncoTrainer:
         return model_cls(self.config)
 
     def _check_modality_compatibility(self, model_cls) -> None:
-        """Warn if the config's modalities don't match the model's declared expectations."""
-        expected = getattr(model_cls, "expected_modalities", [])
-        if not expected:
-            return
-        configured = {m.name for m in self.config.data.modalities}
-        expected_set = set(expected)
-        missing = expected_set - configured
-        unexpected = configured - expected_set
-        if missing:
-            logger.warning(
-                "Model '%s' expects modalities %s but the following are absent from "
-                "data.modalities: %s",
-                self.config.model.name, sorted(expected), sorted(missing),
-            )
-        if unexpected:
-            logger.warning(
-                "Model '%s' does not declare support for modalities %s — "
-                "they will be passed to the model anyway.",
-                self.config.model.name, sorted(unexpected),
-            )
+        """No-op: modality validation is now deferred to pipeline execution."""
+        pass
 
     # ------------------------------------------------------------------
     # Public API
@@ -212,9 +220,9 @@ class OncoTrainer:
         )
 
         logger.info(
-            "Training | model=%s | modalities=%s | device=%s | epochs=%d",
+            "Training | model=%s | pipeline=%s | device=%s | epochs=%d",
             self.config.model.name,
-            [m.name for m in self.config.data.modalities],
+            self.config.data.pipeline,
             self.device,
             t.max_epochs,
         )

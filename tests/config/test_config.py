@@ -4,7 +4,7 @@ from pathlib import Path
 
 from oncolearn.config import (
     DataConfig,
-    ModalityConfig,
+    EncoderConfig,
     ModelConfig,
     OncoLearnConfig,
     OutputConfig,
@@ -27,15 +27,15 @@ def _write_yaml(path: Path, content: dict) -> Path:
 
 def _make_config(**data_kwargs) -> OncoLearnConfig:
     """Build a minimal OncoLearnConfig using the new DataConfig structure."""
-    modalities = data_kwargs.pop("modalities", [ModalityConfig(name="gene")])
+    pipeline = data_kwargs.pop("pipeline", "some_pipeline.py")
     return OncoLearnConfig(
         model=ModelConfig(name="gated_late_fusion"),
-        data=DataConfig(modalities=modalities, **data_kwargs),
+        data=DataConfig(pipeline=pipeline, **data_kwargs),
     )
 
 
 REPO_ROOT = Path(__file__).parent.parent.parent
-DATA_CONFIGS = REPO_ROOT / "data" / "configs"
+DATA_CONFIGS = REPO_ROOT / "data" / "configs" / "modeling" / "multimodal"
 
 
 # ---------------------------------------------------------------------------
@@ -50,13 +50,10 @@ def test_model_config_defaults():
     assert cfg.dropout == pytest.approx(0.2)
 
 
-def test_modality_config_defaults():
-    cfg = ModalityConfig(name="oncolearn.modality.gene")
-    assert cfg.name == "oncolearn.modality.gene"
-    assert cfg.join_on == "patient_id"
-    assert cfg.join_strategy == "inner"
-    assert cfg.files is None
-    assert cfg.kwargs == {}
+def test_data_config_defaults():
+    cfg = DataConfig(pipeline="my_pipeline.py")
+    assert cfg.pipeline == "my_pipeline.py"
+    assert cfg.splits_dir is None
 
 
 def test_training_config_defaults():
@@ -80,13 +77,6 @@ def test_output_config_defaults():
     assert cfg.save_every_n_epochs == 5
 
 
-def test_data_config_defaults():
-    cfg = DataConfig(modalities=[ModalityConfig(name="gene")])
-    assert cfg.base_directory == "data/xenabrowser"
-    assert cfg.cohort_code == "TCGA-BRCA"
-    assert cfg.splits_dir is None
-
-
 def test_oncolearn_config_optional_sections_get_defaults():
     cfg = _make_config()
     assert isinstance(cfg.training, TrainingConfig)
@@ -98,80 +88,45 @@ def test_oncolearn_config_optional_sections_get_defaults():
 # Validation
 # ---------------------------------------------------------------------------
 
-def test_validate_passes_with_one_modality():
+def test_validate_passes():
     cfg = _make_config()
     _validate(cfg)  # must not raise
 
 
-def test_validate_passes_with_multiple_modalities():
-    cfg = _make_config(modalities=[
-        ModalityConfig(name="gene"),
-        ModalityConfig(name="image"),
-    ])
-    _validate(cfg)  # must not raise
-
-
-def test_validate_raises_on_empty_modalities():
-    cfg = _make_config(modalities=[])
-    with pytest.raises(ValueError, match="at least one"):
+def test_validate_raises_on_empty_pipeline():
+    cfg = _make_config(pipeline="")
+    with pytest.raises(ValueError, match="pipeline"):
         _validate(cfg)
 
 
 def test_validate_raises_on_empty_model_name():
     cfg = OncoLearnConfig(
         model=ModelConfig(name=""),
-        data=DataConfig(modalities=[ModalityConfig(name="gene")]),
+        data=DataConfig(pipeline="some.py"),
     )
     with pytest.raises(ValueError, match="non-empty"):
         _validate(cfg)
 
 
-def test_validate_raises_on_duplicate_modality_names():
-    cfg = _make_config(modalities=[
-        ModalityConfig(name="gene"),
-        ModalityConfig(name="gene"),
-    ])
-    with pytest.raises(ValueError, match="Duplicate"):
-        _validate(cfg)
-
-
-def test_validate_raises_when_encoder_modality_not_in_data(tmp_path):
-    """encoder.modality must match a name in data.modalities."""
-    from oncolearn.config.schema import EncoderConfig
-    cfg = OncoLearnConfig(
-        model=ModelConfig(
-            name="gated_late_fusion",
-            encoders=[EncoderConfig(name="gene", modality="oncolearn.modality.NONEXISTENT")],
-        ),
-        data=DataConfig(modalities=[ModalityConfig(name="oncolearn.modality.gene")]),
-    )
-    with pytest.raises(ValueError, match="references modality"):
-        _validate(cfg)
-
-
 # ---------------------------------------------------------------------------
-# load_config — happy paths (new data: section format)
+# load_config — happy paths
 # ---------------------------------------------------------------------------
 
-def test_load_minimal_config_new_format(tmp_path):
+def test_load_minimal_config(tmp_path):
     cfg = load_config(_write_yaml(tmp_path / "cfg.yaml", {
         "model": {"name": "gated_late_fusion"},
-        "data": {
-            "modalities": [{"name": "oncolearn.modality.gene"}],
-        },
+        "data": {"pipeline": "some_pipeline.py"},
     }))
     assert cfg.model.name == "gated_late_fusion"
-    assert len(cfg.data.modalities) == 1
-    assert cfg.data.modalities[0].name == "oncolearn.modality.gene"
+    assert cfg.data.pipeline == "some_pipeline.py"
     assert cfg.training.max_epochs == 50  # default
 
 
-def test_load_full_config_new_format(tmp_path):
+def test_load_full_config(tmp_path):
     raw = {
         "model": {
             "name": "gated_late_fusion",
-            "num_stage_classes": 3,
-            "num_subtype_classes": 2,
+            "num_stage_classes": 4,
             "freeze_encoders": False,
             "dropout": 0.1,
             "encoders": [
@@ -179,35 +134,19 @@ def test_load_full_config_new_format(tmp_path):
             ],
         },
         "data": {
-            "base_directory": "data/xena",
-            "cohort_code": "TCGA-BRCA",
+            "pipeline": "path/to/pipeline.py",
             "splits_dir": "data/splits/fold_0",
-            "modalities": [
-                {
-                    "name": "oncolearn.modality.gene",
-                    "join_on": "patient_id",
-                    "join_strategy": "inner",
-                    "files": ["mirna.tsv", "pam50.tsv"],
-                },
-                {
-                    "name": "oncolearn.modality.image",
-                    "n_slices": 7,
-                },
-            ],
         },
         "training": {"max_epochs": 20, "batch_size": 8, "seed": 123},
         "output": {"dir": "my_outputs", "experiment_name": "exp_01"},
     }
     cfg = load_config(_write_yaml(tmp_path / "cfg.yaml", raw))
 
-    assert cfg.model.num_stage_classes == 3
+    assert cfg.model.num_stage_classes == 4
     assert cfg.model.freeze_encoders is False
     assert cfg.model.encoders[0].modality == "oncolearn.modality.gene"
-    assert cfg.data.base_directory == "data/xena"
+    assert cfg.data.pipeline == "path/to/pipeline.py"
     assert cfg.data.splits_dir == "data/splits/fold_0"
-    assert cfg.data.modalities[0].name == "oncolearn.modality.gene"
-    assert cfg.data.modalities[0].files == ["mirna.tsv", "pam50.tsv"]
-    assert cfg.data.modalities[1].kwargs["n_slices"] == 7
     assert cfg.training.max_epochs == 20
     assert cfg.training.seed == 123
     assert cfg.output.dir == "my_outputs"
@@ -216,7 +155,7 @@ def test_load_full_config_new_format(tmp_path):
 def test_load_config_partial_training_override(tmp_path):
     cfg = load_config(_write_yaml(tmp_path / "cfg.yaml", {
         "model": {"name": "m"},
-        "data": {"modalities": [{"name": "gene"}]},
+        "data": {"pipeline": "p.py"},
         "training": {"max_epochs": 5, "seed": 99},
     }))
     assert cfg.training.max_epochs == 5
@@ -227,7 +166,7 @@ def test_load_config_partial_training_override(tmp_path):
 def test_load_config_unknown_training_keys_are_silently_dropped(tmp_path):
     cfg = load_config(_write_yaml(tmp_path / "cfg.yaml", {
         "model": {"name": "m"},
-        "data": {"modalities": [{"name": "gene"}]},
+        "data": {"pipeline": "p.py"},
         "training": {"max_epochs": 1, "nonexistent_key": "value"},
     }))
     assert cfg.training.max_epochs == 1
@@ -244,7 +183,7 @@ def test_load_config_raises_file_not_found():
 
 def test_load_config_raises_on_missing_model_section(tmp_path):
     cfg_file = _write_yaml(tmp_path / "cfg.yaml", {
-        "data": {"modalities": [{"name": "gene"}]},
+        "data": {"pipeline": "p.py"},
     })
     with pytest.raises(KeyError, match="model"):
         load_config(cfg_file)
@@ -258,30 +197,12 @@ def test_load_config_raises_on_missing_data_section(tmp_path):
         load_config(cfg_file)
 
 
-def test_load_config_raises_on_empty_modalities_list(tmp_path):
+def test_load_config_raises_on_missing_pipeline(tmp_path):
     cfg_file = _write_yaml(tmp_path / "cfg.yaml", {
         "model": {"name": "gated_late_fusion"},
-        "data": {"modalities": []},
+        "data": {"splits_dir": None},
     })
     with pytest.raises((ValueError, KeyError)):
-        load_config(cfg_file)
-
-
-def test_load_config_raises_on_duplicate_modality_names(tmp_path):
-    cfg_file = _write_yaml(tmp_path / "cfg.yaml", {
-        "model": {"name": "m"},
-        "data": {"modalities": [{"name": "gene"}, {"name": "gene"}]},
-    })
-    with pytest.raises(ValueError, match="Duplicate"):
-        load_config(cfg_file)
-
-
-def test_load_config_raises_on_modality_without_name(tmp_path):
-    cfg_file = _write_yaml(tmp_path / "cfg.yaml", {
-        "model": {"name": "m"},
-        "data": {"modalities": [{"cohort_code": "TCGA-BRCA"}]},
-    })
-    with pytest.raises(KeyError, match="name"):
         load_config(cfg_file)
 
 
@@ -313,12 +234,7 @@ def test_save_config_creates_parent_directories(tmp_path):
 def test_save_config_round_trips(tmp_path):
     original = OncoLearnConfig(
         model=ModelConfig(name="gated_late_fusion", num_stage_classes=3, dropout=0.1),
-        data=DataConfig(
-            modalities=[
-                ModalityConfig(name="gene", files=["a.tsv"], kwargs={"cohort_code": "TCGA-BRCA"}),
-                ModalityConfig(name="image", kwargs={"n_slices": 7}),
-            ],
-        ),
+        data=DataConfig(pipeline="path/to/pipeline.py", splits_dir="data/splits"),
         training=TrainingConfig(max_epochs=10, seed=7),
         output=OutputConfig(dir="out", experiment_name="exp"),
     )
@@ -329,30 +245,24 @@ def test_save_config_round_trips(tmp_path):
     assert restored.model.name == original.model.name
     assert restored.model.num_stage_classes == original.model.num_stage_classes
     assert restored.model.dropout == pytest.approx(original.model.dropout)
-    assert len(restored.data.modalities) == len(original.data.modalities)
-    assert restored.data.modalities[0].name == "gene"
-    assert restored.data.modalities[0].files == ["a.tsv"]
-    assert restored.data.modalities[0].kwargs["cohort_code"] == "TCGA-BRCA"
-    assert restored.data.modalities[1].name == "image"
-    assert restored.data.modalities[1].kwargs["n_slices"] == 7
+    assert restored.data.pipeline == original.data.pipeline
+    assert restored.data.splits_dir == original.data.splits_dir
     assert restored.training.max_epochs == 10
     assert restored.training.seed == 7
     assert restored.output.dir == "out"
 
 
-def test_save_config_modality_kwargs_inlined_not_nested(tmp_path):
-    """Saved YAML inlines modality kwargs alongside 'name' under data.modalities."""
-    cfg = _make_config(modalities=[
-        ModalityConfig(name="gene", kwargs={"cohort_code": "TCGA-BRCA"}),
-    ])
+def test_save_config_data_section_format(tmp_path):
+    """Saved YAML has 'pipeline' key under 'data', not 'modalities'."""
+    cfg = _make_config(pipeline="my/pipeline.py")
     path = tmp_path / "cfg.yaml"
     save_config(cfg, path)
 
     with path.open() as f:
         raw = yaml.safe_load(f)
 
-    assert raw["data"]["modalities"][0]["cohort_code"] == "TCGA-BRCA"
-    assert "kwargs" not in raw["data"]["modalities"][0]
+    assert raw["data"]["pipeline"] == "my/pipeline.py"
+    assert "modalities" not in raw["data"]
 
 
 # ---------------------------------------------------------------------------
@@ -362,25 +272,24 @@ def test_save_config_modality_kwargs_inlined_not_nested(tmp_path):
 @pytest.mark.parametrize("filename", [
     "tcga_brca_tabular_only.yaml",
     "tcga_brca_multimodal.yaml",
+    "tcga_brca_cbioportal.yaml",
 ])
 def test_example_configs_load_without_error(filename):
     cfg = load_config(DATA_CONFIGS / filename)
     assert cfg.model.name
-    assert len(cfg.data.modalities) >= 1
+    assert cfg.data.pipeline
 
 
-def test_tabular_only_example_has_one_modality():
+def test_tabular_only_example_pipeline():
     cfg = load_config(DATA_CONFIGS / "tcga_brca_tabular_only.yaml")
-    assert len(cfg.data.modalities) == 1
-    assert cfg.data.modalities[0].name == "oncolearn.modality.gene"
+    assert "tcga_brca_xenabrowser" in cfg.data.pipeline
 
 
-def test_multimodal_example_has_gene_clinical_image():
+def test_multimodal_example_has_gene_clinical_encoders():
     cfg = load_config(DATA_CONFIGS / "tcga_brca_multimodal.yaml")
-    names = {m.name for m in cfg.data.modalities}
-    assert "oncolearn.modality.gene" in names
-    assert "oncolearn.modality.clinical" in names
-    assert "oncolearn.modality.image" in names
+    modalities = {e.modality for e in cfg.model.encoders}
+    assert "oncolearn.modality.gene" in modalities
+    assert "oncolearn.modality.clinical" in modalities
 
 
 def test_example_configs_have_valid_training_params():

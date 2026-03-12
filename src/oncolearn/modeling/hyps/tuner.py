@@ -156,7 +156,9 @@ class OptunaHPTuner:
         )
 
         best_trial = self._study.best_trial
-        best_params = best_trial.params
+
+        from .search_space import config_params_from_trial
+        best_params = config_params_from_trial(best_trial.params, self.hpo_cfg)
 
         best_config = copy.deepcopy(self.base_config)
         apply_params(best_config, best_params)

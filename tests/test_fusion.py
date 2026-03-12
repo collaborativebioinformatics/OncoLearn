@@ -6,7 +6,6 @@ import torch
 from oncolearn.config.schema import (
     DataConfig,
     EncoderConfig,
-    ModalityConfig,
     ModelConfig,
     OncoLearnConfig,
     TrainingConfig,
@@ -28,14 +27,7 @@ def _make_config(enc_name: str, enc_modality=None) -> OncoLearnConfig:
                 )
             ],
         ),
-        data=DataConfig(
-            modalities=[
-                ModalityConfig(
-                    name=enc_modality or enc_name,
-                    files=["dummy.tsv"],
-                )
-            ],
-        ),
+        data=DataConfig(pipeline="dummy_pipeline.py"),
         training=TrainingConfig(),
         output=OutputConfig(),
     )

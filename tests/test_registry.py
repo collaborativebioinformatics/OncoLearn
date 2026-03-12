@@ -5,6 +5,7 @@ import pytest
 from oncolearn.registry.encoders import register_encoder, get_encoder, get_all_encoders
 from oncolearn.registry.modalities import register_modality, get_modality, get_all_modalities
 from oncolearn.registry.models import register_model, get_model, get_all_models
+from oncolearn.registry.datasets import register_dataset, get_dataset, get_all_datasets
 
 
 # ---------------------------------------------------------------------------
@@ -139,11 +140,58 @@ def test_get_unknown_model_raises():
 
 
 # ---------------------------------------------------------------------------
+# Dataset registry
+# ---------------------------------------------------------------------------
+
+def test_register_dataset_short_name():
+    @register_dataset("test_ds")
+    class MyDataset:
+        pass
+
+    assert get_dataset("test_ds") is MyDataset
+
+
+def test_register_dataset_dotted_name():
+    @register_dataset("test_ds2", "oncolearn.datasets.test.MyDataset2")
+    class MyDataset2:
+        pass
+
+    assert get_dataset("test_ds2") is MyDataset2
+    assert get_dataset("oncolearn.datasets.test.MyDataset2") is MyDataset2
+
+
+def test_register_dataset_duplicate_different_class_raises():
+    @register_dataset("conflict_ds")
+    class H:
+        pass
+
+    with pytest.raises(ValueError, match="already registered"):
+        @register_dataset("conflict_ds")
+        class I:
+            pass
+
+
+def test_register_dataset_same_class_idempotent():
+    @register_dataset("idem_ds")
+    class J:
+        pass
+
+    register_dataset("idem_ds")(J)
+    assert get_dataset("idem_ds") is J
+
+
+def test_get_unknown_dataset_raises():
+    with pytest.raises(KeyError, match="not found in registry"):
+        get_dataset("nonexistent_dataset_xyz")
+
+
+# ---------------------------------------------------------------------------
 # Real application dotted names (loaded via oncolearn.modeling import)
 # ---------------------------------------------------------------------------
 
 def test_real_dotted_encoder_names():
     """Dotted names registered by the application resolve to the same class."""
+    pytest.importorskip("torch", reason="requires torch")
     import oncolearn.modeling  # noqa: F401 — triggers registration
 
     from oncolearn.registry.encoders import get_encoder
@@ -161,18 +209,15 @@ def test_real_dotted_encoder_names():
 
 
 def test_real_dotted_modality_names():
-    """Dotted names registered by the application resolve to the same class."""
+    """Dotted names registered by the application resolve to the same class.
+
+    Only the image modality is registry-based; tabular modalities (gene,
+    clinical) are now loaded via the pipeline DSL and are not registered.
+    """
+    pytest.importorskip("pytorch_lightning", reason="requires pytorch_lightning")
     import oncolearn.data.modalities  # noqa: F401 — triggers registration
 
     from oncolearn.registry.modalities import get_modality
-    gene_short = get_modality("gene")
-    gene_long = get_modality("oncolearn.modality.gene")
-    assert gene_short is gene_long
-
-    clinical_short = get_modality("clinical")
-    clinical_long = get_modality("oncolearn.modality.clinical")
-    assert clinical_short is clinical_long
-
     image_short = get_modality("image")
     image_long = get_modality("oncolearn.modality.image")
     assert image_short is image_long
@@ -180,9 +225,20 @@ def test_real_dotted_modality_names():
 
 def test_real_dotted_model_names():
     """Dotted names registered by the application resolve to the same class."""
+    pytest.importorskip("torch", reason="requires torch")
     import oncolearn.modeling  # noqa: F401
 
     from oncolearn.registry.models import get_model
     short = get_model("gated_late_fusion")
     long = get_model("oncolearn.model.multimodal.gated_late_fusion")
     assert short is long
+
+
+def test_real_dataset_registry():
+    """MultimodalDataModule is registered under its dotted name."""
+    pytest.importorskip("pytorch_lightning", reason="requires pytorch_lightning")
+    import oncolearn.data.modules  # noqa: F401 — triggers @register_dataset
+
+    from oncolearn.registry.datasets import get_dataset
+    from oncolearn.data.modules.multimodal import MultimodalDataModule
+    assert get_dataset("oncolearn.datasets.multimodal") is MultimodalDataModule

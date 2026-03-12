@@ -91,7 +91,7 @@ def download_all(
     """Download all cohorts that have a YAML config file."""
     cohorts = get_available_cohorts()
     if not cohorts:
-        print("No cBioPortal cohort configs found in data/cbioportal/configs/")
+        print("No cBioPortal cohort configs found in data/configs/sources/cbioportal/")
         return {}
     return download_cohorts(
         cohorts,

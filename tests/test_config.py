@@ -1,4 +1,4 @@
-"""Tests for schema + loader restructuring (Unit 2)."""
+"""Tests for the pipeline-based config schema + loader (post-refactor)."""
 
 import pytest
 from pathlib import Path
@@ -7,7 +7,6 @@ from oncolearn.config.loader import load_config, save_config
 from oncolearn.config.schema import (
     DataConfig,
     EncoderConfig,
-    ModalityConfig,
     ModelConfig,
     OncoLearnConfig,
     TrainingConfig,
@@ -28,25 +27,17 @@ def write_yaml(tmp_path: Path, content: str) -> Path:
 MINIMAL_YAML = """\
 model:
   name: gated_late_fusion
-  num_stage_classes: 5
+  num_stage_classes: 4
   encoders:
     - name: gene
       modality: oncolearn.modality.gene
       output_dim: 128
 
 data:
-  base_directory: data/xenabrowser
-  cohort_code: TCGA-BRCA
-  modalities:
-    - name: oncolearn.modality.gene
-      join_on: patient_id
-      join_strategy: inner
-      files:
-        - TCGA-BRCA.mirna.tsv
-        - pam50.tsv
+  pipeline: data/configs/modeling/multimodal/preprocessing/tcga_brca_xenabrowser.py
 """
 
-MULTI_MODALITY_YAML = """\
+MULTI_ENCODER_YAML = """\
 model:
   name: gated_late_fusion
   encoders:
@@ -56,19 +47,8 @@ model:
       modality: oncolearn.modality.clinical
 
 data:
-  base_directory: data/xena
-  cohort_code: TCGA-BRCA
+  pipeline: data/configs/modeling/multimodal/preprocessing/tcga_brca_xenabrowser.py
   splits_dir: data/splits/fold_0
-  modalities:
-    - name: oncolearn.modality.gene
-      join_on: patient_id
-      join_strategy: inner
-      files:
-        - a.tsv
-        - b.tsv
-    - name: oncolearn.modality.clinical
-      files:
-        - c.tsv
 """
 
 
@@ -78,48 +58,22 @@ data:
 
 def test_load_data_section(tmp_path):
     cfg = load_config(write_yaml(tmp_path, MINIMAL_YAML))
-
     assert isinstance(cfg.data, DataConfig)
-    assert cfg.data.base_directory == "data/xenabrowser"
-    assert cfg.data.cohort_code == "TCGA-BRCA"
+    assert "tcga_brca_xenabrowser.py" in cfg.data.pipeline
     assert cfg.data.splits_dir is None
-    assert len(cfg.data.modalities) == 1
-
-
-def test_load_modality_name(tmp_path):
-    cfg = load_config(write_yaml(tmp_path, MINIMAL_YAML))
-    mod = cfg.data.modalities[0]
-    assert mod.name == "oncolearn.modality.gene"
-
-
-def test_load_modality_files(tmp_path):
-    cfg = load_config(write_yaml(tmp_path, MINIMAL_YAML))
-    mod = cfg.data.modalities[0]
-    assert mod.files == ["TCGA-BRCA.mirna.tsv", "pam50.tsv"]
-
-
-def test_load_modality_join_on_default(tmp_path):
-    cfg = load_config(write_yaml(tmp_path, MINIMAL_YAML))
-    assert cfg.data.modalities[0].join_on == "patient_id"
-
-
-def test_load_modality_join_on_custom(tmp_path):
-    yaml_str = MINIMAL_YAML.replace("join_on: patient_id", "join_on: sample_id")
-    cfg = load_config(write_yaml(tmp_path, yaml_str))
-    assert cfg.data.modalities[0].join_on == "sample_id"
 
 
 def test_load_splits_dir(tmp_path):
-    cfg = load_config(write_yaml(tmp_path, MULTI_MODALITY_YAML))
+    cfg = load_config(write_yaml(tmp_path, MULTI_ENCODER_YAML))
     assert cfg.data.splits_dir == "data/splits/fold_0"
 
 
-def test_load_multiple_modalities(tmp_path):
-    cfg = load_config(write_yaml(tmp_path, MULTI_MODALITY_YAML))
-    assert len(cfg.data.modalities) == 2
-    names = [m.name for m in cfg.data.modalities]
-    assert "oncolearn.modality.gene" in names
-    assert "oncolearn.modality.clinical" in names
+def test_load_multiple_encoders(tmp_path):
+    cfg = load_config(write_yaml(tmp_path, MULTI_ENCODER_YAML))
+    assert len(cfg.model.encoders) == 2
+    modalities = [e.modality for e in cfg.model.encoders]
+    assert "oncolearn.modality.gene" in modalities
+    assert "oncolearn.modality.clinical" in modalities
 
 
 # ---------------------------------------------------------------------------
@@ -141,8 +95,7 @@ model:
       output_dim: 64
 
 data:
-  modalities:
-    - name: oncolearn.modality.gene
+  pipeline: some_pipeline.py
 """
     cfg = load_config(write_yaml(tmp_path, yaml_str))
     assert cfg.model.encoders[0].modality is None
@@ -152,45 +105,27 @@ data:
 # Validation
 # ---------------------------------------------------------------------------
 
-def test_validation_encoder_modality_mismatch(tmp_path):
-    yaml_str = """\
-model:
-  name: gated_late_fusion
-  encoders:
-    - name: gene
-      modality: oncolearn.modality.NONEXISTENT
-
-data:
-  modalities:
-    - name: oncolearn.modality.gene
-"""
-    with pytest.raises(ValueError, match="references modality"):
-        load_config(write_yaml(tmp_path, yaml_str))
-
-
-def test_validation_empty_modalities(tmp_path):
+def test_validation_empty_pipeline(tmp_path):
     yaml_str = """\
 model:
   name: gated_late_fusion
 
 data:
-  modalities: []
+  pipeline: ""
 """
     with pytest.raises((ValueError, KeyError)):
         load_config(write_yaml(tmp_path, yaml_str))
 
 
-def test_validation_duplicate_modality_names(tmp_path):
+def test_validation_missing_pipeline(tmp_path):
     yaml_str = """\
 model:
   name: gated_late_fusion
 
 data:
-  modalities:
-    - name: oncolearn.modality.gene
-    - name: oncolearn.modality.gene
+  splits_dir: null
 """
-    with pytest.raises(ValueError, match="Duplicate modality names"):
+    with pytest.raises((ValueError, KeyError)):
         load_config(write_yaml(tmp_path, yaml_str))
 
 
@@ -204,9 +139,6 @@ def test_save_load_roundtrip(tmp_path):
     save_config(cfg, out_path)
     cfg2 = load_config(out_path)
 
-    assert cfg2.data.base_directory == cfg.data.base_directory
-    assert cfg2.data.cohort_code == cfg.data.cohort_code
-    assert len(cfg2.data.modalities) == len(cfg.data.modalities)
-    assert cfg2.data.modalities[0].name == cfg.data.modalities[0].name
-    assert cfg2.data.modalities[0].files == cfg.data.modalities[0].files
+    assert cfg2.data.pipeline == cfg.data.pipeline
+    assert cfg2.data.splits_dir == cfg.data.splits_dir
     assert cfg2.model.encoders[0].modality == cfg.model.encoders[0].modality

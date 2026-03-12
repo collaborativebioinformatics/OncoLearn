@@ -1,5 +1,5 @@
 """
-Shared TabularDataset used by GeneDataModule and ClinicalDataModule.
+TabularDataset: generic PyTorch Dataset for tabular features from a DataFrame.
 """
 from typing import Any, Dict, List, Optional
 
@@ -7,14 +7,15 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
+from oncolearn.data.utils import normalize_patient_id
+
 
 class TabularDataset(Dataset):
     """
     Generic PyTorch Dataset for tabular features derived from a DataFrame.
 
     All columns except ``patient_id_col`` and ``label_col`` are coerced to
-    float32, with NaN filled as 0.  Used by both GeneDataModule and
-    ClinicalDataModule.
+    float32, with NaN filled as 0.
     """
 
     def __init__(
@@ -42,10 +43,7 @@ class TabularDataset(Dataset):
             )
 
         raw_ids = df[patient_id_col].values.tolist()
-        self.patient_ids = [
-            pid[:12] if isinstance(pid, str) and pid.startswith("TCGA-") else pid
-            for pid in raw_ids
-        ]
+        self.patient_ids = [normalize_patient_id(pid) for pid in raw_ids]
 
         exclude = {patient_id_col}
         if label_col and label_col in df.columns:

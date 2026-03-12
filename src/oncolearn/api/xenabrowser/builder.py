@@ -24,13 +24,13 @@ class XenaCohortBuilder(BaseCohortBuilder):
         
         Args:
             config_dir: Directory containing YAML configuration files.
-                       Defaults to 'data/xenabrowser/configs' in the project root.
+                       Defaults to 'data/configs/sources/xenabrowser' in the project root.
         """
         if config_dir is None:
             # Default to data/xenabrowser/configs in project root
             # Navigate from src/oncolearn/data/xenabrowser to project root
             project_root = Path(__file__).parent.parent.parent.parent.parent
-            config_dir = project_root / "data" / "configs" / "xenabrowser"
+            config_dir = project_root / "data" / "configs" / "sources" / "xenabrowser"
         
         super().__init__(config_dir)
         self.config_dir = Path(config_dir)
@@ -187,7 +187,7 @@ class XenaCohortBuilder(BaseCohortBuilder):
             def download(self, output_dir=None, download_all=True, extract=True, 
                        download_mapping=False, download_raw=False):
                 if output_dir is None:
-                    output_dir = f"data/xenabrowser/{cohort_info['name']}"
+                    output_dir = f"data/sources/xenabrowser/{cohort_info['name']}"
                 
                 output_path = Path(output_dir)
                 output_path.mkdir(parents=True, exist_ok=True)

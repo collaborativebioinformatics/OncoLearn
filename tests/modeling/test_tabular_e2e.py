@@ -1,5 +1,5 @@
 """
-End-to-end tabular (gene) pipeline smoke test.
+End-to-end tabular (gene) pipeline smoke test using PipelineDataModule.
 
 Requires real local data so is always skipped in automated test runs.
 """
@@ -9,11 +9,9 @@ import torch
 from torch import nn
 import pytorch_lightning as pl
 
-from oncolearn.data.modalities.tabular.gene import GeneDataModule
-
 
 class DummyTabularModel(pl.LightningModule):
-    def __init__(self, input_dim, num_classes=5):
+    def __init__(self, input_dim, num_classes=4):
         super().__init__()
         self.layer = nn.Linear(input_dim, num_classes)
         self.loss = nn.CrossEntropyLoss()
@@ -22,7 +20,7 @@ class DummyTabularModel(pl.LightningModule):
         return self.layer(x)
 
     def training_step(self, batch, batch_idx):
-        x = batch["gene"]
+        x = batch["oncolearn.modality.gene"]
         y = batch.get("label", torch.zeros(x.size(0), dtype=torch.long, device=x.device))
         loss = self.loss(self(x), y)
         self.log("train_loss", loss)
@@ -33,27 +31,24 @@ class DummyTabularModel(pl.LightningModule):
 
 
 @pytest.mark.skipif(
-    not os.path.exists("data/xenabrowser/TCGA-BRCA"),
+    not os.path.exists("data/sources/xenabrowser/TCGA-BRCA"),
     reason="Requires local tabular data",
 )
 def test_tabular_e2e():
-    dm = GeneDataModule(
-        cohort_code="TCGA-BRCA",
-        base_directory="data/xenabrowser",
-        files=["TCGA-BRCA.mirna.tsv", "pam50.tsv"],
-        batch_size=4,
-        num_workers=0,
-        batch_key="gene",
+    from oncolearn.data.pipeline import DataSource, Load, Modality
+    from oncolearn.data.modules.base import PipelineDataModule
+
+    ds = DataSource(config="xenabrowser", base_dir="data/sources/xenabrowser/TCGA-BRCA")
+    modality = Modality(
+        name="oncolearn.modality.gene",
+        pipeline=Load("TCGA-BRCA.mirna.tsv", source=ds),
     )
+    dm = PipelineDataModule.from_modality(modality, batch_size=4, num_workers=0)
     dm.setup()
 
     assert len(dm.train_dataset) > 0, "No tabular data loaded."
 
-    input_dim = dm.train_dataset[0]["gene"].shape[0]
-    # Detect number of classes from labels so CrossEntropyLoss doesn't fail.
-    labels = [int(dm.train_dataset[i].get("label", 0)) for i in range(len(dm.train_dataset))]
-    num_classes = max(labels) + 1 if labels else 5
-
-    model = DummyTabularModel(input_dim=input_dim, num_classes=num_classes)
+    input_dim = dm.train_dataset[0]["oncolearn.modality.gene"].shape[0]
+    model = DummyTabularModel(input_dim=input_dim, num_classes=4)
     trainer = pl.Trainer(fast_dev_run=True, enable_checkpointing=False, logger=False)
     trainer.fit(model, datamodule=dm)

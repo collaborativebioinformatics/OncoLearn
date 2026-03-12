@@ -2,7 +2,7 @@ import pytest
 import torch
 from typing import List, Dict, Any
 from torch.utils.data import Dataset
-from oncolearn.data.multimodal import MultimodalDataset
+from oncolearn.data.modalities.multimodal import MultimodalDataset
 
 
 class MockModalityDataset(Dataset):

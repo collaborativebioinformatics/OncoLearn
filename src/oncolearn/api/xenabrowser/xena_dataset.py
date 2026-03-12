@@ -62,7 +62,7 @@ class XenaDataset(Dataset):
             download_raw: Whether to download raw data file
         """
         if output_dir is None:
-            output_dir = f"data/xenabrowser/{self.default_subdir}"
+            output_dir = f"data/sources/xenabrowser/{self.default_subdir}"
         
         # Download main data file
         download_and_extract_gzip(

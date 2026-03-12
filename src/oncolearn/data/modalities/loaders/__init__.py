@@ -1,11 +1,13 @@
-from .base import BaseImageLoader
+from .base import BaseDataLoader
 from .dicom_loader import DicomLoader
 from .pillow_loader import PillowLoader
+from .tabular_loader import XenabrowserParser
 
 __all__ = [
-    "BaseImageLoader",
+    "BaseDataLoader",
     "DicomLoader",
     "PillowLoader",
+    "XenabrowserParser",
 ]
 
 # Order matters: more specific loaders first

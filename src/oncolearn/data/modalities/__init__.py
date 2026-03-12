@@ -2,5 +2,7 @@
 
 Importing this package triggers all @register_modality decorators.
 """
-from . import tabular  # noqa: F401 — triggers @register_modality("gene") and @register_modality("clinical")
-from . import image    # noqa: F401 — triggers @register_modality("image")
+try:
+    from oncolearn.data.modules.image import ImageDataModule  # noqa: F401 — triggers @register_modality("image")
+except ImportError:
+    pass  # pytorch_lightning not available (e.g. host/test environment)

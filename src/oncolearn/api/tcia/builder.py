@@ -24,13 +24,13 @@ class TCIACohortBuilder(BaseCohortBuilder):
 
         Args:
             config_dir: Directory containing YAML configuration files.
-                       Defaults to 'data/tcia/configs' in the project root.
+                       Defaults to 'data/configs/sources/tcia' in the project root.
         """
         if config_dir is None:
             # Default to data/tcia/configs in project root
             # Navigate from src/oncolearn/data/tcia to project root
             project_root = Path(__file__).parent.parent.parent.parent.parent
-            config_dir = project_root / "data" / "configs" / "tcia"
+            config_dir = project_root / "data" / "configs" / "sources" / "tcia"
 
         super().__init__(config_dir)
         self.config_dir = Path(config_dir)
@@ -138,7 +138,7 @@ class TCIACohortBuilder(BaseCohortBuilder):
                     confirm: If True, ask for confirmation before downloading
                 """
                 if output_dir is None:
-                    output_dir = "data/tcia/manifests"
+                    output_dir = "data/sources/tcia/manifests"
 
                 output_path = Path(output_dir)
                 output_path.mkdir(parents=True, exist_ok=True)
@@ -167,7 +167,7 @@ class TCIACohortBuilder(BaseCohortBuilder):
 
                     # Use the first TCIA dataset to download images
                     dataset = tcia_datasets[0]
-                    images_dir = Path(f"data/tcia/{dataset.default_subdir}")
+                    images_dir = Path(f"data/sources/tcia/{dataset.default_subdir}")
 
                     if verbose:
                         print(

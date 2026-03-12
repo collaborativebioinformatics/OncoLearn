@@ -3,14 +3,16 @@
 import pytest
 
 # Trigger all real @register_* decorators before snapshotting the registry.
-# This ensures tests that query real dotted names will find them even after
-# the clean_registries fixture restores a per-test snapshot.
-import oncolearn.modeling          # noqa: F401 — registers encoders + models
-import oncolearn.data.modalities   # noqa: F401 — registers modalities
-
-from oncolearn.registry.encoders import _ENCODERS, _CLASS_TO_NAME as _ENC_CLASS_TO_NAME
-from oncolearn.registry.modalities import _MODALITIES
-from oncolearn.registry.models import _MODELS, _CLASS_TO_NAME as _MDL_CLASS_TO_NAME
+# These imports require torch; skip gracefully when running pure-Python tests.
+try:
+    import oncolearn.modeling          # noqa: F401 — registers encoders + models
+    import oncolearn.data.modalities   # noqa: F401 — registers modalities
+    from oncolearn.registry.encoders import _ENCODERS, _CLASS_TO_NAME as _ENC_CLASS_TO_NAME
+    from oncolearn.registry.modalities import _MODALITIES
+    from oncolearn.registry.models import _MODELS, _CLASS_TO_NAME as _MDL_CLASS_TO_NAME
+    _HAS_REGISTRY = True
+except ImportError:
+    _HAS_REGISTRY = False
 
 
 @pytest.fixture(autouse=True)
@@ -20,7 +22,12 @@ def clean_registries():
     This prevents tests that register new names from polluting other tests,
     while still allowing the real application registrations (loaded at import
     time) to remain visible when a test explicitly imports the modules.
+    Skipped gracefully when torch is unavailable.
     """
+    if not _HAS_REGISTRY:
+        yield
+        return
+
     enc_snap = _ENCODERS.copy()
     enc_cls_snap = _ENC_CLASS_TO_NAME.copy()
     mod_snap = _MODALITIES.copy()
@@ -46,20 +53,12 @@ def clean_registries():
 MINIMAL_TABULAR_YAML = """\
 model:
   name: oncolearn.model.multimodal.gated_late_fusion
-  num_stage_classes: 5
+  num_stage_classes: 4
   encoders:
     - name: oncolearn.encoder.multimodal.RNABERTEncoder
       modality: oncolearn.modality.gene
       output_dim: 128
 
 data:
-  base_directory: data/xenabrowser
-  cohort_code: TCGA-BRCA
-  modalities:
-    - name: oncolearn.modality.gene
-      join_on: patient_id
-      join_strategy: inner
-      files:
-        - TCGA-BRCA.mirna.tsv
-        - pam50.tsv
+  pipeline: data/configs/modeling/multimodal/preprocessing/tcga_brca_xenabrowser.py
 """

@@ -5,7 +5,6 @@ YAML loading, saving, and validation for OncoLearnConfig.
 from __future__ import annotations
 
 import dataclasses
-from collections import Counter
 from pathlib import Path
 from typing import Union
 
@@ -17,7 +16,6 @@ from .schema import (
     HpoConfig,
     HpoParamSpec,
     LossConfig,
-    ModalityConfig,
     ModelConfig,
     OncoLearnConfig,
     OptimizerConfig,
@@ -35,62 +33,18 @@ def _dataclass_from_dict(cls, d: dict):
 
 
 def _validate(config: OncoLearnConfig) -> None:
-    if not config.data.modalities:
-        raise ValueError(
-            "Config must include at least one entry under 'data.modalities'."
-        )
     if not config.model.name:
         raise ValueError("'model.name' must be a non-empty string.")
-
-    names = [m.name for m in config.data.modalities]
-    counts = Counter(names)
-    duplicates = sorted(n for n, c in counts.items() if c > 1)
-    if duplicates:
-        raise ValueError(f"Duplicate modality names: {duplicates}")
-
-    # Validate encoder.modality references
-    for enc in config.model.encoders:
-        if enc.modality is not None and enc.modality not in names:
-            raise ValueError(
-                f"Encoder '{enc.name}' references modality '{enc.modality}' "
-                f"which is not in data.modalities. Available: {names}"
-            )
-
-
-def _parse_modality_entry(entry: dict) -> ModalityConfig:
-    """Parse a single modality YAML entry into a ModalityConfig."""
-    if "name" not in entry:
-        raise KeyError(
-            f"Every entry in 'data.modalities' must have a 'name' key. Got: {entry}"
-        )
-    name = entry["name"]
-    join_on = entry.get("join_on", "patient_id")
-    join_strategy = entry.get("join_strategy", "inner")
-    files = entry.get("files", None)
-    # Everything else is modality-specific kwargs
-    reserved = {"name", "join_on", "join_strategy", "files"}
-    kwargs = {k: v for k, v in entry.items() if k not in reserved}
-    return ModalityConfig(
-        name=name,
-        join_on=join_on,
-        join_strategy=join_strategy,
-        files=files,
-        kwargs=kwargs,
-    )
+    if not config.data.pipeline:
+        raise ValueError("'data.pipeline' must be a non-empty path string.")
 
 
 def _parse_data_section(raw: dict) -> DataConfig:
     """Parse the ``data:`` section of a YAML config."""
     data_raw = raw.get("data", {})
-    modality_entries = data_raw.get("modalities", [])
-    modality_cfgs = [_parse_modality_entry(e) for e in modality_entries]
-    return DataConfig(
-        modalities=modality_cfgs,
-        base_directory=data_raw.get("base_directory", "data/xenabrowser"),
-        cohort_code=data_raw.get("cohort_code", "TCGA-BRCA"),
-        splits_dir=data_raw.get("splits_dir", None),
-    )
-
+    pipeline = data_raw.get("pipeline", "")
+    splits_dir = data_raw.get("splits_dir", None)
+    return DataConfig(pipeline=pipeline, splits_dir=splits_dir)
 
 
 def _parse_training_section(raw: dict) -> TrainingConfig:
@@ -130,10 +84,10 @@ def _parse_training_section(raw: dict) -> TrainingConfig:
             gradient_clip_val=reg_raw.get("gradient_clip_val", 0.0),
             label_smoothing=reg_raw.get("label_smoothing", 0.0),
         )
-        
-    if "hpo" in raw: 
-        training_cfg.hpo = _parse_hpo_section(raw["hpo"])   
-    
+
+    if "hpo" in raw:
+        training_cfg.hpo = _parse_hpo_section(raw["hpo"])
+
     return training_cfg
 
 
@@ -228,6 +182,16 @@ def load_config(path: Union[str, Path]) -> OncoLearnConfig:
     if "model" not in raw:
         raise KeyError(f"Config '{path.name}' must contain a 'model' section.")
 
+    if "data" not in raw:
+        raise KeyError(
+            f"Config '{path.name}' must contain a 'data' section with a 'pipeline' key."
+        )
+
+    if not raw["data"].get("pipeline"):
+        raise KeyError(
+            f"Config '{path.name}': 'data' section must contain a non-empty 'pipeline' key."
+        )
+
     # --- model ---
     model_raw = raw["model"]
 
@@ -257,14 +221,6 @@ def load_config(path: Union[str, Path]) -> OncoLearnConfig:
     model_cfg.encoders = encoder_cfgs
 
     # --- data section ---
-    if "data" not in raw:
-        raise KeyError(
-            f"Config '{path.name}' must contain a 'data' section with a 'modalities' list."
-        )
-    if not raw["data"].get("modalities"):
-        raise KeyError(
-            f"Config '{path.name}': 'data' section must contain a 'modalities' list."
-        )
     data_cfg = _parse_data_section(raw)
 
     # --- training (optional) ---
@@ -287,10 +243,6 @@ def load_config(path: Union[str, Path]) -> OncoLearnConfig:
 def save_config(config: OncoLearnConfig, path: Union[str, Path]) -> None:
     """Serialize an :class:`OncoLearnConfig` to a YAML file.
 
-    Uses the new ``data:`` section format.  Modality ``kwargs`` are inlined as
-    flat keys alongside the first-class fields so the output round-trips
-    cleanly through :func:`load_config`.
-
     Args:
         config: Config to serialize.
         path: Destination ``.yaml`` path. Parent directories are created if needed.
@@ -311,24 +263,9 @@ def save_config(config: OncoLearnConfig, path: Union[str, Path]) -> None:
     raw["model"] = model_dict
 
     # --- data ---
-    data_dict: dict = {
-        "base_directory": config.data.base_directory,
-        "cohort_code": config.data.cohort_code,
-    }
+    data_dict: dict = {"pipeline": config.data.pipeline}
     if config.data.splits_dir is not None:
         data_dict["splits_dir"] = config.data.splits_dir
-
-    data_dict["modalities"] = []
-    for m in config.data.modalities:
-        entry = {
-            "name": m.name,
-            "join_on": m.join_on,
-            "join_strategy": m.join_strategy,
-        }
-        if m.files is not None:
-            entry["files"] = m.files
-        entry.update(m.kwargs)
-        data_dict["modalities"].append(entry)
     raw["data"] = data_dict
 
     t = config.training

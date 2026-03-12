@@ -75,7 +75,7 @@ class CBioPortalDataset(Dataset):
         """
         from oncolearn.cli.utils.download import ensure_directory
 
-        out = Path(output_dir) if output_dir else Path("data/cbioportal") / self.default_subdir
+        out = Path(output_dir) if output_dir else Path("data/sources/cbioportal") / self.default_subdir
         ensure_directory(out)
         dest = out / self.filename
 

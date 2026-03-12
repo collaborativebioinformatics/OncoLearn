@@ -1,30 +1,28 @@
 """
-Base parser for all XenaBrowser TSV files.
+Tabular data loaders for OncoLearn.
 
-Handles the two TSV layouts used by XenaBrowser:
-  - Genomic matrix format (rows=features, cols=patients) — transposed automatically.
-  - Sample-level format (rows=patients) — used as-is.
-
-Subclasses add dataset-specific label extraction on top of the normalized DataFrame.
+XenabrowserParser inherits from BaseDataLoader and implements can_load/load
+using the standard loader protocol.
 """
 from pathlib import Path
 
 import pandas as pd
 
-from .base import BaseTabularParser
+from .base import BaseDataLoader
+from oncolearn.data.utils import normalize_patient_id
 
 
-class XenabrowserParser(BaseTabularParser):
+class XenabrowserParser(BaseDataLoader):
     """
-    Shared XenaBrowser TSV loading logic for all tabular modalities.
+    XenaBrowser TSV loader implementing the BaseDataLoader protocol.
 
-    Provides :meth:`load` which returns a DataFrame with a ``patient_id``
-    column and feature columns, but no label column.  Subclasses override
-    :meth:`parse` to add label extraction on top.
+    :meth:`can_load` checks for .tsv extension.
+    :meth:`load` returns a DataFrame with a ``patient_id`` column and feature
+    columns, but no label column.
     """
 
     @classmethod
-    def can_parse(cls, file_path: Path) -> bool:
+    def can_load(cls, file_path: Path) -> bool:
         return file_path.suffix.lower() == ".tsv"
 
     @classmethod
@@ -62,13 +60,6 @@ class XenabrowserParser(BaseTabularParser):
 
         # Truncate to 12-char TCGA patient ID
         if "patient_id" in df.columns:
-            df["patient_id"] = df["patient_id"].apply(
-                lambda x: x[:12] if isinstance(x, str) and x.startswith("TCGA") else x
-            )
+            df["patient_id"] = df["patient_id"].apply(normalize_patient_id)
 
         return df
-
-    @classmethod
-    def parse(cls, file_path: Path) -> pd.DataFrame:
-        """Default parse: load only, no label encoding."""
-        return cls.load(file_path)

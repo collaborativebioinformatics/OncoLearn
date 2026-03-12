@@ -1,5 +1,5 @@
 """
-End-to-end multimodal pipeline smoke test.
+End-to-end multimodal pipeline smoke test using PipelineDataModule + OncoTrainer.
 
 Requires real local data (TCIA + Xenabrowser downloads) so is always skipped
 in automated test runs.  Run manually when data is available.
@@ -8,43 +8,39 @@ import os
 import pytest
 import pytorch_lightning as pl
 
-from oncolearn.data.modalities.tabular.gene import GeneDataModule
-from oncolearn.data.modalities.image.dataset import ImageDataModule
-from oncolearn.data.multimodal import MultimodalDataModule
+from oncolearn.data.modules.multimodal import MultimodalDataModule
 from oncolearn.config import load_config
 
 
 @pytest.mark.skipif(
-    not os.path.exists("data/xenabrowser/TCGA-BRCA")
-    or not os.path.exists("data/tcia/TCGA-BRCA")
-    # Checkpoint is mounted at /workspace/models inside Docker; skip on host.
-    or not os.path.exists("/workspace/models/breast_MR_checkpoint.pth.tar"),
-    reason="Requires local multimodal data (TCIA + Xenabrowser) and FM-BCMRI checkpoint at /workspace/models/",
+    not os.path.exists("data/sources/xenabrowser/TCGA-BRCA"),
+    reason="Requires local Xenabrowser data",
 )
 def test_multimodal_e2e():
-    cfg = load_config("data/configs/tcga_brca_multimodal.yaml")
+    from oncolearn.data.pipeline import DataSource, Load, Modality
+    from oncolearn.data.modules.base import PipelineDataModule
+    from oncolearn.data.pipeline.transforms import map_ajcc_stage
 
-    dm_gene = GeneDataModule(
-        cohort_code="TCGA-BRCA",
-        base_directory="data/xenabrowser",
-        files=["TCGA-BRCA.mirna.tsv", "pam50.tsv"],
+    ds = DataSource(config="xenabrowser", base_dir="data/sources/xenabrowser/TCGA-BRCA")
+
+    dm_gene = PipelineDataModule.from_modality(
+        Modality(name="oncolearn.modality.gene", pipeline=Load("TCGA-BRCA.mirna.tsv", source=ds)),
         batch_size=2,
         num_workers=0,
-        batch_key="oncolearn.modality.gene",
     )
-    dm_gene.name = "oncolearn.modality.gene"
-
-    dm_image = ImageDataModule(
-        tcia_cohort_name="BRCA",
-        base_directory="data/tcia",
+    dm_clinical = PipelineDataModule.from_modality(
+        Modality(
+            name="oncolearn.modality.clinical",
+            pipeline=Load("TCGA-BRCA.clinical.tsv", source=ds),
+            label_col="ajcc_pathologic_stage.diagnoses",
+            label_transform=map_ajcc_stage,
+        ),
         batch_size=2,
         num_workers=0,
-        batch_key="oncolearn.modality.image",
     )
-    dm_image.name = "oncolearn.modality.image"
 
     mm_data = MultimodalDataModule(
-        modalities=[dm_gene, dm_image],
+        modalities=[dm_gene, dm_clinical],
         join_on="patient_id",
         strategy="inner",
         batch_size=2,
@@ -53,10 +49,9 @@ def test_multimodal_e2e():
     mm_data.setup()
 
     if len(mm_data.train_dataset) == 0:
-        pytest.skip(
-            "No intersecting multimodal patients found. "
-            "Check that TCIA and Xenabrowser IDs overlap in your local data."
-        )
+        pytest.skip("No intersecting multimodal patients found.")
+
+    cfg = load_config("data/configs/modeling/multimodal/tcga_brca_multimodal.yaml")
 
     from oncolearn.registry import get_model
     import oncolearn.modeling  # noqa: F401
