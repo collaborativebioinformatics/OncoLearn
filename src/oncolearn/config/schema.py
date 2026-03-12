@@ -144,6 +144,7 @@ class HpoConfig:
     * ``training.optimizers`` — maps optimizer class name → per-param specs.  When
       multiple optimizers are listed, Optuna also searches over which one to use.
     * ``training.losses`` — same pattern for the loss function.
+    * ``training.schedulers`` — same pattern for the LR scheduler.
 
     Example YAML::
 
@@ -194,6 +195,15 @@ class HpoConfig:
 
     Maps loss dotted class name → {param_name → HpoParamSpec}.  When
     multiple losses are listed, a categorical choice is also suggested.
+    """
+    schedulers: Dict[str, Dict[str, HpoParamSpec]] = field(default_factory=dict)
+    """Per-scheduler conditional param search spaces.
+
+    Maps scheduler dotted class name → {param_name → HpoParamSpec}.  When
+    multiple schedulers are listed, a categorical choice is also suggested.
+    Only the params for the *chosen* scheduler are sampled in each trial.
+    ``training.scheduler.name`` and ``training.scheduler.params`` are updated;
+    ``monitor``, ``interval``, and ``frequency`` are left unchanged.
     """
 
 

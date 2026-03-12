@@ -96,12 +96,15 @@ def _parse_hpo_section(raw: dict) -> HpoConfig:
     search_space: dict[str, HpoParamSpec] = {}
     optimizers: dict[str, dict[str, HpoParamSpec]] = {}
     losses: dict[str, dict[str, HpoParamSpec]] = {}
+    schedulers: dict[str, dict[str, HpoParamSpec]] = {}
 
     for path, spec_raw in raw.get("search_space", {}).items():
         if path == "training.optimizers":
             optimizers = _parse_conditional_params(spec_raw, "training.optimizers")
         elif path == "training.losses":
             losses = _parse_conditional_params(spec_raw, "training.losses")
+        elif path == "training.schedulers":
+            schedulers = _parse_conditional_params(spec_raw, "training.schedulers")
         else:
             if not isinstance(spec_raw, dict) or "type" not in spec_raw:
                 raise ValueError(
@@ -128,6 +131,7 @@ def _parse_hpo_section(raw: dict) -> HpoConfig:
         search_space=search_space,
         optimizers=optimizers,
         losses=losses,
+        schedulers=schedulers,
     )
 
 

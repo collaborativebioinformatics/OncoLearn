@@ -17,10 +17,12 @@ which one to use.  Only the params for the *chosen* optimizer are sampled in
 each trial, preventing invalid kwargs (e.g. ``momentum`` passed to AdamW).
 
 ``hpo_cfg.losses`` works identically for the loss function.
+``hpo_cfg.schedulers`` works identically for the LR scheduler.
 
 Optuna trial keys for conditional params are namespaced as
-``opt.<class_name>.<param>`` / ``loss.<class_name>.<param>`` so that TPE can
-build independent priors per class across trials.
+``opt.<class_name>.<param>`` / ``loss.<class_name>.<param>`` /
+``sched.<class_name>.<param>`` so that TPE can build independent priors per
+class across trials.
 
 :func:`suggest_hyperparams` samples all parameters for one Optuna trial and
 returns a modified deep copy of the base config.
@@ -98,6 +100,20 @@ def suggest_hyperparams(
             loss_param_values[param_name] = _suggest_one(trial, trial_key, spec)
         params["training.loss.params"] = loss_param_values
 
+    # --- conditional scheduler params ---
+    if hpo_cfg.schedulers:
+        sched_names = list(hpo_cfg.schedulers.keys())
+        if len(sched_names) > 1:
+            chosen_sched = trial.suggest_categorical("training.scheduler.name", sched_names)
+        else:
+            chosen_sched = sched_names[0]
+        params["training.scheduler.name"] = chosen_sched
+        sched_param_values: Dict[str, Any] = {}
+        for param_name, spec in hpo_cfg.schedulers[chosen_sched].items():
+            trial_key = f"sched.{chosen_sched}.{param_name}"
+            sched_param_values[param_name] = _suggest_one(trial, trial_key, spec)
+        params["training.scheduler.params"] = sched_param_values
+
     apply_params(config, params)
     return config
 
@@ -109,15 +125,15 @@ def config_params_from_trial(
     """Convert raw Optuna trial params back to a config-path dict for :func:`apply_params`.
 
     Optuna stores parameters under internal namespaced keys (e.g.
-    ``"opt.torch.optim.AdamW.lr"``) that are NOT valid config attribute
-    paths.  This function reconstructs the proper mapping used by
-    :func:`apply_params` (e.g. ``"training.optimizer.params"``).
+    ``"opt.torch.optim.AdamW.lr"``, ``"sched.torch.optim.lr_scheduler.CosineAnnealingLR.eta_min"``)
+    that are NOT valid config attribute paths.  This function reconstructs the
+    proper mapping used by :func:`apply_params` (e.g. ``"training.optimizer.params"``).
     """
     params: Dict[str, Any] = {}
 
-    # Flat params: any key that doesn't use the internal opt./loss. namespace
+    # Flat params: any key that doesn't use the internal opt./loss./sched. namespace
     for key, val in trial_params.items():
-        if not key.startswith("opt.") and not key.startswith("loss."):
+        if not key.startswith("opt.") and not key.startswith("loss.") and not key.startswith("sched."):
             params[key] = val
 
     # Conditional optimizer params
@@ -145,6 +161,19 @@ def config_params_from_trial(
                 if key.startswith(prefix)
             }
             params["training.loss.params"] = loss_params
+
+    # Conditional scheduler params
+    if hpo_cfg.schedulers:
+        chosen_sched = trial_params.get("training.scheduler.name")
+        if chosen_sched:
+            params["training.scheduler.name"] = chosen_sched
+            prefix = f"sched.{chosen_sched}."
+            sched_params = {
+                key[len(prefix):]: val
+                for key, val in trial_params.items()
+                if key.startswith(prefix)
+            }
+            params["training.scheduler.params"] = sched_params
 
     return params
 
