@@ -1,10 +1,12 @@
-# OncoLearn experiment config: TCGA-BRCA multimodal (gene + clinical + imaging, XenaBrowser data)
+# OncoLearn experiment config: TCGA-BRCA multimodal cBioPortal — PAM50 subtypes
 #
-# Uses gene miRNA and clinical stage data from XenaBrowser, plus TCIA DICOM imaging.
+# Clinical labels: PAM50 subtypes (Basal=0, Her2=1, LumA=2, LumB=3, Normal=4)
+# Gene features: log2(RSEM+1) normalised mRNA from cBioPortal Firehose Legacy
+# Imaging: TCIA DICOM MR
 
 model:
   name: oncolearn.model.multimodal.gated_late_fusion
-  num_stage_classes: 4   # Stage I / II / III / IV (Unknown dropped at parse time)
+  num_stage_classes: 5   # PAM50: Basal / Her2 / LumA / LumB / Normal
   num_subtype_classes: 0
   freeze_encoders: true
   dropout: 0.2
@@ -22,7 +24,7 @@ model:
       checkpoint_path: /workspace/models/breast_MR_checkpoint.pth.tar
 
 data:
-  pipeline: data/configs/modeling/multimodal/preprocessing/tcga_brca_xenabrowser.py
+  pipeline: data/configs/modeling/multimodal/preprocessing/tcga_brca_cbioportal_pam50.py
   splits_dir: data/configs/modeling/multimodal/splits/kfold/fold_0
 
 training:
@@ -32,7 +34,7 @@ training:
   accelerator: auto
   devices: 1
   early_stopping_patience: 10
-  subtype_lambda: 0.3
+  subtype_lambda: 0.0
   seed: 42
   use_class_weights: true
 
@@ -59,12 +61,11 @@ training:
     gradient_clip_val: 1.0
     label_smoothing: 0.0
 
-  # Uncomment to enable Optuna hyperparameter search before the final training run.
   hpo:
     n_trials: 30
-    epochs_per_trial: 30        # reduced epoch budget per trial
-    study_name: brca_multimodal
-    storage: sqlite:///outputs/brca_multimodal.db   # omit for in-memory (non-persistent)
+    epochs_per_trial: 30
+    study_name: brca_cbioportal_pam50
+    storage: sqlite:///outputs/brca_cbioportal_pam50.db
     direction: maximize
     metric: val_acc
     pruning: true
@@ -123,5 +124,5 @@ training:
 
 output:
   dir: outputs
-  experiment_name: tcga_brca_multimodal
+  experiment_name: tcga_brca_cbioportal_pam50
   save_every_n_epochs: 5

@@ -83,7 +83,7 @@ class Sequence:
                :class:`Sequence` nodes.
     """
 
-    steps: List[Union[Load, Join, "Sequence"]] = field(default_factory=list)
+    steps: List[Union[Load, Join, "Log2Normalization", "Sequence"]] = field(default_factory=list)
 
 
 @dataclass
@@ -137,6 +137,23 @@ class ImageModality(BaseModality):
     cohort_code: str = "BRCA"
     n_slices: int = 5
     prefer_mr: bool = True
+
+
+@dataclass
+class Log2Normalization:
+    """Pipeline unary node: apply log2(x + 1) normalization to numeric columns.
+
+    Pops one DataFrame from the execution stack, applies ``numpy.log2(x + 1)``
+    to all numeric columns (excluding *patient_id_col* and any non-numeric
+    columns), and pushes the result.  Useful for normalizing raw RNA-seq RSEM
+    count data.
+
+    Attributes:
+        patient_id_col: Name of the patient-ID column to exclude from
+                        normalization.  Defaults to ``"patient_id"``.
+    """
+
+    patient_id_col: str = "patient_id"
 
 
 @dataclass

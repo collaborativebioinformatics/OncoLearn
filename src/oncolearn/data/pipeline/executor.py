@@ -5,16 +5,17 @@ from typing import List, Union
 
 import pandas as pd
 
-from .nodes import Join, Load, Sequence
+from .nodes import Join, Load, Log2Normalization, Sequence
 from .readers.base import BaseReader
+from .transforms import apply_log2_normalization
 
 
-def _flatten(node: Union[Load, Join, Sequence]) -> List[Union[Load, Join]]:
+def _flatten(node: Union[Load, Join, Log2Normalization, Sequence]) -> List[Union[Load, Join, Log2Normalization]]:
     """Recursively flatten a pipeline tree into a flat list of ops."""
-    if isinstance(node, (Load, Join)):
+    if isinstance(node, (Load, Join, Log2Normalization)):
         return [node]
     if isinstance(node, Sequence):
-        result: List[Union[Load, Join]] = []
+        result: List[Union[Load, Join, Log2Normalization]] = []
         for step in node.steps:
             result.extend(_flatten(step))
         return result
@@ -47,6 +48,13 @@ def run(pipeline_node: Union[Load, Sequence], reader: BaseReader) -> pd.DataFram
     for step in steps:
         if isinstance(step, Load):
             stack.append(reader.read(step.name))
+        elif isinstance(step, Log2Normalization):
+            if not stack:
+                raise RuntimeError(
+                    f"Log2Normalization requires a DataFrame on the stack, "
+                    f"but only {len(stack)} are present."
+                )
+            stack.append(apply_log2_normalization(stack.pop(), step.patient_id_col))
         elif isinstance(step, Join):
             if len(stack) < 2:
                 raise RuntimeError(

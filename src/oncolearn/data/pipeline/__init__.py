@@ -29,7 +29,7 @@ from .nodes import (
     ImageModality,
     Join,
     Load,
-    Modality,
+    Log2Normalization,
     Sequence,
     TabularModality,
 )
@@ -42,7 +42,7 @@ __all__ = [
     "ImageModality",
     "Join",
     "Load",
-    "Modality",
+    "Log2Normalization",
     "Sequence",
     "TabularModality",
     "run",

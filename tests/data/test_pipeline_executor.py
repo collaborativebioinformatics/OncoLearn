@@ -1,9 +1,10 @@
 """Unit tests for the pipeline executor using a mock reader."""
+import numpy as np
 import pandas as pd
 import pytest
 
 from oncolearn.data.pipeline.executor import run, _flatten
-from oncolearn.data.pipeline.nodes import DataSource, Join, Load, Sequence
+from oncolearn.data.pipeline.nodes import DataSource, Join, Load, Log2Normalization, Sequence
 from oncolearn.data.pipeline.readers.base import BaseReader
 
 
@@ -119,3 +120,49 @@ def test_run_raises_on_multiple_frames_remaining():
     seq = Sequence(steps=[Load("a", source=_DS), Load("b", source=_DS)])
     with pytest.raises(RuntimeError, match="2 DataFrames"):
         run(seq, reader)
+
+
+# ---------------------------------------------------------------------------
+# Log2Normalization tests
+# ---------------------------------------------------------------------------
+
+def test_log2_normalization_transforms_numeric_cols():
+    df = pd.DataFrame({"patient_id": ["P1", "P2"], "expr_a": [0.0, 3.0], "expr_b": [7.0, 15.0]})
+    reader = MockReader({"data": df})
+    seq = Sequence(steps=[Load("data", source=_DS), Log2Normalization()])
+    result = run(seq, reader)
+    expected_a = np.log2(np.array([0.0, 3.0]) + 1)
+    expected_b = np.log2(np.array([7.0, 15.0]) + 1)
+    np.testing.assert_allclose(result["expr_a"].values, expected_a)
+    np.testing.assert_allclose(result["expr_b"].values, expected_b)
+
+
+def test_log2_normalization_preserves_patient_id():
+    df = pd.DataFrame({"patient_id": ["P1", "P2"], "expr": [4.0, 8.0]})
+    reader = MockReader({"data": df})
+    seq = Sequence(steps=[Load("data", source=_DS), Log2Normalization()])
+    result = run(seq, reader)
+    assert list(result["patient_id"]) == ["P1", "P2"]
+
+
+def test_log2_normalization_preserves_string_columns():
+    df = pd.DataFrame({"patient_id": ["P1"], "label": ["LumA"], "expr": [3.0]})
+    reader = MockReader({"data": df})
+    seq = Sequence(steps=[Load("data", source=_DS), Log2Normalization()])
+    result = run(seq, reader)
+    assert result["label"].iloc[0] == "LumA"
+    np.testing.assert_allclose(result["expr"].values, np.log2(np.array([3.0]) + 1))
+
+
+def test_log2_normalization_single_frame_on_stack():
+    df = pd.DataFrame({"patient_id": ["P1"], "expr": [1.0]})
+    reader = MockReader({"data": df})
+    seq = Sequence(steps=[Load("data", source=_DS), Log2Normalization()])
+    result = run(seq, reader)
+    # run() returns exactly one DataFrame — no RuntimeError
+    assert result.shape == (1, 2)
+
+
+def test_flatten_log2_normalization():
+    node = Log2Normalization()
+    assert _flatten(node) == [node]

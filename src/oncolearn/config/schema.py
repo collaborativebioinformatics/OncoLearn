@@ -17,9 +17,9 @@ class EncoderConfig:
         name: Registry name of the encoder (e.g. ``"oncolearn.encoder.multimodal.RNABERTEncoder"``).
               Must match a key registered via :func:`~oncolearn.registry.register_encoder`.
         modality: Dotted modality name used as the batch-routing key (e.g.
-                  ``"oncolearn.modality.gene"``).  Must match a ``name`` in
-                  ``data.modalities`` when set.  Defaults to ``None``, in which
-                  case ``name`` is used as the batch key.
+                  ``"oncolearn.modality.gene"``).  Must match a modality ``name``
+                  defined in the pipeline file when set.  Defaults to ``None``,
+                  in which case ``name`` is used as the batch key.
         output_dim: Embedding dimension produced by this encoder.
         kwargs: Encoder-specific keyword arguments forwarded verbatim to the encoder's
                 ``__init__`` (e.g. ``checkpoint_path``, ``input_dim``).
@@ -32,44 +32,20 @@ class EncoderConfig:
 
 
 @dataclass
-class ModalityConfig:
-    """Configuration for a single data modality.
-
-    Attributes:
-        name: Registry name of the modality (e.g. ``"gene"``, ``"oncolearn.modality.gene"``).
-        join_on: Patient-ID field used to align multi-modal records.
-        join_strategy: Join strategy.  Only ``"inner"`` is currently supported.
-        files: List of data file names (relative to the cohort directory) for
-               this modality.  Replaces the opaque ``features_files`` / ``clinical_file``
-               kwargs.
-        kwargs: Remaining modality-specific keyword arguments forwarded to the
-                DataModule constructor (e.g. ``n_slices``, per-modality
-                ``base_directory`` / ``cohort_code`` overrides).
-    """
-
-    name: str
-    join_on: str = "patient_id"
-    join_strategy: str = "inner"
-    files: Optional[List[str]] = None
-    kwargs: Dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
 class DataConfig:
-    """Configuration for all data modalities and their shared settings.
+    """Configuration for the data pipeline.
 
     Attributes:
-        modalities: Ordered list of modalities to include.
-        base_directory: Root directory for tabular data (e.g. ``"data/xenabrowser"``).
-        cohort_code: Cohort identifier (e.g. ``"TCGA-BRCA"``).
-        splits_dir: Path to folder with ``train.txt``, ``test.txt``,
+        pipeline: Path to a pipeline ``.py`` file that defines a
+                  :class:`~oncolearn.data.pipeline.Dataset` node.
+                  E.g. ``"data/configs/modeling/multimodal/preprocessing/tcga_brca_cbioportal.py"``.
+        splits_dir: Path to a folder with ``train.txt``, ``test.txt``,
                     ``validation.txt`` split files.  When set, overrides
-                    per-modality random splits.
+                    per-modality random splits inside
+                    :class:`~oncolearn.data.multimodal.MultimodalDataModule`.
     """
 
-    modalities: List[ModalityConfig]
-    base_directory: str = "data/xenabrowser"
-    cohort_code: str = "TCGA-BRCA"
+    pipeline: str
     splits_dir: Optional[str] = None
 
 
@@ -255,13 +231,12 @@ class OncoLearnConfig:
 
     Required sections:
         model: Fusion model settings.  ``model.name`` must match a registered model.
-        data: Data settings.  ``data.modalities`` must be non-empty; each
-              ``name`` must match a registered modality.
+        data: Data settings.  ``data.pipeline`` must point to a pipeline ``.py`` file.
 
     Optional sections:
         training: Training hyperparameters (all fields have defaults).
         output: Output directory and checkpointing.
-     """
+    """
 
     model: ModelConfig
     data: DataConfig

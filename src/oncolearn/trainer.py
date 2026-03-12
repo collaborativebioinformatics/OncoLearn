@@ -97,7 +97,7 @@ class OncoTrainer:
     def _build_datamodule(self) -> MultimodalDataModule:
         """Load the pipeline file and instantiate a datamodule per modality."""
         from oncolearn.data.pipeline.loader import load_pipeline_file
-        from oncolearn.data.modules.base import PipelineDataModule
+        from oncolearn.data.modules.tabular import TabularDataModule
         from oncolearn.data.pipeline.nodes import ImageModality, TabularModality
 
         data_cfg = self.config.data
@@ -121,7 +121,7 @@ class OncoTrainer:
                 dm.name = m.name
                 dms.append(dm)
             elif isinstance(m, TabularModality):
-                dms.append(PipelineDataModule.from_modality(
+                dms.append(TabularDataModule.from_modality(
                     m,
                     batch_size=t.batch_size,
                     num_workers=t.num_workers,

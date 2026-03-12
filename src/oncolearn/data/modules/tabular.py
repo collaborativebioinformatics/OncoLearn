@@ -1,5 +1,5 @@
 """
-PipelineDataModule: LightningDataModule backed by the pipeline DSL.
+TabularDataModule: LightningDataModule backed by the pipeline DSL.
 """
 from typing import Optional
 
@@ -12,7 +12,7 @@ from oncolearn.data.modalities.tabular import TabularDataset
 from .base import OncoDataModule
 
 
-class PipelineDataModule(OncoDataModule):
+class TabularDataModule(OncoDataModule):
     """LightningDataModule that loads data via the pipeline DSL.
 
     Executes the modality's pipeline to produce a DataFrame, applies label
@@ -53,8 +53,8 @@ class PipelineDataModule(OncoDataModule):
         num_workers: int = 4,
         train_split: float = 0.8,
         seed: int = 42,
-    ) -> "PipelineDataModule":
-        """Factory: create a PipelineDataModule from a Modality node."""
+    ) -> "TabularDataModule":
+        """Factory: create a TabularDataModule from a Modality node."""
         return cls(
             modality=modality,
             batch_size=batch_size,
@@ -132,7 +132,3 @@ class PipelineDataModule(OncoDataModule):
     @property
     def full_dataset(self) -> Optional[TabularDataset]:
         return self._full_dataset
-
-
-# Alias kept for clarity in imports
-TabularDataModule = PipelineDataModule
