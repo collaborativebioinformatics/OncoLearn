@@ -2,8 +2,26 @@
 
 import sys
 from collections import Counter
+from io import StringIO
 from pathlib import Path
 from typing import Dict, List, Set
+
+
+class _Tee:
+    """Mirror writes to two streams simultaneously."""
+
+    def __init__(self, primary, secondary):
+        self._primary = primary
+        self._secondary = secondary
+
+    def write(self, s: str) -> int:
+        self._primary.write(s)
+        self._secondary.write(s)
+        return len(s)
+
+    def flush(self) -> None:
+        self._primary.flush()
+        self._secondary.flush()
 
 
 # --- Label → config path mapping ---
@@ -95,6 +113,10 @@ def kfold(args) -> None:
     from oncolearn.data.pipeline.loader import load_pipeline_file, _make_reader
     from oncolearn.data.pipeline.executor import run
     from oncolearn.data.pipeline.nodes import ImageModality, TabularModality
+
+    log_buf = StringIO()
+    tee = _Tee(sys.stdout, log_buf)
+    sys.stdout = tee  # type: ignore[assignment]
 
     try:
         # --- Resolve config path from label ---
@@ -212,12 +234,20 @@ def kfold(args) -> None:
         print("To use fold 0, add to your config YAML:")
         print(f"  splits_dir: {fold_dirs[0]}")
 
+        sys.stdout = sys.__stdout__
+        log_path = output_dir / "log.txt"
+        log_path.write_text(log_buf.getvalue())
+        print(f"Log written to {log_path}")
+
         sys.exit(0)
 
     except SystemExit:
         raise
     except Exception as e:
+        sys.stdout = sys.__stdout__
         import traceback
         traceback.print_exc()
         print(f"ERROR: {e}")
         sys.exit(1)
+    finally:
+        sys.stdout = sys.__stdout__

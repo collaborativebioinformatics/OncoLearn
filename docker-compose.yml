@@ -111,6 +111,7 @@ services:
     container_name: oncolearn-pytorch-prod-cpu
     volumes:
       - ./data:/workspace/data:ro
+      - ./data/configs:/workspace/data/configs
 
   # Production PyTorch environment (NVIDIA GPU - Optimized Size)
   pytorch-prod-nvidia:
@@ -124,6 +125,7 @@ services:
     container_name: oncolearn-pytorch-prod-nvidia
     volumes:
       - ./data:/workspace/data:ro
+      - ./data/configs:/workspace/data/configs
     deploy:
       resources:
         reservations:
@@ -147,6 +149,7 @@ services:
     memswap_limit: 22g    # allow some swap headroom during model loading
     volumes:
       - ./data:/workspace/data:ro
+      - ./data/configs:/workspace/data/configs
       - ./models:/workspace/models
       - ./outputs:/workspace/outputs
       - ./.hf-cache:/root/.cache/huggingface
