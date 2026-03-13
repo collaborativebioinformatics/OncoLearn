@@ -25,9 +25,8 @@ Examples:
         help="Xena sub-command to run",
     )
 
-    from .args import add_download_arguments, add_preprocess_arguments
+    from .args import add_download_arguments
     from .download import download
-    from .preprocess import preprocess as preprocess_execute
 
     dl_parser = xena_sub.add_parser(
         "download",
@@ -44,20 +43,5 @@ Examples:
     )
     add_download_arguments(dl_parser)
     dl_parser.set_defaults(func=download)
-
-    pp_parser = xena_sub.add_parser(
-        "preprocess",
-        description="Generate stratified K-fold patient-ID split files from a config.",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        help="Generate K-fold training splits from Xena tabular data",
-        epilog="""
-Examples:
-  oncolearn xena preprocess --config data/configs/modeling/multimodal/tcga_brca_tabular_only.yaml
-  oncolearn xena preprocess --config data/configs/modeling/multimodal/tcga_brca_tabular_only.yaml --n_splits 10 --seed 42
-        """,
-    )
-    add_preprocess_arguments(pp_parser)
-    pp_parser.set_defaults(func=preprocess_execute)
-
 
     parser.set_defaults(func=lambda args: parser.print_help())

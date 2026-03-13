@@ -33,27 +33,3 @@ def add_download_arguments(parser: argparse.ArgumentParser) -> None:
                         help="Download raw data files")
     parser.add_argument("--yes", "-y", action="store_true", default=False,
                         help="Skip confirmation prompts")
-
-
-def add_preprocess_arguments(parser: argparse.ArgumentParser) -> None:
-    """Add arguments for ``xena preprocess``."""
-    parser.add_argument(
-        "--config", type=str, required=True,
-        help="Path to an OncoLearn YAML config",
-    )
-    parser.add_argument(
-        "--n_splits", type=int, default=5,
-        help="Number of folds (default: 5)",
-    )
-    parser.add_argument(
-        "--val_fraction", type=float, default=0.1,
-        help="Fraction of train fold reserved for validation (default: 0.1)",
-    )
-    parser.add_argument(
-        "--output_dir", type=str, default=None,
-        help="Root output directory (default: data/configs/modeling/multimodal/splits/kfold/)",
-    )
-    parser.add_argument(
-        "--seed", type=int, default=None,
-        help="Random seed for reproducibility",
-    )
