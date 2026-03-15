@@ -23,11 +23,28 @@
       "settings": {
         "python.defaultInterpreterPath": "/workspace/.venv/bin/python",
         "python.terminal.activateEnvironment": true,
+        "python.analysis.autoFormatStrings": true,
         "jupyter.notebookFileRoot": "${workspaceFolder}",
         "terminal.integrated.defaultProfile.linux": "bash",
         "autopep8.path": ["/workspace/.venv/bin/autopep8"],
         "ruff.path": ["/workspace/.venv/bin/ruff"],
-        "ruff.interpreter": ["/workspace/.venv/bin/python"]
+        "ruff.interpreter": ["/workspace/.venv/bin/python"],
+        "[python]": {
+          "editor.tabSize": 4,
+          "editor.insertSpaces": true,
+          "editor.rulers": [120],
+          "editor.defaultFormatter": "ms-python.autopep8",
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit",
+            "source.organizeImports": "explicit"
+          }
+        },
+        "notebook.formatOnSave.enabled": true,
+        "notebook.codeActionsOnSave": {
+          "notebook.source.fixAll": "explicit",
+          "notebook.source.organizeImports": "explicit"
+        }
       }
     }
   },
