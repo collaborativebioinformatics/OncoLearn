@@ -20,10 +20,10 @@ x-prod-build: &prod-build
   dockerfile: docker/Dockerfile.prod
 
 services:
-  # Main development environment with Python + R (CPU only)
+  # Development environment — CPU only
   dev-cpu:
     <<: *common-config
-    image: ghcr.io/collaborativebioinformatics/oncolearn-dev:cpu
+    image: ghcr.io/collaborativebioinformatics/oncolearn:dev-cpu
     profiles: ["dev-cpu"]
     build:
       <<: *dev-build
@@ -32,53 +32,54 @@ services:
       target: dev
     container_name: oncolearn-dev-cpu
 
-  # Main development environment with Python + R (NVIDIA GPU)
-  dev-nvidia:
+  # Development environment — NVIDIA GPU
+  dev-cuda:
     <<: *common-config
-    image: ghcr.io/collaborativebioinformatics/oncolearn-dev:cuda
-    profiles: ["dev-nvidia"]
+    image: ghcr.io/collaborativebioinformatics/oncolearn:dev-cuda
+    profiles: ["dev-cuda"]
     build:
       <<: *dev-build
       args:
         GPU_EXTRA: cu130
       target: dev
-    container_name: oncolearn-dev-nvidia
+    container_name: oncolearn-dev-cuda
     deploy:
       resources:
         reservations:
           devices:
-            - driver: nvidia
+            - driver: cuda
               count: all
               capabilities: [gpu]
 
-  # Main development environment with Python + R (AMD GPU - Native Linux)
-  dev-amd:
+  # Development environment — AMD GPU (native Linux)
+  dev-rocm:
     <<: *common-config
-    image: ghcr.io/collaborativebioinformatics/oncolearn-dev:rocm
-    profiles: ["dev-amd"]
+    image: ghcr.io/collaborativebioinformatics/oncolearn:dev-rocm
+    profiles: ["dev-rocm"]
     build:
       <<: *dev-build
       args:
         GPU_EXTRA: rocm
       target: dev
-    container_name: oncolearn-dev-amd
+    container_name: oncolearn-dev-rocm
     devices:
       - /dev/kfd
       - /dev/dri
     group_add:
       - video
 
-  # Main development environment with Python + R (AMD GPU - WSL2)
-  dev-amd-wsl:
+  # Development environment — AMD GPU (WSL2)
+  # Uses the same image as dev-rocm; WSL2 differences are runtime-only.
+  dev-rocm-wsl:
     <<: *common-config
-    image: ghcr.io/collaborativebioinformatics/oncolearn-dev:rocm
-    profiles: ["dev-amd-wsl"]
+    image: ghcr.io/collaborativebioinformatics/oncolearn:dev-rocm
+    profiles: ["dev-rocm-wsl"]
     build:
       <<: *dev-build
       args:
         GPU_EXTRA: rocm
       target: dev
-    container_name: oncolearn-dev-amd-wsl
+    container_name: oncolearn-dev-rocm-wsl
     volumes:
       - .:/workspace
       - uv-cache:/root/.cache/uv
@@ -102,30 +103,30 @@ services:
     ipc: host  # required for ROCm shared memory
     shm_size: '2gb'
 
-  # Production PyTorch environment (CPU only)
-  pytorch-prod-cpu:
-    image: ghcr.io/collaborativebioinformatics/oncolearn-prod:cpu
+  # Production image — CPU only
+  prod-cpu:
+    image: ghcr.io/collaborativebioinformatics/oncolearn:prod-cpu
     profiles: ["prod-cpu"]
     build:
       <<: *prod-build
       args:
         GPU_EXTRA: cpu
       target: pytorch-prod
-    container_name: oncolearn-pytorch-prod-cpu
+    container_name: oncolearn-prod-cpu
     volumes:
       - ./data:/workspace/data:ro
       - ./data/configs:/workspace/data/configs
 
-  # Production PyTorch environment (NVIDIA GPU - Optimized Size)
-  pytorch-prod-nvidia:
-    image: ghcr.io/collaborativebioinformatics/oncolearn-prod:cuda
-    profiles: ["prod-nvidia"]
+  # Production image — NVIDIA GPU
+  prod-cuda:
+    image: ghcr.io/collaborativebioinformatics/oncolearn:prod-cuda
+    profiles: ["prod-cuda"]
     build:
       <<: *prod-build
       args:
         GPU_EXTRA: cu130
       target: pytorch-prod
-    container_name: oncolearn-pytorch-prod-nvidia
+    container_name: oncolearn-prod-cuda
     volumes:
       - ./data:/workspace/data:ro
       - ./data/configs:/workspace/data/configs
@@ -133,21 +134,55 @@ services:
       resources:
         reservations:
           devices:
-            - driver: nvidia
+            - driver: cuda
               count: all
               capabilities: [gpu]
 
-  # Production PyTorch environment (AMD GPU - WSL2)
-  pytorch-prod-amd-wsl:
-    image: ghcr.io/collaborativebioinformatics/oncolearn-prod:rocm-wsl
-    profiles: ["prod-amd"]
+  # Production image — AMD GPU (native Linux)
+  prod-rocm:
+    image: ghcr.io/collaborativebioinformatics/oncolearn:prod-rocm
+    profiles: ["prod-rocm"]
+    build:
+      <<: *prod-build
+      args:
+        GPU_EXTRA: rocm
+        ROCM_WSL: "0"
+      target: pytorch-prod
+    container_name: oncolearn-prod-rocm
+    volumes:
+      - ./data:/workspace/data:ro
+      - ./data/configs:/workspace/data/configs
+      - ./models:/workspace/models
+      - ./outputs:/workspace/outputs
+      - ./.hf-cache:/root/.cache/huggingface
+      - ./src:/workspace/src
+      - /opt/rocm/lib:/opt/rocm/lib:ro  # ROCm runtime libs
+    environment:
+      - LD_LIBRARY_PATH=/opt/rocm/lib
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - video
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+    ipc: host
+    shm_size: '2gb'
+
+  # Production image — AMD GPU (WSL2)
+  # Uses a separate image with ROCm 7.2 LW wheels built for /dev/dxg.
+  prod-rocm-wsl:
+    image: ghcr.io/collaborativebioinformatics/oncolearn:prod-rocm-wsl
+    profiles: ["prod-rocm-wsl"]
     build:
       <<: *prod-build
       args:
         GPU_EXTRA: rocm
         ROCM_WSL: "1"
       target: pytorch-prod
-    container_name: oncolearn-pytorch-prod-amd
+    container_name: oncolearn-prod-rocm-wsl
     mem_limit: 20g        # cap below WSL limit so OOM kills container, not WSL
     memswap_limit: 22g    # allow some swap headroom during model loading
     volumes:

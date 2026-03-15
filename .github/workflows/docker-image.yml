@@ -34,8 +34,9 @@ jobs:
           context: .
           file: docker/Dockerfile.dev
           target: dev-base
+          platforms: linux/amd64
           push: true
-          tags: ghcr.io/collaborativebioinformatics/oncolearn-dev-base:latest
+          tags: ghcr.io/collaborativebioinformatics/oncolearn:dev-base
           cache-from: type=gha,scope=dev-base
           cache-to: type=gha,mode=max,scope=dev-base
 
@@ -45,8 +46,9 @@ jobs:
           context: .
           file: docker/Dockerfile.prod
           target: pytorch-prod-base
+          platforms: linux/amd64
           push: true
-          tags: ghcr.io/collaborativebioinformatics/oncolearn-prod-base:latest
+          tags: ghcr.io/collaborativebioinformatics/oncolearn:prod-base
           cache-from: type=gha,scope=prod-base
           cache-to: type=gha,mode=max,scope=prod-base
 
@@ -58,27 +60,31 @@ jobs:
         include:
           - stage: dev
             gpu_extra: cpu
-            image_tag: cpu
+            image_tag: dev-cpu
             rocm_wsl: "0"
           - stage: dev
             gpu_extra: cu130
-            image_tag: cuda
+            image_tag: dev-cuda
             rocm_wsl: "0"
           - stage: dev
             gpu_extra: rocm
-            image_tag: rocm
+            image_tag: dev-rocm
             rocm_wsl: "0"
           - stage: prod
             gpu_extra: cpu
-            image_tag: cpu
+            image_tag: prod-cpu
             rocm_wsl: "0"
           - stage: prod
             gpu_extra: cu130
-            image_tag: cuda
+            image_tag: prod-cuda
             rocm_wsl: "0"
           - stage: prod
             gpu_extra: rocm
-            image_tag: rocm-wsl
+            image_tag: prod-rocm
+            rocm_wsl: "0"
+          - stage: prod
+            gpu_extra: rocm
+            image_tag: prod-rocm-wsl
             rocm_wsl: "1"
 
     steps:
@@ -102,15 +108,13 @@ jobs:
           if [ "${{ matrix.stage }}" = "dev" ]; then
             echo "dockerfile=docker/Dockerfile.dev" >> "$GITHUB_OUTPUT"
             echo "target=dev" >> "$GITHUB_OUTPUT"
-            echo "image_name=oncolearn-dev" >> "$GITHUB_OUTPUT"
             echo "base_scope=dev-base" >> "$GITHUB_OUTPUT"
-            echo "base_image=ghcr.io/collaborativebioinformatics/oncolearn-dev-base:latest" >> "$GITHUB_OUTPUT"
+            echo "base_image=ghcr.io/collaborativebioinformatics/oncolearn:dev-base" >> "$GITHUB_OUTPUT"
           else
             echo "dockerfile=docker/Dockerfile.prod" >> "$GITHUB_OUTPUT"
             echo "target=pytorch-prod" >> "$GITHUB_OUTPUT"
-            echo "image_name=oncolearn-prod" >> "$GITHUB_OUTPUT"
             echo "base_scope=prod-base" >> "$GITHUB_OUTPUT"
-            echo "base_image=ghcr.io/collaborativebioinformatics/oncolearn-prod-base:latest" >> "$GITHUB_OUTPUT"
+            echo "base_image=ghcr.io/collaborativebioinformatics/oncolearn:prod-base" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build and push GPU variant
@@ -119,13 +123,14 @@ jobs:
           context: .
           file: ${{ steps.vars.outputs.dockerfile }}
           target: ${{ steps.vars.outputs.target }}
+          platforms: linux/amd64
           push: true
-          tags: ghcr.io/collaborativebioinformatics/${{ steps.vars.outputs.image_name }}:${{ matrix.image_tag }}
+          tags: ghcr.io/collaborativebioinformatics/oncolearn:${{ matrix.image_tag }}
           build-args: |
             GPU_EXTRA=${{ matrix.gpu_extra }}
             ROCM_WSL=${{ matrix.rocm_wsl }}
           cache-from: |
-            type=gha,scope=${{ matrix.stage }}-${{ matrix.image_tag }}
+            type=gha,scope=${{ matrix.image_tag }}
             type=gha,scope=${{ steps.vars.outputs.base_scope }}
             type=registry,ref=${{ steps.vars.outputs.base_image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.stage }}-${{ matrix.image_tag }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image_tag }}
