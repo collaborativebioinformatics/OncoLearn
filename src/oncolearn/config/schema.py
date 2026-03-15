@@ -208,6 +208,18 @@ class HpoConfig:
 
 
 @dataclass
+class CrossValidationConfig:
+    """Cross-validation settings for HPO.
+
+    When enabled, each HPO trial trains on every fold in ``folds_dirs``
+    and the trial metric is the mean across folds.
+    """
+
+    enabled: bool = False
+    folds_dirs: List[str] = field(default_factory=list)
+
+
+@dataclass
 class TrainingConfig:
     """Training hyperparameters."""
 
@@ -224,7 +236,8 @@ class TrainingConfig:
     scheduler: SchedulerConfig = field(default_factory=SchedulerConfig)
     loss: LossConfig = field(default_factory=LossConfig)
     regularization: RegularizationConfig = field(default_factory=RegularizationConfig)
-    hpo: Optional[HpoConfig] = None   
+    hpo: Optional[HpoConfig] = None
+    cross_validation: CrossValidationConfig = field(default_factory=CrossValidationConfig)
 
 @dataclass
 class OutputConfig:

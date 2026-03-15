@@ -25,7 +25,7 @@ model:
 
 data:
   pipeline: data/configs/modeling/multimodal/preprocessing/tcga_brca_cbioportal_stage.py
-  splits_dir: data/configs/modeling/multimodal/splits/kfold/fold_0
+  splits_dir: data/configs/modeling/multimodal/splits/stage/kfold/fold_0
 
 training:
   max_epochs: 50
@@ -60,6 +60,15 @@ training:
     l1_lambda: 0.0
     gradient_clip_val: 1.0
     label_smoothing: 0.0
+
+  cross_validation:
+    enabled: false
+    folds_dirs:
+      - data/configs/modeling/multimodal/splits/stage/kfold/fold_0
+      - data/configs/modeling/multimodal/splits/stage/kfold/fold_1
+      - data/configs/modeling/multimodal/splits/stage/kfold/fold_2
+      - data/configs/modeling/multimodal/splits/stage/kfold/fold_3
+      - data/configs/modeling/multimodal/splits/stage/kfold/fold_4
 
   hpo:
     n_trials: 30

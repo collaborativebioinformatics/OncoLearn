@@ -11,6 +11,7 @@ from typing import Union
 import yaml
 
 from .schema import (
+    CrossValidationConfig,
     DataConfig,
     EncoderConfig,
     HpoConfig,
@@ -47,9 +48,17 @@ def _parse_data_section(raw: dict) -> DataConfig:
     return DataConfig(pipeline=pipeline, splits_dir=splits_dir)
 
 
+def _parse_cross_validation_section(raw: dict) -> CrossValidationConfig:
+    """Parse the ``training.cross_validation:`` section."""
+    return CrossValidationConfig(
+        enabled=raw.get("enabled", False),
+        folds_dirs=raw.get("folds_dirs", []),
+    )
+
+
 def _parse_training_section(raw: dict) -> TrainingConfig:
     """Parse the ``training:`` section, handling nested optimizer/scheduler/loss/regularization."""
-    nested_keys = {"optimizer", "scheduler", "loss", "regularization"}
+    nested_keys = {"optimizer", "scheduler", "loss", "regularization", "cross_validation"}
     flat = {k: v for k, v in raw.items() if k not in nested_keys}
     training_cfg = _dataclass_from_dict(TrainingConfig, flat)
 
@@ -87,6 +96,9 @@ def _parse_training_section(raw: dict) -> TrainingConfig:
 
     if "hpo" in raw:
         training_cfg.hpo = _parse_hpo_section(raw["hpo"])
+
+    if "cross_validation" in raw:
+        training_cfg.cross_validation = _parse_cross_validation_section(raw["cross_validation"])
 
     return training_cfg
 

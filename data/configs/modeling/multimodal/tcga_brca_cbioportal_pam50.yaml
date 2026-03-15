@@ -25,7 +25,7 @@ model:
 
 data:
   pipeline: data/configs/modeling/multimodal/preprocessing/tcga_brca_cbioportal_pam50.py
-  splits_dir: data/configs/modeling/multimodal/splits/kfold/fold_0
+  splits_dir: data/configs/modeling/multimodal/splits/pam50/kfold/fold_0
 
 training:
   max_epochs: 50
@@ -61,13 +61,22 @@ training:
     gradient_clip_val: 1.0
     label_smoothing: 0.0
 
+  cross_validation:
+    enabled: true
+    folds_dirs:
+      - data/configs/modeling/multimodal/splits/pam50/kfold/fold_0
+      - data/configs/modeling/multimodal/splits/pam50/kfold/fold_1
+      - data/configs/modeling/multimodal/splits/pam50/kfold/fold_2
+      - data/configs/modeling/multimodal/splits/pam50/kfold/fold_3
+      - data/configs/modeling/multimodal/splits/pam50/kfold/fold_4
+
   hpo:
-    n_trials: 30
-    epochs_per_trial: 30
+    n_trials: 100
+    epochs_per_trial: 10
     study_name: brca_cbioportal_pam50
     storage: sqlite:///outputs/brca_cbioportal_pam50.db
     direction: maximize
-    metric: val_acc
+    metric: test_f1
     pruning: true
     seed: 42
     search_space:

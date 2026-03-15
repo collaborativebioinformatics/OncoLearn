@@ -111,10 +111,10 @@ class BaseOncoClassifier(pl.LightningModule):
 
     def on_train_epoch_end(self):
         metrics = self.train_metrics.compute()
-        self.log("train_acc", metrics["train_acc"], prog_bar=False)
-        self.log("train_f1", metrics["train_f1"], prog_bar=False)
-        self.log("train_precision", metrics["train_precision"])
-        self.log("train_recall", metrics["train_recall"])
+        self.log("train_acc", metrics["train_acc"], prog_bar=True)
+        self.log("train_f1", metrics["train_f1"], prog_bar=True)
+        self.log("train_precision", metrics["train_precision"], prog_bar=True)
+        self.log("train_recall", metrics["train_recall"], prog_bar=True)
         self.train_metrics.reset()
 
     def validation_step(self, batch, batch_idx):
@@ -128,8 +128,8 @@ class BaseOncoClassifier(pl.LightningModule):
         metrics = self.val_metrics.compute()
         self.log("val_acc", metrics["val_acc"], prog_bar=True)
         self.log("val_f1", metrics["val_f1"], prog_bar=True)
-        self.log("val_precision", metrics["val_precision"])
-        self.log("val_recall", metrics["val_recall"])
+        self.log("val_precision", metrics["val_precision"], prog_bar=True)
+        self.log("val_recall", metrics["val_recall"], prog_bar=True)
         self.val_metrics.reset()
 
     def test_step(self, batch, batch_idx):

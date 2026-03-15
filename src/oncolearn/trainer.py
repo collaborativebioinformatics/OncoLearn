@@ -25,6 +25,8 @@ torch.set_float32_matmul_precision("high")
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, ModelSummary
 from pytorch_lightning.loggers import TensorBoardLogger
 
+from oncolearn.modeling.callbacks import MetricsJsonCallback
+
 from oncolearn.config import OncoLearnConfig, load_config
 from oncolearn.registry import get_model, get_dataset
 import oncolearn.modeling  # noqa: F401 — triggers @register_model / @register_encoder decorators
@@ -179,29 +181,43 @@ class OncoTrainer:
 
         t = self.config.training
         out = self.config.output
+        cv = t.cross_validation
         output_dir = Path(out.dir) / out.experiment_name
 
-        callbacks = [
-            ModelSummary(max_depth=2),
-            ModelCheckpoint(
-                dirpath=str(output_dir),
-                filename="best_model",
-                monitor="val_acc",
-                mode="max",
-                save_top_k=1,
-            ),
-            ModelCheckpoint(
-                dirpath=str(output_dir),
-                filename="epoch_{epoch}",
-                every_n_epochs=out.save_every_n_epochs,
-                save_top_k=-1,
-            ),
-            EarlyStopping(
-                monitor="val_acc",
-                patience=t.early_stopping_patience,
-                mode="max",
-            ),
-        ]
+        if cv.enabled:
+            callbacks = [
+                ModelSummary(max_depth=2),
+                ModelCheckpoint(
+                    dirpath=str(output_dir),
+                    filename="epoch_{epoch}",
+                    every_n_epochs=out.save_every_n_epochs,
+                    save_top_k=-1,
+                ),
+                MetricsJsonCallback(output_dir, log_val=False),
+            ]
+        else:
+            callbacks = [
+                ModelSummary(max_depth=2),
+                ModelCheckpoint(
+                    dirpath=str(output_dir),
+                    filename="best_model",
+                    monitor="val_acc",
+                    mode="max",
+                    save_top_k=1,
+                ),
+                ModelCheckpoint(
+                    dirpath=str(output_dir),
+                    filename="epoch_{epoch}",
+                    every_n_epochs=out.save_every_n_epochs,
+                    save_top_k=-1,
+                ),
+                EarlyStopping(
+                    monitor="val_acc",
+                    patience=t.early_stopping_patience,
+                    mode="max",
+                ),
+                MetricsJsonCallback(output_dir, log_val=True),
+            ]
 
         gradient_clip_val = t.regularization.gradient_clip_val if t.regularization.gradient_clip_val > 0 else None
         tb_logger = TensorBoardLogger(
@@ -217,6 +233,8 @@ class OncoTrainer:
             logger=tb_logger,
             log_every_n_steps=1,
             gradient_clip_val=gradient_clip_val,
+            limit_val_batches=0.0 if cv.enabled else 1.0,
+            num_sanity_val_steps=0 if cv.enabled else 2,
         )
 
         logger.info(
@@ -228,13 +246,32 @@ class OncoTrainer:
         )
 
         self._pl_trainer.fit(self.model, datamodule=self.datamodule)
-        return dict(self._pl_trainer.callback_metrics)
+        metrics = dict(self._pl_trainer.callback_metrics)
+        if cv.enabled:
+            test_results = self._pl_trainer.test(self.model, datamodule=self.datamodule, verbose=False)
+            if test_results:
+                metrics.update(test_results[0])
+        return metrics
 
     def _run_hpo(self) -> None:
         """Run an Optuna study and apply best params to self.config in-place."""
         from oncolearn.modeling.hyps import OptunaHPTuner
 
         hpo_cfg = self.config.training.hpo
+        cv = self.config.training.cross_validation
+        if cv.enabled and cv.folds_dirs:
+            if self.config.data.splits_dir:
+                logger.warning(
+                    "[CV] 'data.splits_dir' (%s) is ignored when cross_validation.enabled=true; "
+                    "each trial will iterate over cross_validation.folds_dirs instead.",
+                    self.config.data.splits_dir,
+                )
+            if hpo_cfg and hpo_cfg.pruning:
+                logger.warning(
+                    "[CV] 'training.hpo.pruning=true' is ignored when cross_validation.enabled=true; "
+                    "trial pruning callbacks are not supported in multi-fold CV mode.",
+                )
+
         logger.info(
             "HPO enabled — running %d trials before final training", hpo_cfg.n_trials
         )
