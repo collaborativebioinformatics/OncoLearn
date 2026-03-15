@@ -5,7 +5,7 @@ TCIA dataset implementation for downloading imaging data manifests.
 from pathlib import Path
 from typing import Optional
 
-from oncolearn.utils.download import download_file, run_external_command
+from oncolearn.cli.utils.download import download_file, run_external_command
 
 from ..dataset import DataCategory, Dataset
 
@@ -70,7 +70,7 @@ class TCIADataset(Dataset):
             True if successful, False otherwise
         """
         if output_dir is None:
-            output_dir = "data/tcia/manifests"
+            output_dir = "data/sources/tcia/manifests"
 
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
@@ -93,7 +93,7 @@ class TCIADataset(Dataset):
         # If this is a .tcia manifest and download_images is True, run nbia-data-retriever
         if download_images and self.filename.endswith('.tcia'):
             # Download images to data/tcia/<cohort> instead of manifest directory
-            images_dir = Path(f"data/tcia/{self.default_subdir}")
+            images_dir = Path(f"data/sources/tcia/{self.default_subdir}")
             return self._download_images(dest_file, images_dir, verbose)
 
         return True

@@ -26,11 +26,17 @@ def main():
     )
 
     # Import and register subcommands
-    from . import download
-    download.register_subcommand(subparsers)
+    from oncolearn.cli.subcommands.train.command       import register_subcommand as register_train
+    from oncolearn.cli.subcommands.tcia.command        import register_subcommand as register_tcia
+    from oncolearn.cli.subcommands.xena.command        import register_subcommand as register_xena
+    from oncolearn.cli.subcommands.cbioportal.command  import register_subcommand as register_cbioportal
+    from oncolearn.cli.subcommands.preprocess.command  import register_subcommand as register_preprocess
 
-    from . import preprocess
-    preprocess.register_subcommand(subparsers)
+    register_train(subparsers)
+    register_tcia(subparsers)
+    register_xena(subparsers)
+    register_cbioportal(subparsers)
+    register_preprocess(subparsers)
 
     # Parse arguments
     args = parser.parse_args()

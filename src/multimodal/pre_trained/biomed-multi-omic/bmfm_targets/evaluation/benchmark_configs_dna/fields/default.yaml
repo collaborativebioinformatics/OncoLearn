@@ -1,4 +1,0 @@
-  - _target_: bmfm_targets.config.FieldInfo
-    field_name: "dna_chunks"
-    pretrained_embedding: null
-    is_masked: false

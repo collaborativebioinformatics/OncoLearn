@@ -8,7 +8,7 @@ using the XenaCohortBuilder.
 from typing import Dict
 
 from oncolearn.api.dataset import DataCategory
-from oncolearn.api.xenabrowser import XenaCohortBuilder
+from oncolearn.api.xenabrowser.builder import XenaCohortBuilder
 
 
 def get_available_cohorts() -> list[str]:

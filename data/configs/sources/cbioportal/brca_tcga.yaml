@@ -1,0 +1,177 @@
+cohort:
+  name: TCGA Breast Invasive Carcinoma (Firehose Legacy)
+  code: brca_tcga
+  study_id: brca_tcga
+  description: >
+    Full TCGA-BRCA dataset from the Firehose Legacy study (brca_tcga).
+    All molecular profiles: mRNA (microarray + RNA-seq V2 RSEM), copy-number
+    (GISTIC discrete + linear continuous), methylation (HM450), protein (RPPA
+    + CPTAC mass-spec), phosphoproteomics (CPTAC GENERIC_ASSAY), and somatic
+    mutations (WES MAF). Clinical data at patient and sample level (138 attrs).
+    Output: data/cbioportal/TCGA-BRCA/brca_tcga/
+  default_output_subdir: TCGA-BRCA/brca_tcga
+
+datasets:
+
+  # ── Clinical (Firehose Legacy) ───────────────────────────────────────────
+
+  - name: clinical_patient
+    description: "All patient-level clinical attributes"
+    category: clinical
+    type: clinical
+    clinical_data_type: PATIENT
+    attribute_ids: []   # empty = download all attributes
+    filename: clinical_patient.tsv
+
+  - name: clinical_sample
+    description: "All sample-level clinical attributes"
+    category: clinical
+    type: clinical
+    clinical_data_type: SAMPLE
+    attribute_ids: []
+    filename: clinical_sample.tsv
+
+  # ── mRNA expression — RNA Seq V2 RSEM (molecularAlterationType: MRNA_EXPRESSION) ──
+
+  - name: rna_seq_v2_mrna
+    description: "mRNA expression (RNA Seq V2 RSEM) | MRNA_EXPRESSION | CONTINUOUS"
+    category: mrna_seq
+    type: molecular
+    molecular_profile_id: brca_tcga_rna_seq_v2_mrna
+    sample_list_id: brca_tcga_rna_seq_v2_mrna
+    filename: rna_seq_v2_mrna.tsv
+
+  - name: rna_seq_v2_mrna_median_Zscores
+    description: "mRNA expression z-scores relative to diploid samples (RNA Seq V2 RSEM) | MRNA_EXPRESSION | Z-SCORE"
+    category: mrna_seq
+    type: molecular
+    molecular_profile_id: brca_tcga_rna_seq_v2_mrna_median_Zscores
+    sample_list_id: brca_tcga_rna_seq_v2_mrna
+    filename: rna_seq_v2_mrna_median_Zscores.tsv
+
+  - name: rna_seq_v2_mrna_median_all_sample_Zscores
+    description: "mRNA expression z-scores relative to all samples (log RNA Seq V2 RSEM) | MRNA_EXPRESSION | Z-SCORE"
+    category: mrna_seq
+    type: molecular
+    molecular_profile_id: brca_tcga_rna_seq_v2_mrna_median_all_sample_Zscores
+    sample_list_id: brca_tcga_rna_seq_v2_mrna
+    filename: rna_seq_v2_mrna_median_all_sample_Zscores.tsv
+
+  # ── mRNA expression — Microarray (molecularAlterationType: MRNA_EXPRESSION) ──
+
+  - name: mrna
+    description: "mRNA expression (microarray) | MRNA_EXPRESSION | CONTINUOUS"
+    category: mrna_seq
+    type: molecular
+    molecular_profile_id: brca_tcga_mrna
+    sample_list_id: brca_tcga_mrna
+    filename: mrna.tsv
+
+  - name: mrna_median_Zscores
+    description: "mRNA expression z-scores relative to diploid samples (microarray) | MRNA_EXPRESSION | Z-SCORE"
+    category: mrna_seq
+    type: molecular
+    molecular_profile_id: brca_tcga_mrna_median_Zscores
+    sample_list_id: brca_tcga_mrna
+    filename: mrna_median_Zscores.tsv
+
+  - name: mrna_median_all_sample_Zscores
+    description: "mRNA expression z-scores relative to all samples (log microarray) | MRNA_EXPRESSION | Z-SCORE"
+    category: mrna_seq
+    type: molecular
+    molecular_profile_id: brca_tcga_mrna_median_all_sample_Zscores
+    sample_list_id: brca_tcga_mrna
+    filename: mrna_median_all_sample_Zscores.tsv
+
+  # ── Copy-number alteration (molecularAlterationType: COPY_NUMBER_ALTERATION) ──
+
+  - name: gistic
+    description: "Putative copy-number alterations from GISTIC | COPY_NUMBER_ALTERATION | DISCRETE"
+    category: cnv
+    type: molecular
+    molecular_profile_id: brca_tcga_gistic
+    sample_list_id: brca_tcga_cna
+    filename: gistic.tsv
+
+  - name: linear_CNA
+    description: "Capped relative linear copy-number values | COPY_NUMBER_ALTERATION | CONTINUOUS"
+    category: cnv
+    type: molecular
+    molecular_profile_id: brca_tcga_linear_CNA
+    sample_list_id: brca_tcga_cna
+    filename: linear_CNA.tsv
+
+  # ── Methylation (molecularAlterationType: METHYLATION) ──────────────────
+
+  - name: methylation_hm450
+    description: "Methylation (HM450) | METHYLATION | CONTINUOUS"
+    category: methylation
+    type: molecular
+    molecular_profile_id: brca_tcga_methylation_hm450
+    sample_list_id: brca_tcga_methylation_hm450
+    batch_size: 20   # 485K probes × 20 samples = ~9.7M records/batch; keep memory bounded
+    filename: methylation_hm450.tsv
+
+  # ── Protein — RPPA (molecularAlterationType: PROTEIN_LEVEL) ─────────────
+
+  - name: rppa
+    description: "Protein expression (RPPA) | PROTEIN_LEVEL | LOG2-VALUE"
+    category: protein
+    type: molecular
+    molecular_profile_id: brca_tcga_rppa
+    sample_list_id: brca_tcga_rppa
+    filename: rppa.tsv
+
+  - name: rppa_Zscores
+    description: "Protein expression z-scores (RPPA) | PROTEIN_LEVEL | Z-SCORE"
+    category: protein
+    type: molecular
+    molecular_profile_id: brca_tcga_rppa_Zscores
+    sample_list_id: brca_tcga_rppa
+    filename: rppa_Zscores.tsv
+
+  # ── Protein — CPTAC mass-spectrometry (molecularAlterationType: PROTEIN_LEVEL) ──
+
+  - name: protein_quantification
+    description: "Protein levels (mass spectrometry by CPTAC) | PROTEIN_LEVEL | CONTINUOUS"
+    category: protein
+    type: molecular
+    molecular_profile_id: brca_tcga_protein_quantification
+    sample_list_id: brca_tcga_protein_quantification
+    filename: protein_quantification.tsv
+
+  - name: protein_quantification_zscores
+    description: "Protein level z-scores (mass spectrometry by CPTAC) | PROTEIN_LEVEL | Z-SCORE"
+    category: protein
+    type: molecular
+    molecular_profile_id: brca_tcga_protein_quantification_zscores
+    sample_list_id: brca_tcga_protein_quantification
+    filename: protein_quantification_zscores.tsv
+
+  # ── Phosphoproteomics — CPTAC (molecularAlterationType: GENERIC_ASSAY | LIMIT-VALUE) ──
+
+  - name: phosphoprotein_quantification
+    description: "Phosphoprotein site level expression (mass spectrometry by CPTAC) | GENERIC_ASSAY | LIMIT-VALUE"
+    category: proteomics
+    type: generic_assay
+    molecular_profile_id: brca_tcga_phosphoprotein_quantification
+    sample_list_id: brca_tcga_phosphoprotein_quantification
+    filename: phosphoprotein_quantification.tsv
+
+  # ── Copy-number segments (raw CBS segmentation, SNP6 array) ─────────────
+
+  - name: copy_number_segments
+    description: "Raw copy-number segments (CBS segmentation, SNP6 array) | long-format: sampleId, chromosome, start, end, numberOfProbes, segmentMean"
+    category: cnv
+    type: copy_number_segments
+    filename: copy_number_segments.tsv
+
+  # ── Somatic mutations (molecularAlterationType: MUTATION_EXTENDED | MAF) ──
+
+  - name: mutations
+    description: "Mutations (WES MAF) | MUTATION_EXTENDED | MAF"
+    category: mutation
+    type: mutations
+    molecular_profile_id: brca_tcga_mutations
+    sample_list_id: brca_tcga_sequenced
+    filename: mutations.tsv

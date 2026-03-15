@@ -4,29 +4,77 @@ version = "0.1.0"
 description = "A comprehensive toolkit for cancer genomics analysis and biomarker discovery"
 readme = "README.md"
 requires-python = ">=3.12,<3.14"
+
 dependencies = [
-    "hdbscan>=0.8.41",
-    "matplotlib>=3.10.8",
-    "pandas>=2.3.3",
-    "plotly>=6.5.1",
-    "scikit-learn>=1.7.2",
-    "seaborn>=0.13.2",
     "tqdm>=4.67.1",
-    "umap-learn>=0.5.9.post2",
-    "llvmlite>=0.40.0,<0.46.0",
-    "transformers>=4.57.3",
-    "pillow>=12.1.0",
-    "diffusers>=0.36.0",
-    "pydicom>=3.0.1",
-    "simpleitk>=2.5.3",
-    "scipy>=1.16.3",
     "pyyaml>=6.0.3",
     "requests>=2.32.5",
 ]
 
 [project.scripts]
 oncolearn = "oncolearn.cli.cli:main"
-download = "oncolearn.cli.download:main"
+
+[project.optional-dependencies]
+
+cpu = [
+    "torch>=2.9.1",
+    "torchvision>=0.24.1",
+]
+cu128 = [
+    "torch>=2.9.1",
+    "torchvision>=0.24.1",
+]
+cu130 = [
+    "torch>=2.9.1",
+    "torchvision>=0.24.1",
+]
+rocm = [
+    "torch>=2.9.1",
+    "torchvision>=0.24.1",
+    "pytorch-triton-rocm",
+]
+eda = [
+    "matplotlib>=3.10.8",
+    "matplotlib-venn>=1.1.2",
+    "scikit-learn>=1.7.2",
+    "hdbscan>=0.8.41",
+    "umap-learn>=0.5.9.post2",
+    "scipy>=1.13.3,<1.15.0",
+    "llvmlite>=0.40.0,<0.46.0",
+    "plotly>=6.5.1",
+    "seaborn>=0.13.2",
+]
+cli = [
+    "tqdm>=4.67.1",
+    "pyyaml>=6.0.3",
+    "requests>=2.32.5",
+]
+# Image processing dependencies
+image = [
+    "pillow>=12.1.0",
+    "pydicom>=3.0.1",
+    "simpleitk>=2.5.3",
+    "diffusers>=0.36.0"
+]
+multimodal = [
+    # "nvflare",
+    "tab-transformer-pytorch",
+    "bmfm-targets",
+    "torch>=2.9.1",
+    "torchvision>=0.24.1",
+    "pytorch-lightning>=2.1.0",
+    "torchmetrics>=1.0.0",
+    "tensorboard>=2.14.0",
+    "transformers>=4.57.3",
+    "timm>=0.9.10",
+    "igraph",
+    "optuna>=4.7.0",
+    # Image processing dependencies
+    "pillow>=12.1.0",
+    "pydicom>=3.0.1",
+    "simpleitk>=2.5.3",
+    "diffusers>=0.36.0"
+]
 
 [dependency-groups]
 dev = [
@@ -35,83 +83,89 @@ dev = [
     "ipywidgets>=8.1.8",
     "autopep8>=2.3.2",
     "ruff>=0.14.11",
-]
-
-[project.optional-dependencies]
-cpu = [
-  "torch>=2.9.1",
-  "torchvision>=0.24.1",
-]
-cu128 = [
-  "torch>=2.9.1",
-  "torchvision>=0.24.1",
-]
-cu130 = [
-  "torch>=2.9.1",
-  "torchvision>=0.24.1",
-]
-rocm = [
-  "torch>=2.9.1",
-  "torchvision>=0.24.1",
-  "pytorch-triton-rocm"
+    "pytest>=8.0.0",
 ]
 
 [tool.uv]
 conflicts = [
-  [
-    { extra = "cpu" },
-    { extra = "cu128" },
-    { extra = "cu130" },
-    { extra = "rocm" },
-  ],
+    [
+        { extra = "cpu" },
+        { extra = "cu128" },
+        { extra = "cu130" },
+        { extra = "rocm" },
+    ],
+]
+index = [
+    { name = "pytorch-cpu", url = "https://download.pytorch.org/whl/cpu", explicit = true },
+    { name = "pytorch-cu128", url = "https://download.pytorch.org/whl/cu128", explicit = true },
+    { name = "pytorch-cu130", url = "https://download.pytorch.org/whl/cu130", explicit = true },
+    { name = "pytorch-rocm", url = "https://download.pytorch.org/whl/rocm6.4", explicit = true },
 ]
 
 [tool.uv.sources]
-torch = [
-  { index = "pytorch-cpu", extra = "cpu" },
-  { index = "pytorch-cu128", extra = "cu128" },
-  { index = "pytorch-cu130", extra = "cu130" },
-  { index = "pytorch-rocm", extra = "rocm" },
-]
-torchvision = [
-  { index = "pytorch-cpu", extra = "cpu" },
-  { index = "pytorch-cu128", extra = "cu128" },
-  { index = "pytorch-cu130", extra = "cu130" },
-  { index = "pytorch-rocm", extra = "rocm" },
-]
 pytorch-triton-rocm = [
-  { index = "pytorch-rocm", extra = "rocm" },
+    { index = "pytorch-rocm", extra = "rocm" },
 ]
-oncolearn = { workspace = true, editable = true }
 
-[[tool.uv.index]]
-name = "pytorch-cpu"
-url = "https://download.pytorch.org/whl/cpu"
-explicit = true
+[[tool.uv.sources.torch]]
+index = "pytorch-rocm"
+extra = "rocm"
 
-[[tool.uv.index]]
-name = "pytorch-cu128"
-url = "https://download.pytorch.org/whl/cu128"
-explicit = true
+[[tool.uv.sources.torch]]
+index = "pytorch-cu130"
+extra = "cu130"
 
-[[tool.uv.index]]
-name = "pytorch-cu130"
-url = "https://download.pytorch.org/whl/cu130"
-explicit = true
+[[tool.uv.sources.torch]]
+index = "pytorch-cu128"
+extra = "cu128"
 
-[[tool.uv.index]]
-name = "pytorch-rocm"
-url = "https://download.pytorch.org/whl/rocm6.4"
-explicit = true
+[[tool.uv.sources.torch]]
+index = "pytorch-cpu"
+extra = "cpu"
+
+[[tool.uv.sources.torch]]
+index = "pytorch-cpu"
+marker = "extra == 'multimodal' and extra != 'rocm' and extra != 'cu130' and extra != 'cu128'"
+
+[[tool.uv.sources.torchvision]]
+index = "pytorch-rocm"
+extra = "rocm"
+
+[[tool.uv.sources.torchvision]]
+index = "pytorch-cu130"
+extra = "cu130"
+
+[[tool.uv.sources.torchvision]]
+index = "pytorch-cu128"
+extra = "cu128"
+
+[[tool.uv.sources.torchvision]]
+index = "pytorch-cpu"
+extra = "cpu"
+
+[[tool.uv.sources.torchvision]]
+index = "pytorch-cpu"
+marker = "extra == 'multimodal' and extra != 'rocm' and extra != 'cu130' and extra != 'cu128'"
+
+[tool.uv.sources.bmfm-targets]
+path = "submodules/biomed-multi-omic"
+
+[tool.uv.sources.oncolearn]
+workspace = true
+editable = true
 
 [tool.uv.workspace]
 members = [
     ".",
 ]
 
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
 [tool.setuptools.packages.find]
-where = ["src"]
+where = [
+    "src",
+]
+
+[build-system]
+requires = [
+    "setuptools>=61.0",
+]
+build-backend = "setuptools.build_meta"

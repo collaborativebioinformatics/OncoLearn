@@ -10,3 +10,6 @@
 [submodule "submodules/wiki"]
 	path = submodules/wiki
 	url = https://github.com/collaborativebioinformatics/OncoLearn.wiki.git
+[submodule "submodules/FM-BCMRI"]
+	path = submodules/FM-BCMRI
+	url = https://github.com/zhenweishi/FM-BCMRI.git

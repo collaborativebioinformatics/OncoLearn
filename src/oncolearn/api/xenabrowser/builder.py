@@ -7,8 +7,6 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-from oncolearn.utils.download import confirm_cohort_download
-
 from ..cohort import Cohort
 from ..cohort_builder import CohortBuilder as BaseCohortBuilder
 from ..dataset import DataCategory
@@ -26,13 +24,13 @@ class XenaCohortBuilder(BaseCohortBuilder):
         
         Args:
             config_dir: Directory containing YAML configuration files.
-                       Defaults to 'data/xenabrowser/configs' in the project root.
+                       Defaults to 'data/configs/sources/xenabrowser' in the project root.
         """
         if config_dir is None:
             # Default to data/xenabrowser/configs in project root
             # Navigate from src/oncolearn/data/xenabrowser to project root
             project_root = Path(__file__).parent.parent.parent.parent.parent
-            config_dir = project_root / "data" / "xenabrowser" / "configs"
+            config_dir = project_root / "data" / "configs" / "sources" / "xenabrowser"
         
         super().__init__(config_dir)
         self.config_dir = Path(config_dir)
@@ -162,8 +160,11 @@ class XenaCohortBuilder(BaseCohortBuilder):
         Returns:
             Configured Cohort instance
         """
-        with open(yaml_file, 'r') as f:
-            config = yaml.safe_load(f)
+        try:
+            with open(yaml_file, 'r') as f:
+                config = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            raise ValueError(f"Invalid YAML in cohort config {yaml_file}: {e}") from e
         
         cohort_info = config["cohort"]
         datasets_config = config["datasets"]
@@ -186,7 +187,7 @@ class XenaCohortBuilder(BaseCohortBuilder):
             def download(self, output_dir=None, download_all=True, extract=True, 
                        download_mapping=False, download_raw=False):
                 if output_dir is None:
-                    output_dir = f"data/xenabrowser/{cohort_info['name']}"
+                    output_dir = f"data/sources/xenabrowser/{cohort_info['name']}"
                 
                 output_path = Path(output_dir)
                 output_path.mkdir(parents=True, exist_ok=True)
@@ -194,32 +195,41 @@ class XenaCohortBuilder(BaseCohortBuilder):
                 print(f"Downloading {cohort_info['code']} cohort to {output_path}")
                 
                 if download_all:
-                    # Calculate size for each dataset and build file details list
-                    from oncolearn.utils.download import get_file_size_from_url
-                    
-                    file_details = []
-                    total_size = 0
-                    
+                    from oncolearn.cli.utils.download import get_file_size_from_url
                     print("Calculating total download size...")
+                    total_size = 0
+                    file_details = []
+                    datasets_to_download = []
                     for dataset in self.datasets:
+                        # Check if file already exists
+                        final_file = output_path / dataset.filename
+                        if extract and dataset.filename.endswith('.gz'):
+                            final_file = final_file.with_suffix('')
+                            
+                        if final_file.exists():
+                            print(f"Skipping {dataset.filename} (already downloaded)")
+                            continue
+                            
+                        datasets_to_download.append(dataset)
                         size = get_file_size_from_url(dataset.url)
                         if size:
                             total_size += size
                         file_details.append((dataset.filename, size if size else 0))
                     
                     # Show single confirmation for entire cohort if we have size info
-                    if total_size > 0:
+                    if total_size > 0 and len(datasets_to_download) > 0:
+                        from oncolearn.cli.utils.download import confirm_cohort_download  # noqa: PLC0415
                         if not confirm_cohort_download(
                             cohort_name=cohort_info['code'],
                             total_size_bytes=total_size,
                             file_details=file_details,
-                            verbose=True
+                            verbose=False  # Auto-confirm non-interactive or bypass
                         ):
                             print("Cohort download cancelled.")
                             return
                     
-                    # Download all datasets without individual confirmations
-                    for dataset in self.datasets:
+                    # Download all requested remaining datasets
+                    for dataset in datasets_to_download:
                         try:
                             dataset.download(str(output_path), extract=extract, confirm=False,
                                            download_mapping=download_mapping, 
@@ -257,5 +267,3 @@ class XenaCohortBuilder(BaseCohortBuilder):
             return []
         
         return [f.stem.upper() for f in self.config_dir.glob("*.yaml")]
-
-        return cohorts

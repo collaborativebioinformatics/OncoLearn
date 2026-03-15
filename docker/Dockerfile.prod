@@ -1,0 +1,160 @@
+# syntax=docker/dockerfile:1.7
+# Production PyTorch environment for OncoLearn
+
+ARG GPU_EXTRA=cpu
+
+# ============================================================================
+# Stage 1: Python Dependencies Builder
+# Base: python:3.12-slim + only the build tools required to compile native extensions.
+# python:3.12 (full) is ~1 GB; slim + build-essential is ~200 MB.
+# ============================================================================
+FROM python:3.12-slim AS pytorch-prod-builder
+
+ARG GPU_EXTRA
+ARG ROCM_WSL=0
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV UV_CACHE_DIR=/workspace/.uv-cache
+ENV UV_PROJECT_ENVIRONMENT=/workspace/.venv
+ENV UV_NO_PROGRESS=0
+ENV UV_HTTP_TIMEOUT=300
+ENV UV_LINK_MODE=copy
+ENV VIRTUAL_ENV=/workspace/.venv
+ENV PATH="/workspace/.venv/bin:${PATH}"
+# bmfm-targets uses setuptools_scm; without a git repo in Docker it hangs trying hg
+ENV SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0
+
+# Minimal build toolchain:
+#   build-essential — gcc/g++/make for native extensions (pysam, hic-straw, etc.)
+#   libcurl4-openssl-dev — hic-straw links against libcurl at compile time
+#   git — uv needs git to fetch pinned git-URL deps (e.g. focal-loss-torch)
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        libcurl4-openssl-dev \
+        git \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install uv --no-cache-dir
+
+WORKDIR /workspace
+
+COPY pyproject.toml uv.lock ./
+COPY submodules/biomed-multi-omic ./submodules/biomed-multi-omic/
+
+# Install all third-party deps first (--no-install-project skips oncolearn itself).
+# This layer stays cached as long as pyproject.toml/uv.lock/submodule don't change,
+# even when src/ is edited frequently.
+RUN --mount=type=cache,target=/workspace/.uv-cache,sharing=locked \
+    if [ "$ROCM_WSL" = "1" ]; then \
+      uv sync --no-dev --extra multimodal --no-install-project \
+        --no-install-package torch \
+        --no-install-package torchvision \
+        --no-install-package triton; \
+    else \
+      uv sync --no-dev --extra ${GPU_EXTRA} --extra multimodal --no-install-project; \
+    fi
+
+# Install oncolearn editable (cheap; only re-runs when src/ changes)
+COPY src/ ./src/
+RUN --mount=type=cache,target=/workspace/.uv-cache,sharing=locked \
+    if [ "$ROCM_WSL" = "1" ]; then \
+      uv sync --no-dev --extra multimodal \
+        --no-install-package torch \
+        --no-install-package torchvision \
+        --no-install-package triton; \
+    else \
+      uv sync --no-dev --extra ${GPU_EXTRA} --extra multimodal; \
+    fi
+
+# ============================================================================
+# Stage 2: ROCm WSL2 Wheel Fetcher
+# Isolated stage so the ~1.8 GB download is only re-triggered when wheel URLs
+# change — not when source code or the venv changes.
+# ============================================================================
+FROM python:3.12-slim AS rocm-wsl-wheels
+
+ARG GPU_EXTRA=cpu
+ARG ROCM_WSL=0
+
+# wget handles large files more reliably than pip (no read-timeout, supports retries)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends wget && \
+    rm -rf /var/lib/apt/lists/*
+
+# Download wheels into a BuildKit persistent cache mount, then copy to /rocm-wheels.
+# The cache mount survives layer-cache invalidation (e.g. base image refresh), so
+# wheels are only re-downloaded when the URLs change — not on every cache miss.
+# If not a ROCm WSL2 build, create an empty dir so the COPY in the next stage succeeds.
+RUN --mount=type=cache,target=/wheel-dl-cache,sharing=locked <<SHELL
+set -e
+if [ "$GPU_EXTRA" != "rocm" ] || [ "$ROCM_WSL" != "1" ]; then
+  mkdir -p /rocm-wheels
+  exit 0
+fi
+mkdir -p /wheel-dl-cache /rocm-wheels
+for url in \
+  "https://repo.radeon.com/rocm/manylinux/rocm-rel-7.2/torch-2.9.1%2Brocm7.2.0.lw.git7e1940d4-cp312-cp312-linux_x86_64.whl" \
+  "https://repo.radeon.com/rocm/manylinux/rocm-rel-7.2/torchvision-0.24.0%2Brocm7.2.0.gitb919bd0c-cp312-cp312-linux_x86_64.whl" \
+  "https://repo.radeon.com/rocm/manylinux/rocm-rel-7.2/triton-3.5.1%2Brocm7.2.0.gita272dfa8-cp312-cp312-linux_x86_64.whl"; do
+  fname=$(basename "$url" | sed 's/%2B/+/g')
+  if [ ! -f "/wheel-dl-cache/$fname" ]; then
+    wget --tries=5 --read-timeout=300 --progress=dot:giga -O "/wheel-dl-cache/$fname" "$url"
+  else
+    echo "Cache hit: $fname"
+  fi
+  cp "/wheel-dl-cache/$fname" "/rocm-wheels/$fname"
+done
+SHELL
+
+# ============================================================================
+# Stage 3: Production Runtime
+# Base: python:3.12-slim (~125 MB) — only runtime libs, no compilers or build tools.
+# ============================================================================
+FROM python:3.12-slim AS pytorch-prod
+
+ARG GPU_EXTRA
+ARG ROCM_WSL=0
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV VIRTUAL_ENV=/workspace/.venv
+ENV PATH="/workspace/.venv/bin:${PATH}"
+
+# Minimal runtime deps:
+#   libgomp1 — OpenMP, required by PyTorch CPU kernels
+#   libcurl4  — hic-straw runtime (downloads HiC data)
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libgomp1 \
+        libcurl4 \
+        libnuma1 \
+        libelf1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the built venv and uv (needed only to install ROCm wheels below)
+COPY --from=pytorch-prod-builder /workspace/.venv /workspace/.venv
+COPY --from=pytorch-prod-builder /usr/local/bin/uv /usr/local/bin/uv
+
+# Copy pre-fetched ROCm wheels (empty dir for non-WSL builds)
+COPY --from=rocm-wsl-wheels /rocm-wheels /rocm-wheels
+
+# WSL2 AMD: swap in the ROCm 7.2 LW torch/torchvision/triton wheels, then
+# remove uv and the wheel cache — they are not needed at inference/training time.
+ARG ROCM_WHEEL_VERSION=7.2
+RUN if [ "$GPU_EXTRA" = "rocm" ] && [ "$ROCM_WSL" = "1" ]; then \
+      echo "Installing ROCm ${ROCM_WHEEL_VERSION} LW wheels" && \
+      uv pip install --python /workspace/.venv --force-reinstall --no-deps \
+        /rocm-wheels/torch-*.whl \
+        /rocm-wheels/torchvision-*.whl \
+        /rocm-wheels/triton-*.whl; \
+    fi && \
+    rm -rf /rocm-wheels /usr/local/bin/uv
+
+WORKDIR /workspace
+
+COPY src/ ./src/

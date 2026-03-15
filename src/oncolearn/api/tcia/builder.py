@@ -7,8 +7,6 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-from oncolearn.utils.download import confirm_cohort_download
-
 from ..cohort import Cohort
 from ..cohort_builder import CohortBuilder as BaseCohortBuilder
 from ..dataset import DataCategory
@@ -26,13 +24,13 @@ class TCIACohortBuilder(BaseCohortBuilder):
 
         Args:
             config_dir: Directory containing YAML configuration files.
-                       Defaults to 'data/tcia/configs' in the project root.
+                       Defaults to 'data/configs/sources/tcia' in the project root.
         """
         if config_dir is None:
             # Default to data/tcia/configs in project root
             # Navigate from src/oncolearn/data/tcia to project root
             project_root = Path(__file__).parent.parent.parent.parent.parent
-            config_dir = project_root / "data" / "tcia" / "configs"
+            config_dir = project_root / "data" / "configs" / "sources" / "tcia"
 
         super().__init__(config_dir)
         self.config_dir = Path(config_dir)
@@ -140,7 +138,7 @@ class TCIACohortBuilder(BaseCohortBuilder):
                     confirm: If True, ask for confirmation before downloading
                 """
                 if output_dir is None:
-                    output_dir = "data/tcia/manifests"
+                    output_dir = "data/sources/tcia/manifests"
 
                 output_path = Path(output_dir)
                 output_path.mkdir(parents=True, exist_ok=True)
@@ -169,7 +167,7 @@ class TCIACohortBuilder(BaseCohortBuilder):
 
                     # Use the first TCIA dataset to download images
                     dataset = tcia_datasets[0]
-                    images_dir = Path(f"data/tcia/{dataset.default_subdir}")
+                    images_dir = Path(f"data/sources/tcia/{dataset.default_subdir}")
 
                     if verbose:
                         print(
@@ -185,7 +183,7 @@ class TCIACohortBuilder(BaseCohortBuilder):
 
                 if download_all:
                     # Calculate size for each dataset and build file details list
-                    from oncolearn.utils.download import get_file_size_from_url
+                    from oncolearn.cli.utils.download import get_file_size_from_url
 
                     file_details = []
                     total_size = 0
@@ -202,6 +200,7 @@ class TCIACohortBuilder(BaseCohortBuilder):
 
                     # Show single confirmation for entire cohort if we have size info
                     if total_size > 0 and confirm:
+                        from oncolearn.cli.utils.download import confirm_cohort_download  # noqa: PLC0415
                         if not confirm_cohort_download(
                             cohort_name=cohort_info['code'],
                             total_size_bytes=total_size,

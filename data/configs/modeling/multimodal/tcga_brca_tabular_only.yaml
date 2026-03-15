@@ -1,0 +1,59 @@
+# OncoLearn experiment config: TCGA-BRCA tabular-only (gene + clinical, XenaBrowser data)
+#
+# Uses gene miRNA and clinical stage data from XenaBrowser.
+# Only the gene encoder is active; clinical is loaded but not encoded.
+
+model:
+  name: oncolearn.model.multimodal.gated_late_fusion
+  num_stage_classes: 4
+  num_subtype_classes: 0
+  freeze_encoders: true
+  dropout: 0.2
+  modality_dropout_prob: 0.0
+  encoders:
+    - name: oncolearn.encoder.multimodal.RNABERTEncoder
+      modality: oncolearn.modality.gene
+      output_dim: 128
+
+data:
+  pipeline: data/configs/modeling/multimodal/preprocessing/tcga_brca_xenabrowser.py
+  splits_dir: null
+
+training:
+  max_epochs: 50
+  batch_size: 16
+  num_workers: 4
+  accelerator: auto
+  devices: 1
+  early_stopping_patience: 10
+  subtype_lambda: 0.3
+  seed: 42
+  use_class_weights: true
+
+  optimizer:
+    name: torch.optim.AdamW
+    params:
+      lr: 0.0001
+      weight_decay: 0.00001
+
+  scheduler:
+    name: torch.optim.lr_scheduler.CosineAnnealingLR
+    params:
+      T_max: null
+    monitor: val_loss
+    interval: epoch
+    frequency: 1
+
+  loss:
+    name: torch.nn.CrossEntropyLoss
+    params: {}
+
+  regularization:
+    l1_lambda: 0.0
+    gradient_clip_val: 0.0
+    label_smoothing: 0.0
+
+output:
+  dir: outputs
+  experiment_name: tcga_brca_tabular_only
+  save_every_n_epochs: 5

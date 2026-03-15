@@ -1,5 +1,6 @@
 """Data downloading and management API for OncoLearn."""
 
+from .cbioportal import CBioPortalClient, CBioPortalCohortBuilder, CBioPortalDataset
 from .cohort import Cohort
 from .dataset import DataCategory, Dataset
 from .tcia import TCIACohortBuilder, TCIADataset
@@ -13,4 +14,7 @@ __all__ = [
     "XenaDataset",
     "TCIACohortBuilder",
     "TCIADataset",
+    "CBioPortalClient",
+    "CBioPortalCohortBuilder",
+    "CBioPortalDataset",
 ]

@@ -1,0 +1,22 @@
+Loading config: data/configs/modeling/multimodal/tcga_brca_cbioportal_stage.yaml
+  Loading modality 'oncolearn.modality.clinical' ...
+    1084 patients
+    1065 patients with labels from 'AJCC_PATHOLOGIC_TUMOR_STAGE'
+  Loading modality 'oncolearn.modality.gene' ...
+    1093 patients
+  Loading modality 'oncolearn.modality.image' ...
+    139 patients (scanned from disk)
+  Multimodal intersection: 138 patients
+  Patients with valid labels: 138
+
+Generating 5-fold (KFold) splits for 138 patients → data/configs/modeling/multimodal/splits/stage/kfold
+
+  fold_0: train=110 {0: 23, 1: 69, 2: 18}  test=28 {0: 7, 1: 17, 2: 4}
+  fold_1: train=110 {0: 25, 1: 67, 2: 18}  test=28 {0: 5, 1: 19, 2: 4}
+  fold_2: train=110 {0: 25, 1: 68, 2: 17}  test=28 {0: 5, 1: 18, 2: 5}
+  fold_3: train=111 {0: 28, 1: 66, 2: 17}  test=27 {0: 2, 1: 20, 2: 5}
+  fold_4: train=111 {0: 19, 1: 74, 2: 18}  test=27 {0: 11, 1: 12, 2: 4}
+
+Saved 5 folds to data/configs/modeling/multimodal/splits/stage/kfold
+To use fold 0, add to your config YAML:
+  splits_dir: data/configs/modeling/multimodal/splits/stage/kfold/fold_0

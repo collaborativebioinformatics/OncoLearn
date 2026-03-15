@@ -1,0 +1,180 @@
+cohort:
+  name: TCGA Breast Invasive Carcinoma (Pan-Cancer Atlas 2018)
+  code: brca_tcga_pan_can_atlas_2018
+  study_id: brca_tcga_pan_can_atlas_2018
+  description: >
+    Full TCGA-BRCA dataset from the Pan-Cancer Atlas 2018 study
+    (brca_tcga_pan_can_atlas_2018). All molecular profiles: batch-normalized
+    mRNA (RNA-seq V2 RSEM, 4 z-score variants), copy-number (GISTIC discrete +
+    log2 continuous + arm-level GENERIC_ASSAY), methylation (HM27+HM450 merged
+    GENERIC_ASSAY), protein (RPPA + CPTAC), phosphoproteomics (CPTAC
+    GENERIC_ASSAY), genetic ancestry (GENERIC_ASSAY), structural variants, and
+    somatic mutations. Clinical data at patient and sample level.
+    Output: data/cbioportal/TCGA-BRCA/brca_tcga_pan_can_atlas_2018/
+  default_output_subdir: TCGA-BRCA/brca_tcga_pan_can_atlas_2018
+
+datasets:
+
+  # ── Clinical ─────────────────────────────────────────────────────────────
+
+  - name: clinical_patient
+    description: "All patient-level clinical attributes"
+    category: clinical
+    type: clinical
+    clinical_data_type: PATIENT
+    attribute_ids: []   # empty = download all attributes
+    filename: clinical_patient.tsv
+
+  - name: clinical_sample
+    description: "All sample-level clinical attributes"
+    category: clinical
+    type: clinical
+    clinical_data_type: SAMPLE
+    attribute_ids: []
+    filename: clinical_sample.tsv
+
+  # ── mRNA expression — RNA Seq V2 RSEM (molecularAlterationType: MRNA_EXPRESSION) ──
+
+  - name: rna_seq_v2_mrna
+    description: "mRNA Expression, RSEM (Batch normalized from Illumina HiSeq_RNASeqV2) | MRNA_EXPRESSION | CONTINUOUS"
+    category: mrna_seq
+    type: molecular
+    molecular_profile_id: brca_tcga_pan_can_atlas_2018_rna_seq_v2_mrna
+    sample_list_id: brca_tcga_pan_can_atlas_2018_rna_seq_v2_mrna
+    filename: rna_seq_v2_mrna.tsv
+
+  - name: rna_seq_v2_mrna_median_Zscores
+    description: "mRNA expression z-scores relative to diploid samples (RNA Seq V2 RSEM) | MRNA_EXPRESSION | Z-SCORE"
+    category: mrna_seq
+    type: molecular
+    molecular_profile_id: brca_tcga_pan_can_atlas_2018_rna_seq_v2_mrna_median_Zscores
+    sample_list_id: brca_tcga_pan_can_atlas_2018_rna_seq_v2_mrna
+    filename: rna_seq_v2_mrna_median_Zscores.tsv
+
+  - name: rna_seq_v2_mrna_median_all_sample_Zscores
+    description: "mRNA expression z-scores relative to all samples (log RNA Seq V2 RSEM) | MRNA_EXPRESSION | Z-SCORE"
+    category: mrna_seq
+    type: molecular
+    molecular_profile_id: brca_tcga_pan_can_atlas_2018_rna_seq_v2_mrna_median_all_sample_Zscores
+    sample_list_id: brca_tcga_pan_can_atlas_2018_rna_seq_v2_mrna
+    filename: rna_seq_v2_mrna_median_all_sample_Zscores.tsv
+
+  - name: rna_seq_v2_mrna_median_all_sample_ref_normal_Zscores
+    description: "mRNA expression z-scores relative to normal samples (log RNA Seq V2 RSEM) | MRNA_EXPRESSION | Z-SCORE"
+    category: mrna_seq
+    type: molecular
+    molecular_profile_id: brca_tcga_pan_can_atlas_2018_rna_seq_v2_mrna_median_all_sample_ref_normal_Zscores
+    sample_list_id: brca_tcga_pan_can_atlas_2018_rna_seq_v2_mrna
+    filename: rna_seq_v2_mrna_median_all_sample_ref_normal_Zscores.tsv
+
+  # ── Copy-number alteration (molecularAlterationType: COPY_NUMBER_ALTERATION) ──
+
+  - name: gistic
+    description: "Putative copy-number alterations from GISTIC | COPY_NUMBER_ALTERATION | DISCRETE"
+    category: cnv
+    type: molecular
+    molecular_profile_id: brca_tcga_pan_can_atlas_2018_gistic
+    sample_list_id: brca_tcga_pan_can_atlas_2018_cna
+    filename: gistic.tsv
+
+  - name: log2CNA
+    description: "Log2 copy-number values | COPY_NUMBER_ALTERATION | LOG2-VALUE"
+    category: cnv
+    type: molecular
+    molecular_profile_id: brca_tcga_pan_can_atlas_2018_log2CNA
+    sample_list_id: brca_tcga_pan_can_atlas_2018_log2CNA
+    filename: log2CNA.tsv
+
+  # ── Arm-level CNA (molecularAlterationType: GENERIC_ASSAY | CATEGORICAL) ──
+
+  - name: armlevel_cna
+    description: "Putative arm-level copy-number from GISTIC | GENERIC_ASSAY | CATEGORICAL"
+    category: cnv
+    type: generic_assay
+    molecular_profile_id: brca_tcga_pan_can_atlas_2018_armlevel_cna
+    sample_list_id: brca_tcga_pan_can_atlas_2018_cna
+    filename: armlevel_cna.tsv
+
+  # ── Methylation (molecularAlterationType: GENERIC_ASSAY | LIMIT-VALUE) ──
+
+  - name: methylation_hm27_hm450_merge
+    description: "Methylation (HM27 and HM450 merge) | GENERIC_ASSAY | LIMIT-VALUE"
+    category: methylation
+    type: generic_assay
+    molecular_profile_id: brca_tcga_pan_can_atlas_2018_methylation_hm27_hm450_merge
+    sample_list_id: brca_tcga_pan_can_atlas_2018_all
+    filename: methylation_hm27_hm450_merge.tsv
+
+  # ── Protein — RPPA (molecularAlterationType: PROTEIN_LEVEL) ─────────────
+
+  - name: rppa
+    description: "Protein expression (RPPA) | PROTEIN_LEVEL | LOG2-VALUE"
+    category: protein
+    type: molecular
+    molecular_profile_id: brca_tcga_pan_can_atlas_2018_rppa
+    sample_list_id: brca_tcga_pan_can_atlas_2018_rppa
+    filename: rppa.tsv
+
+  - name: rppa_Zscores
+    description: "Protein expression z-scores (RPPA) | PROTEIN_LEVEL | Z-SCORE"
+    category: protein
+    type: molecular
+    molecular_profile_id: brca_tcga_pan_can_atlas_2018_rppa_Zscores
+    sample_list_id: brca_tcga_pan_can_atlas_2018_rppa
+    filename: rppa_Zscores.tsv
+
+  # ── Protein — CPTAC mass-spectrometry (molecularAlterationType: PROTEIN_LEVEL) ──
+
+  - name: protein_quantification
+    description: "Protein levels (mass spectrometry by CPTAC) | PROTEIN_LEVEL | CONTINUOUS"
+    category: protein
+    type: molecular
+    molecular_profile_id: brca_tcga_pan_can_atlas_2018_protein_quantification
+    sample_list_id: brca_tcga_pan_can_atlas_2018_protein_quantification
+    filename: protein_quantification.tsv
+
+  - name: protein_quantification_zscores
+    description: "Protein expression z-scores (mass spectrometry by CPTAC) | PROTEIN_LEVEL | Z-SCORE"
+    category: protein
+    type: molecular
+    molecular_profile_id: brca_tcga_pan_can_atlas_2018_protein_quantification_zscores
+    sample_list_id: brca_tcga_pan_can_atlas_2018_protein_quantification
+    filename: protein_quantification_zscores.tsv
+
+  # ── Phosphoproteomics — CPTAC (molecularAlterationType: GENERIC_ASSAY | LIMIT-VALUE) ──
+
+  - name: phosphoprotein_quantification
+    description: "Phosphoprotein site level expression data by CPTAC (TMT, Log2ratio) | GENERIC_ASSAY | LIMIT-VALUE"
+    category: proteomics
+    type: generic_assay
+    molecular_profile_id: brca_tcga_pan_can_atlas_2018_phosphoprotein_quantification
+    sample_list_id: brca_tcga_pan_can_atlas_2018_phosphoprotein_quantification
+    filename: phosphoprotein_quantification.tsv
+
+  # ── Genetic Ancestry (molecularAlterationType: GENERIC_ASSAY | LIMIT-VALUE) ──
+
+  - name: genetic_ancestry
+    description: "Genetic Ancestry | GENERIC_ASSAY | LIMIT-VALUE"
+    category: genomics
+    type: generic_assay
+    molecular_profile_id: brca_tcga_pan_can_atlas_2018_genetic_ancestry
+    sample_list_id: brca_tcga_pan_can_atlas_2018_all
+    filename: genetic_ancestry.tsv
+
+  # ── Copy-number segments (raw CBS segmentation, SNP6 array) ─────────────
+
+  - name: copy_number_segments
+    description: "Raw copy-number segments (CBS segmentation, SNP6 array) | long-format: sampleId, chromosome, start, end, numberOfProbes, segmentMean"
+    category: cnv
+    type: copy_number_segments
+    filename: copy_number_segments.tsv
+
+  # ── Somatic mutations (molecularAlterationType: MUTATION_EXTENDED | MAF) ──
+
+  - name: mutations
+    description: "Mutations | MUTATION_EXTENDED | MAF"
+    category: mutation
+    type: mutations
+    molecular_profile_id: brca_tcga_pan_can_atlas_2018_mutations
+    sample_list_id: brca_tcga_pan_can_atlas_2018_sequenced
+    filename: mutations.tsv
