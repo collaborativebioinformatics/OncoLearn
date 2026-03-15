@@ -1,0 +1,13 @@
+cohort:
+  code: OV
+  name: TCGA-OV
+  description: TCGA Ovarian Serous Cystadenocarcinoma cohort with imaging data
+
+datasets:
+  - name: OV Imaging Manifest
+    description: TCGA ovarian cancer imaging manifest
+    category: manifest
+    url: https://www.cancerimagingarchive.net/wp-content/uploads/TCIA_TCGA-OV_09-16-2015.tcia
+    filename: TCIA_TCGA-OV_09-16-2015.tcia
+    default_subdir: TCGA-OV
+    file_type: manifest

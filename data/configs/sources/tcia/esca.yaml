@@ -1,0 +1,13 @@
+cohort:
+  code: ESCA
+  name: TCGA-ESCA
+  description: TCGA Esophageal Carcinoma cohort with imaging data
+
+datasets:
+  - name: ESCA Imaging Manifest
+    description: TCGA esophageal cancer imaging manifest
+    category: manifest
+    url: https://www.cancerimagingarchive.net/wp-content/uploads/TCIA_TCGA-ESCA-09-16-2015.tcia
+    filename: TCIA_TCGA-ESCA-09-16-2015.tcia
+    default_subdir: TCGA-ESCA
+    file_type: manifest

@@ -1,0 +1,6 @@
+cohort:
+  code: GBM
+  name: TCGA-GBM
+  description: TCGA Glioblastoma Multiforme cohort (no TCIA manifests available)
+
+datasets: []

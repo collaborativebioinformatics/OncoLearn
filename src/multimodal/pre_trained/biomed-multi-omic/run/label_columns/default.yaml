@@ -1,3 +1,0 @@
-- _target_: bmfm_targets.config.LabelColumnInfo
-  label_column_name: "${label_column_name}"
-  is_stratification_label: true

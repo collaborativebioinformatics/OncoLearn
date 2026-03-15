@@ -71,6 +71,31 @@ data/
 *.RData
 *.rds
 
+# Notebooks and tests (not needed in image)
+notebooks/
+test/
+*.ipynb
+
 # Cache directories
 .cache/
+uv-cache/
+.renv-cache/
+.uv-cache/
+renv/library/
 *.log
+
+# Build artifacts
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.tox/
+
+# Misc
+LICENSE
+
+# Exclude all submodules except biomed-multi-omic (needed for bmfm-targets local dep)
+submodules/agent-skills/
+submodules/multimodal_data_fusion/
+submodules/ultralytics/
+submodules/wiki/

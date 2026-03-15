@@ -1,0 +1,170 @@
+cohort:
+  code: COAD
+  name: TCGA-COAD
+  description: TCGA Colon Cancer cohort with multi-modal genomics data
+datasets:
+- dataset_id: TCGA-COAD.allele_cnv_ascat2.tsv
+  download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-COAD.allele_cnv_ascat2.tsv.gz
+  version: 06-17-2024
+  data_type: copy_number
+  assembly: hg38
+  unit: copy number
+  author: Genomic Data Commons
+  raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+  wrangling: Chromosome location and segment mean data are presented.
+  input_data_format: Genomic Segment (i.e. genomicSegment)
+- dataset_id: TCGA-COAD.allele_cnv_ascat3.tsv
+  download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-COAD.allele_cnv_ascat3.tsv.gz
+  version: 06-17-2024
+  data_type: copy_number
+  assembly: hg38
+  unit: copy number
+  author: Genomic Data Commons
+  raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+  wrangling: Chromosome location and segment mean data are presented.
+  input_data_format: Genomic Segment (i.e. genomicSegment)
+- dataset_id: TCGA-COAD.segment_cnv_ascat-ngs.tsv
+  download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-COAD.segment_cnv_ascat-ngs.tsv.gz
+  version: 05-09-2024
+  data_type: copy_number
+  assembly: hg38
+  unit: copy number
+  author: Genomic Data Commons
+  raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+  wrangling: Chromosome location and segment mean data are presented.
+  input_data_format: Genomic Segment (i.e. genomicSegment)
+- dataset_id: TCGA-COAD.masked_cnv_DNAcopy.tsv
+  download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-COAD.masked_cnv_DNAcopy.tsv.gz
+  version: 05-09-2024
+  data_type: copy_number
+  assembly: hg38
+  unit: copy number
+  author: Genomic Data Commons
+  raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+  wrangling: Chromosome location and segment mean data are presented.
+  input_data_format: Genomic Segment (i.e. genomicSegment)
+- dataset_id: TCGA-COAD.gene-level_absolute.tsv
+  download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-COAD.gene-level_absolute.tsv.gz
+  version: 05-09-2024
+  data_type: copy_number_gene_level
+  unit: copy number
+  author: Genomic Data Commons
+  raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+  wrangling: Loaded data directly into Xena
+  input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+- dataset_id: TCGA-COAD.gene-level_ascat2.tsv
+  download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-COAD.gene-level_ascat2.tsv.gz
+  version: 05-09-2024
+  data_type: copy_number_gene_level
+  unit: copy number
+  author: Genomic Data Commons
+  raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+  wrangling: Loaded data directly into Xena
+  input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+- dataset_id: TCGA-COAD.gene-level_ascat3.tsv
+  download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-COAD.gene-level_ascat3.tsv.gz
+  version: 05-09-2024
+  data_type: copy_number_gene_level
+  unit: copy number
+  author: Genomic Data Commons
+  raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+  wrangling: Loaded data directly into Xena
+  input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+- dataset_id: TCGA-COAD.gene-level_ascat-ngs.tsv
+  download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-COAD.gene-level_ascat-ngs.tsv.gz
+  version: 05-09-2024
+  data_type: copy_number_gene_level
+  unit: copy number
+  author: Genomic Data Commons
+  raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+  wrangling: Loaded data directly into Xena
+  input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+- dataset_id: TCGA-COAD.methylation27.tsv
+  download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-COAD.methylation27.tsv.gz
+  version: 05-09-2024
+  data_type: DNA_methylation
+  unit: beta value
+  author: Genomic Data Commons
+  raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+  wrangling: Beta_value from the same sample but from different vials/portions/analytes/aliquotes is averaged; beta_value from different samples is combined into genomicMatrix.
+  input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+- dataset_id: TCGA-COAD.methylation450.tsv
+  download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-COAD.methylation450.tsv.gz
+  version: 05-09-2024
+  data_type: DNA_methylation
+  unit: beta value
+  author: Genomic Data Commons
+  raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+  wrangling: Beta_value from the same sample but from different vials/portions/analytes/aliquotes is averaged; beta_value from different samples is combined into genomicMatrix.
+  input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+- dataset_id: TCGA-COAD.star_counts.tsv
+  download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-COAD.star_counts.tsv.gz
+  version: 05-09-2024
+  data_type: gene_expression_RNAseq
+  unit: log2(count+1)
+  author: Genomic Data Commons
+  raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+  wrangling: Data from the same sample but from different vials/portions/analytes/aliquotes is averaged; all data is then log2(x+1) transformed.
+  input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+- dataset_id: TCGA-COAD.star_fpkm.tsv
+  download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-COAD.star_fpkm.tsv.gz
+  version: 05-09-2024
+  data_type: gene_expression_RNAseq
+  unit: log2(fpkm+1)
+  author: Genomic Data Commons
+  raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+  wrangling: Data from the same sample but from different vials/portions/analytes/aliquotes is averaged; all data is then log2(x+1) transformed.
+  input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+- dataset_id: TCGA-COAD.star_fpkm-uq.tsv
+  download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-COAD.star_fpkm-uq.tsv.gz
+  version: 05-09-2024
+  data_type: gene_expression_RNAseq
+  unit: log2(fpkm-uq+1)
+  author: Genomic Data Commons
+  raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+  wrangling: Data from the same sample but from different vials/portions/analytes/aliquotes is averaged; all data is then log2(x+1) transformed.
+  input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+- dataset_id: TCGA-COAD.star_tpm.tsv
+  download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-COAD.star_tpm.tsv.gz
+  version: 05-09-2024
+  data_type: gene_expression_RNAseq
+  unit: log2(tpm+1)
+  author: Genomic Data Commons
+  raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+  wrangling: Data from the same sample but from different vials/portions/analytes/aliquotes is averaged; all data is then log2(x+1) transformed.
+  input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+- dataset_id: TCGA-COAD.survival.tsv
+  download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-COAD.survival.tsv.gz
+  samples: 3
+  version: 08-03-2024
+  data_type: phenotype
+  author: Genomic Data Commons
+  raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+  input_data_format: ROWs (samples) x COLUMNs (identifiers) (i.e. clinicalMatrix)
+- dataset_id: TCGA-COAD.protein.tsv
+  download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-COAD.protein.tsv.gz
+  version: 08-29-2024
+  data_type: protein_expression
+  unit: normalized RPPA value
+  author: Genomic Data Commons
+  raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-410
+  wrangling: value from different samples are combined into genomicMatrix
+  input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)
+- dataset_id: TCGA-COAD.somaticmutation_wxs.tsv
+  download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-COAD.somaticmutation_wxs.tsv.gz
+  version: 08-05-2024
+  data_type: somatic_mutation
+  assembly: hg38
+  author: Genomic Data Commons
+  raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+  wrangling: Hugo_Symbol, Chromosome, Start_Position, End_Position, Reference_Allele, Tumor_Seq_Allele2, HGVSp_Short and Consequence data are renamed accordingly and presented; dna_vaf data is added and is calculated by t_alt_count / t_depth.
+  input_data_format: Variant by Position (i.e. mutationVector)
+- dataset_id: TCGA-COAD.mirna.tsv
+  download: https://gdc-hub.s3.us-east-1.amazonaws.com/download/TCGA-COAD.mirna.tsv.gz
+  version: 05-09-2024
+  data_type: stem_loop_expression
+  unit: log2(RPM+1)
+  author: Genomic Data Commons
+  raw_data: https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/#data-release-400
+  wrangling: RPM Data from the same sample but from different vials/portions/analytes/aliquotes is averaged; all data is then log2(x+1) transformed.
+  input_data_format: ROWs (identifiers) x COLUMNs (samples) (i.e. genomicMatrix)

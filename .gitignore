@@ -1,6 +1,9 @@
 .DS_Store
-data/*
-!data/BRCA-data-top1000.tsv
+.hf-cache
+.uv-cache
+
+outputs
+models/**.pth**
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

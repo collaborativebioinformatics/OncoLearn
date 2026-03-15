@@ -1,0 +1,146 @@
+# OncoLearn experiment config: TCGA-BRCA multimodal cBioPortal — AJCC stage
+#
+# Clinical labels: AJCC pathologic stage (I=0, II=1, III=2, IV=3; Unknown dropped at parse time)
+# Gene features: log2(RSEM+1) normalised mRNA from cBioPortal Firehose Legacy
+# Imaging: TCIA DICOM MR
+
+model:
+  name: oncolearn.model.multimodal.gated_late_fusion
+  num_stage_classes: 4   # Stage I / II / III / IV (Unknown dropped at parse time)
+  num_subtype_classes: 0
+  freeze_encoders: true
+  dropout: 0.2
+  modality_dropout_prob: 0.3
+  encoders:
+    - name: oncolearn.encoder.multimodal.RNABERTEncoder
+      modality: oncolearn.modality.gene
+      output_dim: 128
+    - name: oncolearn.encoder.multimodal.FTTransformerEncoder
+      modality: oncolearn.modality.clinical
+      output_dim: 64
+    - name: oncolearn.encoder.multimodal.MRMGHierarchicalImageEncoder
+      modality: oncolearn.modality.image
+      output_dim: 256
+      checkpoint_path: /workspace/models/breast_MR_checkpoint.pth.tar
+
+data:
+  pipeline: data/configs/modeling/multimodal/preprocessing/tcga_brca_cbioportal_stage.py
+  splits_dir: data/configs/modeling/multimodal/splits/stage/kfold/fold_0
+
+training:
+  max_epochs: 50
+  batch_size: 8
+  num_workers: 4
+  accelerator: auto
+  devices: 1
+  early_stopping_patience: 10
+  subtype_lambda: 0.0
+  seed: 42
+  use_class_weights: true
+
+  optimizer:
+    name: torch.optim.AdamW
+    params:
+      lr: 0.0001
+      weight_decay: 0.00001
+
+  scheduler:
+    name: torch.optim.lr_scheduler.CosineAnnealingLR
+    params:
+      T_max: null
+    monitor: val_loss
+    interval: epoch
+    frequency: 1
+
+  loss:
+    name: torch.nn.CrossEntropyLoss
+    params: {}
+
+  regularization:
+    l1_lambda: 0.0
+    gradient_clip_val: 1.0
+    label_smoothing: 0.0
+
+  cross_validation:
+    enabled: false
+    folds_dirs:
+      - data/configs/modeling/multimodal/splits/stage/kfold/fold_0
+      - data/configs/modeling/multimodal/splits/stage/kfold/fold_1
+      - data/configs/modeling/multimodal/splits/stage/kfold/fold_2
+      - data/configs/modeling/multimodal/splits/stage/kfold/fold_3
+      - data/configs/modeling/multimodal/splits/stage/kfold/fold_4
+
+  hpo:
+    n_trials: 30
+    epochs_per_trial: 30
+    study_name: brca_cbioportal_stage
+    storage: sqlite:///outputs/brca_cbioportal_stage.db
+    direction: maximize
+    metric: val_acc
+    pruning: true
+    seed: 42
+    search_space:
+      training.optimizers:
+        torch.optim.AdamW:
+          lr:           {type: float, low: 1.0e-5, high: 1.0e-2, log: true}
+          weight_decay: {type: float, low: 1.0e-6, high: 1.0e-3, log: true}
+        torch.optim.Adam:
+          lr:           {type: float, low: 1.0e-5, high: 1.0e-2, log: true}
+          weight_decay: {type: float, low: 1.0e-6, high: 1.0e-3, log: true}
+        torch.optim.SGD:
+          lr:           {type: float, low: 1.0e-3, high: 1.0e-1, log: true}
+          momentum:     {type: float, low: 0.5, high: 0.99}
+          weight_decay: {type: float, low: 1.0e-6, high: 1.0e-3, log: true}
+        torch.optim.RMSprop:
+          lr:           {type: float, low: 1.0e-5, high: 1.0e-2, log: true}
+          momentum:     {type: float, low: 0.0, high: 0.9}
+          weight_decay: {type: float, low: 1.0e-6, high: 1.0e-3, log: true}
+      training.losses:
+        torch.nn.CrossEntropyLoss:
+          label_smoothing: {type: float, low: 0.0, high: 0.3}
+        torch.nn.MultiMarginLoss:
+          p:      {type: categorical, choices: [1, 2]}
+          margin: {type: float, low: 0.5, high: 2.0}
+      training.schedulers:
+        torch.optim.lr_scheduler.CosineAnnealingLR:
+          eta_min: {type: float, low: 1.0e-7, high: 1.0e-4, log: true}
+        torch.optim.lr_scheduler.ReduceLROnPlateau:
+          factor:  {type: float, low: 0.1, high: 0.5}
+          patience: {type: int, low: 3, high: 10}
+        torch.optim.lr_scheduler.StepLR:
+          step_size: {type: int, low: 5, high: 20}
+          gamma:     {type: float, low: 0.1, high: 0.9}
+      training.batch_size:
+        type: categorical
+        choices: [8]
+      training.early_stopping_patience:
+        type: int
+        low: 5
+        high: 20
+      training.regularization.l1_lambda:
+        type: float
+        low: 0.0
+        high: 1.0e-5
+      model.dropout:
+        type: float
+        low: 0.05
+        high: 0.5
+      model.modality_dropout_prob:
+        type: float
+        low: 0.0
+        high: 0.4
+      model.encoders.0.output_dim:
+        type: categorical
+        choices: [64, 128, 256]
+      model.encoders.0.kwargs.projection_dropout:
+        type: float
+        low: 0.0
+        high: 0.5
+      model.encoders.0.kwargs.max_seq_len:
+        type: categorical
+        choices: [256, 512]
+
+output:
+  dir: outputs
+  experiment_name: tcga_brca_cbioportal_stage
+  save_every_n_epochs: 5

@@ -1,0 +1,13 @@
+cohort:
+  code: READ
+  name: TCGA-READ
+  description: TCGA Rectum Adenocarcinoma cohort with imaging data
+
+datasets:
+  - name: READ Imaging Manifest
+    description: TCGA rectal cancer imaging manifest
+    category: manifest
+    url: https://www.cancerimagingarchive.net/wp-content/uploads/TCIA_TCGA-READ_09-16-2015.tcia
+    filename: TCIA_TCGA-READ_09-16-2015.tcia
+    default_subdir: TCGA-READ
+    file_type: manifest

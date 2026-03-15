@@ -1,0 +1,13 @@
+cohort:
+  code: KICH
+  name: TCGA-KICH
+  description: TCGA Kidney Chromophobe cohort with imaging data
+
+datasets:
+  - name: KICH Imaging Manifest
+    description: TCGA kidney chromophobe imaging manifest
+    category: manifest
+    url: https://www.cancerimagingarchive.net/wp-content/uploads/TCIA_TCGA-KICH_09-16-2015.tcia
+    filename: TCIA_TCGA-KICH_09-16-2015.tcia
+    default_subdir: TCGA-KICH
+    file_type: manifest

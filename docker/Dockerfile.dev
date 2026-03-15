@@ -1,0 +1,235 @@
+# syntax=docker/dockerfile:1.7
+# Development environment for OncoLearn (Python + R + LLVM + data tools)
+
+ARG GPU_EXTRA=cpu
+
+# ============================================================================
+# Stage 1: LLVM Builder
+# ============================================================================
+FROM buildpack-deps:jammy-curl AS llvm-builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc \
+    && echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-20 main" > /etc/apt/sources.list.d/llvm.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends llvm-20 llvm-20-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# ============================================================================
+# Stage 2: NBIA Data Retriever Builder
+# ============================================================================
+FROM buildpack-deps:jammy-curl AS nbia-builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update \
+    && apt-get install -y --no-install-recommends \
+    libx11-6 \
+    libxext6 \
+    libxrender1 \
+    libxtst6 \
+    libxi6 \
+    libgtk-3-0 \
+    libasound2 \
+    libgif7 \
+    libice6 \
+    libsm6 \
+    xdg-utils
+
+RUN mkdir -p /usr/share/desktop-directories /usr/share/applications \
+    && wget -q https://github.com/CBIIT/NBIA-TCIA/releases/download/DR-4_4_3-TCIA-20240916-1/nbia-data-retriever_4.4.3-1_amd64.deb -O /tmp/nbia-data-retriever.deb \
+    && dpkg -i /tmp/nbia-data-retriever.deb \
+    && rm /tmp/nbia-data-retriever.deb
+
+# ============================================================================
+# Stage 3: PDC CLI Builder
+# ============================================================================
+FROM buildpack-deps:jammy-curl AS pdc-builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /opt/pdc-client \
+    && wget https://pdc-download-clients.s3.amazonaws.com/pdc-client_v1.0.8_Ubuntu_x64.zip -O /tmp/pdc-client.zip \
+    && unzip /tmp/pdc-client.zip -d /tmp \
+    && unzip /tmp/pdc-client_v1.0.8_Ubuntu_x64/pdc-client_CL_v1.0.8_Ubuntu_x64.zip -d /opt/pdc-client \
+    && chmod +x /opt/pdc-client/pdc-client \
+    && rm -rf /tmp/pdc-client.zip /tmp/pdc-client_v1.0.8_Ubuntu_x64 /tmp/__MACOSX
+
+# ============================================================================
+# Stage 4: Python Dependencies Builder
+# Base: python:3.12-slim + only the build tools required to compile native extensions.
+# python:3.12 (full) is ~1 GB; slim + build-essential is ~200 MB.
+# ============================================================================
+FROM python:3.12-slim AS python-builder
+
+ARG GPU_EXTRA
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV UV_CACHE_DIR=/workspace/.uv-cache
+ENV UV_PROJECT_ENVIRONMENT=/workspace/.venv
+ENV UV_NO_PROGRESS=0
+ENV UV_HTTP_TIMEOUT=300
+ENV VIRTUAL_ENV=/workspace/.venv
+ENV PATH="/workspace/.venv/bin:${PATH}"
+# bmfm-targets uses setuptools_scm; without a git repo in Docker it hangs trying hg
+ENV SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0
+
+# Minimal build toolchain:
+#   build-essential — gcc/g++/make for native extensions (pysam, hic-straw, etc.)
+#   libcurl4-openssl-dev — hic-straw links against libcurl at compile time
+#   git — uv needs git to fetch pinned git-URL deps (e.g. focal-loss-torch)
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        libcurl4-openssl-dev \
+        git \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install uv --no-cache-dir
+
+WORKDIR /workspace
+
+COPY pyproject.toml uv.lock ./
+# biomed-multi-omic is a local path dependency required by bmfm-targets
+COPY submodules/biomed-multi-omic ./submodules/biomed-multi-omic/
+
+# Install all third-party deps first (--no-install-project skips oncolearn itself).
+# This layer stays cached as long as pyproject.toml/uv.lock/submodule don't change,
+# even when src/ is edited frequently.
+RUN --mount=type=cache,target=/workspace/.uv-cache,sharing=locked \
+    uv sync --no-dev --extra ${GPU_EXTRA} --extra multimodal --extra eda --extra image --no-install-project
+
+# Install oncolearn editable (cheap; only re-runs when src/ changes)
+COPY src/ ./src/
+RUN --mount=type=cache,target=/workspace/.uv-cache,sharing=locked \
+    uv sync --no-dev --extra ${GPU_EXTRA} --extra multimodal --extra eda --extra image
+
+# ============================================================================
+# Stage 5: R Dependencies Builder
+# ============================================================================
+FROM rocker/r-ver:4.4.2 AS r-builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV RENV_PATHS_CACHE=/workspace/.renv-cache
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    libxml2-dev \
+    libcurl4-openssl-dev \
+    libssl-dev
+
+WORKDIR /workspace
+
+COPY .Rprofile renv.lock ./
+COPY renv/ ./renv/
+
+RUN --mount=type=cache,target=/workspace/.renv-cache,sharing=locked \
+    R -e "options(Ncpus=parallel::detectCores()); \
+          if (!requireNamespace('renv', quietly = TRUE)) install.packages('renv', repos='https://cloud.r-project.org/'); \
+          if (!requireNamespace('languageserver', quietly = TRUE)) install.packages('languageserver', repos='https://cloud.r-project.org/'); \
+          renv::restore();"
+
+# ============================================================================
+# Stage 6: Dev Runtime Image
+# Base: ubuntu:22.04 (Jammy slim, ~77 MB) instead of buildpack-deps:jammy (~500 MB).
+# buildpack-deps includes compilers/build tools which are not needed at runtime —
+# all compilation happens in the builder stages above.
+# ============================================================================
+FROM ubuntu:22.04 AS dev
+
+ARG GPU_EXTRA
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+
+ENV UV_CACHE_DIR=/workspace/.uv-cache
+ENV UV_PROJECT_ENVIRONMENT=/workspace/.venv
+ENV UV_NO_PROGRESS=0
+ENV VIRTUAL_ENV=/workspace/.venv
+ENV PATH="/workspace/.venv/bin:${PATH}"
+
+ENV LLVM_CONFIG=/usr/bin/llvm-config-20
+ENV CMAKE_PREFIX_PATH=/usr/lib/llvm-20
+
+# Force Java to run in headless mode (required for nbia-data-retriever in containers)
+ENV JAVA_TOOL_OPTIONS=-Djava.awt.headless=true
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        # TLS and core utilities
+        ca-certificates \
+        git \
+        curl \
+        # PyTorch / Python package runtime
+        libgomp1 \
+        libcurl4 \
+        # R runtime (Fortran, BLAS/LAPACK, readline, regex, ICU)
+        libgfortran5 \
+        libblas3 \
+        liblapack3 \
+        libreadline8 \
+        libpcre2-8-0 \
+        libbz2-1.0 \
+        liblzma5 \
+        libzstd1 \
+        libicu70 \
+        # NBIA Data Retriever requires a JRE
+        default-jre-headless \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy LLVM runtime from llvm-builder stage (exclude dev headers to reduce size)
+COPY --from=llvm-builder /usr/lib/llvm-20/lib/*.so* /usr/lib/llvm-20/lib/
+COPY --from=llvm-builder /usr/lib/llvm-20/bin/llvm-config /usr/lib/llvm-20/bin/
+COPY --from=llvm-builder /usr/bin/llvm-config-20 /usr/bin/
+
+# Copy NBIA Data Retriever from nbia-builder stage
+COPY --from=nbia-builder /opt/nbia-data-retriever /opt/nbia-data-retriever
+RUN mkdir -p /usr/share/desktop-directories \
+    && ln -sf /opt/nbia-data-retriever/bin/nbia-data-retriever /usr/local/bin/nbia-data-retriever
+
+# Copy PDC CLI from pdc-builder stage
+COPY --from=pdc-builder /opt/pdc-client /opt/pdc-client
+RUN ln -sf /opt/pdc-client/pdc-client /usr/local/bin/pdc_client
+
+# Copy Python 3.12 interpreter from python-builder stage.
+# ubuntu:22.04 does not ship Python 3.12; the venv's bin/python symlinks to
+# /usr/local/bin/python3.12, which must exist in the runtime image.
+COPY --from=python-builder /usr/local/bin/python3.12 /usr/local/bin/python3.12
+COPY --from=python-builder /usr/local/lib/libpython3.12.so.1.0 /usr/local/lib/libpython3.12.so.1.0
+COPY --from=python-builder /usr/local/lib/python3.12 /usr/local/lib/python3.12
+RUN ldconfig
+
+# Copy Python virtual environment and uv from python-builder stage
+COPY --from=python-builder /workspace/.venv /workspace/.venv
+COPY --from=python-builder /usr/local/bin/uv /usr/local/bin/uv
+
+# Copy R installation and libraries from r-builder stage.
+# rocker/r-ver installs R entirely under /usr/local/ (not /usr/lib/R or /usr/bin/).
+COPY --from=r-builder /usr/local/lib/R /usr/local/lib/R
+COPY --from=r-builder /usr/local/bin/R /usr/local/bin/R
+COPY --from=r-builder /usr/local/bin/Rscript /usr/local/bin/Rscript
+COPY --from=r-builder /workspace/renv /workspace/renv
+
+WORKDIR /workspace
+
+COPY src/ ./src/
+COPY scripts/ ./scripts/
+COPY .Rprofile renv.lock ./

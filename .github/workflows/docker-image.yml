@@ -1,0 +1,19 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build the Docker image (amd-wsl)
+      run: |
+        docker build . \
+          --file Dockerfile \
+          --build-arg GPU_EXTRA=rocm62 \
+          --tag my-image-name:amd-wsl-$(date +%s)

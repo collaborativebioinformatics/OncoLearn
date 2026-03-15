@@ -1,0 +1,13 @@
+cohort:
+  code: BRCA
+  name: TCGA-BRCA
+  description: TCGA Breast Invasive Carcinoma cohort with imaging data
+
+datasets:
+  - name: BRCA Imaging Manifest
+    description: TCGA breast cancer imaging manifest
+    category: manifest
+    url: https://www.cancerimagingarchive.net/wp-content/uploads/TCIA_TCGA-BRCA_09-16-2015.tcia
+    filename: TCIA_TCGA-BRCA_09-16-2015.tcia
+    default_subdir: TCGA-BRCA
+    file_type: manifest
