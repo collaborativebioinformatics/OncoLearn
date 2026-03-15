@@ -87,6 +87,9 @@ dev = [
 ]
 
 [tool.uv]
+required-environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64' and platform_python_implementation == 'CPython'",
+]
 conflicts = [
     [
         { extra = "cpu" },
