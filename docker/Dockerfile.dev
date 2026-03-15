@@ -68,19 +68,18 @@ RUN mkdir -p /opt/pdc-client \
     && rm -rf /tmp/pdc-client.zip /tmp/pdc-client_v1.0.8_Ubuntu_x64 /tmp/__MACOSX
 
 # ============================================================================
-# Stage 4: Python Dependencies Builder
-# Base: python:3.12-slim + only the build tools required to compile native extensions.
-# python:3.12 (full) is ~1 GB; slim + build-essential is ~200 MB.
+# Stage 4a: Python Dependencies Builder (CPU base)
+# Installs all deps with the CPU torch variant. This layer is shared by all
+# GPU variants — GPU builds extend this stage and reinstall torch on top.
 # ============================================================================
-FROM python:3.12-slim AS python-builder
-
-ARG GPU_EXTRA
+FROM python:3.12-slim AS python-builder-base
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV UV_CACHE_DIR=/workspace/.uv-cache
 ENV UV_PROJECT_ENVIRONMENT=/workspace/.venv
 ENV UV_NO_PROGRESS=0
 ENV UV_HTTP_TIMEOUT=300
+ENV UV_LINK_MODE=copy
 ENV VIRTUAL_ENV=/workspace/.venv
 ENV PATH="/workspace/.venv/bin:${PATH}"
 # bmfm-targets uses setuptools_scm; without a git repo in Docker it hangs trying hg
@@ -107,14 +106,26 @@ COPY pyproject.toml uv.lock ./
 # biomed-multi-omic is a local path dependency required by bmfm-targets
 COPY submodules/biomed-multi-omic ./submodules/biomed-multi-omic/
 
-# Install all third-party deps first (--no-install-project skips oncolearn itself).
-# This layer stays cached as long as pyproject.toml/uv.lock/submodule don't change,
-# even when src/ is edited frequently.
+# Install all third-party deps with CPU torch (--no-install-project skips oncolearn itself).
+# This layer stays cached as long as pyproject.toml/uv.lock/submodule don't change.
 RUN --mount=type=cache,target=/workspace/.uv-cache,sharing=locked \
-    uv sync --no-dev --extra ${GPU_EXTRA} --extra multimodal --extra eda --extra image --no-install-project
+    uv sync --no-dev --extra cpu --extra multimodal --extra eda --extra image --no-install-project
 
 # Install oncolearn editable (cheap; only re-runs when src/ changes)
 COPY src/ ./src/
+RUN --mount=type=cache,target=/workspace/.uv-cache,sharing=locked \
+    uv sync --no-dev --extra cpu --extra multimodal --extra eda --extra image
+
+# ============================================================================
+# Stage 4b: Python Dependencies Builder (GPU variant)
+# Extends the CPU base by reinstalling torch with the requested GPU variant.
+# When GPU_EXTRA=cpu this is effectively a no-op.
+# ============================================================================
+FROM python-builder-base AS python-builder-gpu
+
+ARG GPU_EXTRA=cpu
+
+# Reinstall torch with the GPU-specific variant on top of the existing venv.
 RUN --mount=type=cache,target=/workspace/.uv-cache,sharing=locked \
     uv sync --no-dev --extra ${GPU_EXTRA} --extra multimodal --extra eda --extra image
 
@@ -146,14 +157,11 @@ RUN --mount=type=cache,target=/workspace/.renv-cache,sharing=locked \
           renv::restore();"
 
 # ============================================================================
-# Stage 6: Dev Runtime Image
-# Base: ubuntu:22.04 (Jammy slim, ~77 MB) instead of buildpack-deps:jammy (~500 MB).
-# buildpack-deps includes compilers/build tools which are not needed at runtime —
-# all compilation happens in the builder stages above.
+# Stage 6a: Dev Base Image (CPU torch)
+# This is the publishable base image. Identical to the final dev image but
+# carries CPU torch — GPU images copy the GPU venv on top.
 # ============================================================================
-FROM ubuntu:22.04 AS dev
-
-ARG GPU_EXTRA
+FROM ubuntu:22.04 AS dev-base
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
@@ -209,17 +217,17 @@ RUN mkdir -p /usr/share/desktop-directories \
 COPY --from=pdc-builder /opt/pdc-client /opt/pdc-client
 RUN ln -sf /opt/pdc-client/pdc-client /usr/local/bin/pdc_client
 
-# Copy Python 3.12 interpreter from python-builder stage.
+# Copy Python 3.12 interpreter from python-builder-base stage.
 # ubuntu:22.04 does not ship Python 3.12; the venv's bin/python symlinks to
 # /usr/local/bin/python3.12, which must exist in the runtime image.
-COPY --from=python-builder /usr/local/bin/python3.12 /usr/local/bin/python3.12
-COPY --from=python-builder /usr/local/lib/libpython3.12.so.1.0 /usr/local/lib/libpython3.12.so.1.0
-COPY --from=python-builder /usr/local/lib/python3.12 /usr/local/lib/python3.12
+COPY --from=python-builder-base /usr/local/bin/python3.12 /usr/local/bin/python3.12
+COPY --from=python-builder-base /usr/local/lib/libpython3.12.so.1.0 /usr/local/lib/libpython3.12.so.1.0
+COPY --from=python-builder-base /usr/local/lib/python3.12 /usr/local/lib/python3.12
 RUN ldconfig
 
-# Copy Python virtual environment and uv from python-builder stage
-COPY --from=python-builder /workspace/.venv /workspace/.venv
-COPY --from=python-builder /usr/local/bin/uv /usr/local/bin/uv
+# Copy Python virtual environment (CPU torch) and uv from python-builder-base stage
+COPY --from=python-builder-base /workspace/.venv /workspace/.venv
+COPY --from=python-builder-base /usr/local/bin/uv /usr/local/bin/uv
 
 # Copy R installation and libraries from r-builder stage.
 # rocker/r-ver installs R entirely under /usr/local/ (not /usr/lib/R or /usr/bin/).
@@ -233,3 +241,15 @@ WORKDIR /workspace
 COPY src/ ./src/
 COPY scripts/ ./scripts/
 COPY .Rprofile renv.lock ./
+
+# ============================================================================
+# Stage 6b: Dev Runtime Image (GPU variant)
+# Extends dev-base by overwriting the CPU venv with the GPU-specific venv.
+# ============================================================================
+FROM dev-base AS dev
+
+ARG GPU_EXTRA=cpu
+
+# Overwrite CPU venv with GPU-specific venv (no-op for cpu builds since
+# python-builder-gpu is identical to python-builder-base when GPU_EXTRA=cpu)
+COPY --from=python-builder-gpu /workspace/.venv /workspace/.venv

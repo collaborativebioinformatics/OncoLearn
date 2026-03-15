@@ -4,14 +4,11 @@
 ARG GPU_EXTRA=cpu
 
 # ============================================================================
-# Stage 1: Python Dependencies Builder
-# Base: python:3.12-slim + only the build tools required to compile native extensions.
-# python:3.12 (full) is ~1 GB; slim + build-essential is ~200 MB.
+# Stage 1a: Python Dependencies Builder (CPU base)
+# Installs all deps with the CPU torch variant. This layer is shared by all
+# GPU variants — GPU builds extend this stage and reinstall torch on top.
 # ============================================================================
-FROM python:3.12-slim AS pytorch-prod-builder
-
-ARG GPU_EXTRA
-ARG ROCM_WSL=0
+FROM python:3.12-slim AS pytorch-prod-builder-base
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV UV_CACHE_DIR=/workspace/.uv-cache
@@ -44,28 +41,35 @@ WORKDIR /workspace
 COPY pyproject.toml uv.lock ./
 COPY submodules/biomed-multi-omic ./submodules/biomed-multi-omic/
 
-# Install all third-party deps first (--no-install-project skips oncolearn itself).
-# This layer stays cached as long as pyproject.toml/uv.lock/submodule don't change,
-# even when src/ is edited frequently.
+# Install all third-party deps with CPU torch (--no-install-project skips oncolearn itself).
+# This layer stays cached as long as pyproject.toml/uv.lock/submodule don't change.
 RUN --mount=type=cache,target=/workspace/.uv-cache,sharing=locked \
-    if [ "$ROCM_WSL" = "1" ]; then \
-      uv sync --no-dev --extra multimodal --no-install-project \
-        --no-install-package torch \
-        --no-install-package torchvision \
-        --no-install-package triton; \
-    else \
-      uv sync --no-dev --extra ${GPU_EXTRA} --extra multimodal --no-install-project; \
-    fi
+    uv sync --no-dev --extra cpu --extra multimodal --no-install-project
 
 # Install oncolearn editable (cheap; only re-runs when src/ changes)
 COPY src/ ./src/
 RUN --mount=type=cache,target=/workspace/.uv-cache,sharing=locked \
+    uv sync --no-dev --extra cpu --extra multimodal
+
+# ============================================================================
+# Stage 1b: Python Dependencies Builder (GPU variant)
+# Extends the CPU base by reinstalling torch with the requested GPU variant.
+# For ROCM_WSL=1 builds, torch is removed here and the ROCm 7.2 LW wheels
+# are installed in the runtime stage instead.
+# ============================================================================
+FROM pytorch-prod-builder-base AS pytorch-prod-builder-gpu
+
+ARG GPU_EXTRA=cpu
+ARG ROCM_WSL=0
+
+RUN --mount=type=cache,target=/workspace/.uv-cache,sharing=locked \
     if [ "$ROCM_WSL" = "1" ]; then \
+      uv pip uninstall torch torchvision triton 2>/dev/null || true; \
       uv sync --no-dev --extra multimodal \
         --no-install-package torch \
         --no-install-package torchvision \
         --no-install-package triton; \
-    else \
+    elif [ "${GPU_EXTRA}" != "cpu" ]; then \
       uv sync --no-dev --extra ${GPU_EXTRA} --extra multimodal; \
     fi
 
@@ -110,13 +114,11 @@ done
 SHELL
 
 # ============================================================================
-# Stage 3: Production Runtime
-# Base: python:3.12-slim (~125 MB) — only runtime libs, no compilers or build tools.
+# Stage 3a: Production Base Image (CPU torch)
+# This is the publishable base image. Copies the CPU venv — GPU images copy
+# the GPU venv on top.
 # ============================================================================
-FROM python:3.12-slim AS pytorch-prod
-
-ARG GPU_EXTRA
-ARG ROCM_WSL=0
+FROM python:3.12-slim AS pytorch-prod-base
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
@@ -136,9 +138,26 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         libelf1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the built venv and uv (needed only to install ROCm wheels below)
-COPY --from=pytorch-prod-builder /workspace/.venv /workspace/.venv
-COPY --from=pytorch-prod-builder /usr/local/bin/uv /usr/local/bin/uv
+# Copy the built venv (CPU torch) and uv from the base builder
+COPY --from=pytorch-prod-builder-base /workspace/.venv /workspace/.venv
+COPY --from=pytorch-prod-builder-base /usr/local/bin/uv /usr/local/bin/uv
+
+WORKDIR /workspace
+
+COPY src/ ./src/
+
+# ============================================================================
+# Stage 3b: Production Runtime Image (GPU variant)
+# Extends pytorch-prod-base by overwriting the CPU venv with the GPU-specific
+# venv, then installs ROCm wheels for WSL2 AMD builds.
+# ============================================================================
+FROM pytorch-prod-base AS pytorch-prod
+
+ARG GPU_EXTRA=cpu
+ARG ROCM_WSL=0
+
+# Overwrite CPU venv with GPU-specific venv
+COPY --from=pytorch-prod-builder-gpu /workspace/.venv /workspace/.venv
 
 # Copy pre-fetched ROCm wheels (empty dir for non-WSL builds)
 COPY --from=rocm-wsl-wheels /rocm-wheels /rocm-wheels
@@ -154,7 +173,3 @@ RUN if [ "$GPU_EXTRA" = "rocm" ] && [ "$ROCM_WSL" = "1" ]; then \
         /rocm-wheels/triton-*.whl; \
     fi && \
     rm -rf /rocm-wheels /usr/local/bin/uv
-
-WORKDIR /workspace
-
-COPY src/ ./src/
